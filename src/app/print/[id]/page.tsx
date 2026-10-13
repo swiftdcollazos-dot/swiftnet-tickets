@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { entryMinutes, formatMinutes, formatMoney } from "@/lib/billing";
+import { formatHours, formatMoney } from "@/lib/billing";
 import { loadTicket } from "@/lib/ticket-data";
 import { formatDate, formatTime } from "@/lib/time";
 import { KIND_LABELS } from "@/lib/types";
@@ -17,7 +17,7 @@ export default function PrintPage(props: PageProps<"/print/[id]">) {
 
 async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["params"] }) {
   const { id } = await params;
-  const { ticket, client, entries, parts, totals, settings, techName } = await loadTicket(id);
+  const { ticket, client, parts, totals, settings, techName } = await loadTicket(id);
   const money = (c: number) => formatMoney(c, settings.currency);
   const title = ticket.is_estimate ? "ESTIMATE" : "SERVICE TICKET";
 
@@ -76,27 +76,6 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
           </section>
         )}
 
-        {entries.length > 0 && (
-          <table className="mb-6 w-full border-collapse">
-            <thead>
-              <tr className="bg-slate-100 text-left text-xs uppercase">
-                <th className="p-2">Date</th><th className="p-2">Technician</th><th className="p-2">Time in</th><th className="p-2">Time out</th><th className="p-2 text-right">Hours</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((e) => (
-                <tr key={e.id} className="border-b border-slate-200">
-                  <td className="p-2">{formatDate(e.started_at)}</td>
-                  <td className="p-2">{techName(e.technician_id)}</td>
-                  <td className="p-2">{formatTime(e.started_at)}</td>
-                  <td className="p-2">{e.ended_at ? formatTime(e.ended_at) : "in progress"}</td>
-                  <td className="p-2 text-right">{formatMinutes(entryMinutes({ startedAt: e.started_at, endedAt: e.ended_at }))}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-
         {parts.length > 0 && (
           <table className="mb-6 w-full border-collapse">
             <thead>
@@ -121,7 +100,7 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
         <section className="mb-8 flex justify-end">
           <table className="w-72">
             <tbody>
-              <Total label={`Total labor (${formatMinutes(totals.billableMinutes)} @ ${money(ticket.hourly_rate_cents)}/h)`} value={money(totals.laborCents)} />
+              <Total label={`Total labor (${formatHours(totals.billableMinutes)})`} value={money(totals.laborCents)} />
               <Total label="Total materials" value={money(totals.materialsCents)} />
               {ticket.tax_rate_pct > 0 && <Total label={`Tax (${ticket.tax_rate_pct}%)`} value={money(totals.taxCents)} />}
               <Total label="Total amount" value={money(totals.totalCents)} bold />

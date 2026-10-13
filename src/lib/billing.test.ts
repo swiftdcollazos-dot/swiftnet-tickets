@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { billableMinutes, computeTotals, formatMinutes, parseMoney, type BillingRules } from "./billing";
+import { billableMinutes, computeTotals, formatHours, formatMinutes, parseMoney, type BillingRules } from "./billing";
 
 const rules: BillingRules = {
   hourlyRateCents: 9000,
@@ -85,6 +85,16 @@ describe("formatting", () => {
     expect(formatMinutes(75)).toBe("1 h 15 min");
     expect(formatMinutes(45)).toBe("45 min");
     expect(formatMinutes(120)).toBe("2 h");
+  });
+  it("shows whole hours on the customer's ticket", () => {
+    expect(formatHours(120)).toBe("2 hours");
+    expect(formatHours(60)).toBe("1 hour");
+    expect(formatHours(75)).toBe("1 h 15 min");
+  });
+  it("rounds 1 h 5 min up to 2 hours when billing by the hour", () => {
+    const t = computeTotals([{ startedAt: at("09:00"), endedAt: at("10:05") }], [], { ...rules, roundingMinutes: 60 });
+    expect(t.billableMinutes).toBe(120);
+    expect(t.laborCents).toBe(18000);
   });
   it("parses money input", () => {
     expect(parseMoney("$1,200.50")).toBe(120050);

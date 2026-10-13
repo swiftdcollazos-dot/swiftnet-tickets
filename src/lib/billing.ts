@@ -81,6 +81,14 @@ export function formatMinutes(minutes: number): string {
   return rest === 0 ? `${h} h` : `${h} h ${rest} min`;
 }
 
+/** "2 hours" for whole hours, otherwise "1 h 15 min". Used on the customer's ticket. */
+export function formatHours(minutes: number): string {
+  const m = Math.round(minutes);
+  if (m % 60 !== 0) return formatMinutes(m);
+  const h = m / 60;
+  return h === 1 ? "1 hour" : `${h} hours`;
+}
+
 /** Parses "12.50" or "$1,200" into cents. Returns 0 for blank or invalid input. */
 export function parseMoney(input: string | null | undefined): number {
   if (!input) return 0;

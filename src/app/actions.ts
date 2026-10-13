@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient, requireUser } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { parseMoney } from "@/lib/billing";
 import { localToIso } from "@/lib/time";
 import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, isServiceType, type ClientType, type TicketStatus } from "@/lib/types";
@@ -356,4 +357,60 @@ export async function updateSettings(form: FormData) {
     .eq("id", 1);
   if (error) fail(error.message);
   revalidatePath("/settings");
+}
+
+// ---------- Users (logins) ----------
+
+const NO_ADMIN_KEY = "User management isn't switched on yet. Add SUPABASE_SERVICE_ROLE_KEY in Vercel first.";
+
+function password(form: FormData, required: boolean) {
+  const value = String(form.get("password") ?? "");
+  if (!value && !required) return undefined;
+  if (value.length < 8) fail("The password must be at least 8 characters.");
+  return value;
+}
+
+async function userAction(work: () => Promise<void>): Promise<ClientResult> {
+  try {
+    await work();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+  revalidatePath("/settings");
+  return { ok: true };
+}
+
+export async function createUser(_prev: ClientResult, form: FormData): Promise<ClientResult> {
+  return userAction(async () => {
+    await requireUser();
+    const admin = createAdminClient() ?? fail(NO_ADMIN_KEY);
+    const fullName = text(form, "full_name") || fail("Enter the person's name.");
+    const email = text(form, "email") || fail("Enter an email address.");
+    const { error } = await admin.auth.admin.createUser({
+      email,
+      password: password(form, true),
+      email_confirm: true,
+      user_metadata: { full_name: fullName },
+    });
+    if (error) fail(error.message);
+  });
+}
+
+/** Saves the name and email, and the password when a new one was typed. */
+export async function updateUser(userId: string, _prev: ClientResult, form: FormData): Promise<ClientResult> {
+  return userAction(async () => {
+    const { supabase } = await requireUser();
+    const admin = createAdminClient() ?? fail(NO_ADMIN_KEY);
+    const fullName = text(form, "full_name") || fail("Enter the person's name.");
+    const email = text(form, "email") || fail("Enter an email address.");
+    const { error } = await admin.auth.admin.updateUserById(userId, {
+      email,
+      email_confirm: true,
+      password: password(form, false),
+      user_metadata: { full_name: fullName },
+    });
+    if (error) fail(error.message);
+    const { error: profileError } = await supabase.from("profiles").update({ full_name: fullName }).eq("id", userId);
+    if (profileError) fail(profileError.message);
+  });
 }

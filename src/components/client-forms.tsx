@@ -7,7 +7,7 @@ import { createClientRecord, deleteClient, updateClient, type ClientResult } fro
  * Submits without React's automatic form reset, so a failed save keeps what was typed
  * (and the client type and monthly fee boxes stay in step).
  */
-function submitWith(action: (data: FormData) => void) {
+export function submitWith(action: (data: FormData) => void) {
   return (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const data = new FormData(e.currentTarget);

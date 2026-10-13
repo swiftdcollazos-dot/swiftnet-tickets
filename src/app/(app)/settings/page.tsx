@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import { updateSettings } from "@/app/actions";
 import { requireUser } from "@/lib/supabase/server";
 import { Loading } from "@/components/loading";
+import { AddUserForm, EditUserForm } from "@/components/user-forms";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Settings } from "@/lib/types";
 
 export default function SettingsPage() {
@@ -13,6 +15,7 @@ export default function SettingsPage() {
       </p>
       <Suspense fallback={<Loading />}>
         <SettingsForm />
+        <Users />
       </Suspense>
     </>
   );
@@ -40,6 +43,53 @@ async function SettingsForm() {
       </section>
       <button className="btn w-full">Save settings</button>
     </form>
+  );
+}
+
+/** People who can sign in. Needs the secret key on the server to read emails and set passwords. */
+async function Users() {
+  const { supabase, user: me } = await requireUser();
+  const admin = createAdminClient();
+  let users: { id: string; full_name: string; email: string }[] = [];
+  let problem = "";
+  if (!admin) {
+    problem = "To add users and change passwords here, add SUPABASE_SERVICE_ROLE_KEY to the app's settings in Vercel.";
+  } else {
+    const [{ data, error }, { data: profiles }] = await Promise.all([
+      admin.auth.admin.listUsers({ perPage: 1000 }),
+      supabase.from("profiles").select("id, full_name"),
+    ]);
+    if (error) problem = error.message;
+    const names = new Map((profiles ?? []).map((p) => [p.id, p.full_name as string]));
+    users = (data?.users ?? [])
+      .map((u) => ({ id: u.id, email: u.email ?? "", full_name: names.get(u.id) ?? String(u.user_metadata?.full_name ?? u.email ?? "") }))
+      .sort((a, b) => a.full_name.localeCompare(b.full_name));
+  }
+
+  return (
+    <section className="card mt-4">
+      <h2 className="h2">Users</h2>
+      {problem ? (
+        <p className="text-sm text-amber-700">{problem}</p>
+      ) : (
+        <>
+          <ul className="divide-y divide-slate-100">
+            {users.map((u) => (
+              <li key={u.id} className="py-2">
+                <details>
+                  <summary className="cursor-pointer">
+                    <span className="font-semibold">{u.full_name}</span>
+                    <span className="text-sm text-slate-500"> · {u.email}{u.id === me.id ? " · you" : ""}</span>
+                  </summary>
+                  <EditUserForm user={u} />
+                </details>
+              </li>
+            ))}
+          </ul>
+          <AddUserForm />
+        </>
+      )}
+    </section>
   );
 }
 

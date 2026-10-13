@@ -48,6 +48,8 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
   const running = entries.find((e) => !e.ended_at);
   const closed = ticket.status !== "open";
   const money = (c: number) => formatMoney(c, settings.currency);
+  // Whole hours, matching the printout.
+  const hours = formatHours(call ? Math.ceil(Math.round(totals.workedMinutes) / 60) * 60 : totals.billableMinutes);
 
   return (
     <div className="space-y-4">
@@ -245,8 +247,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
         title="Total"
         summary={
           <span className="font-semibold text-slate-800">
-            {/* Whole hours, matching the printout. */}
-            {formatHours(call ? Math.ceil(Math.round(totals.workedMinutes) / 60) * 60 : totals.billableMinutes)}
+            {hours}
           </span>
         }
       >
@@ -294,7 +295,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
         ) : (
           <>
             <p className="mb-3 text-sm text-slate-500">
-              By signing, the client approves the work and the total of {money(totals.totalCents)}.
+              By signing, the client approves the work and {hours} of time.
             </p>
             <SignaturePad ticketId={ticket.id} defaultName={client.name} />
           </>

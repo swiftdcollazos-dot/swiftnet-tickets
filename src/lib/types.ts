@@ -82,7 +82,8 @@ export type PartRow = {
 export function rulesOf(t: Pick<Ticket, "hourly_rate_cents" | "tax_rate_pct" | "tax_labor" | "rounding_minutes" | "minimum_minutes">) {
   return {
     hourlyRateCents: t.hourly_rate_cents,
-    taxRatePct: Number(t.tax_rate_pct),
+    // No tax is charged on service tickets, even on older tickets that stored a rate.
+    taxRatePct: 0,
     taxLabor: t.tax_labor,
     roundingMinutes: t.rounding_minutes,
     minimumMinutes: t.minimum_minutes,

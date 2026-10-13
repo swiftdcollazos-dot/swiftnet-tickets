@@ -9,7 +9,7 @@ export default function SettingsPage() {
     <>
       <h1 className="h1 mb-1">Settings</h1>
       <p className="mb-4 text-sm text-slate-500">
-        Changes apply to new tickets. Existing tickets keep the rate and tax they were created with.
+        Changes apply to new tickets. Existing tickets keep the rate they were created with.
       </p>
       <Suspense fallback={<Loading />}>
         <SettingsForm />
@@ -29,13 +29,8 @@ async function SettingsForm() {
       <section className="card grid gap-3 sm:grid-cols-2">
         <h2 className="h2 sm:col-span-2">Billing</h2>
         <Field name="hourly_rate" label="Hourly rate ($)" value={(s.hourly_rate_cents / 100).toFixed(2)} decimal />
-        <Field name="tax_rate_pct" label="Tax rate (%)" value={String(s.tax_rate_pct)} decimal />
         <Field name="rounding_minutes" label="Round time up to (minutes)" value={String(s.rounding_minutes)} decimal />
         <Field name="minimum_minutes" label="Minimum charge (minutes)" value={String(s.minimum_minutes)} decimal />
-        <label className="flex items-center gap-2 text-sm sm:col-span-2">
-          <input type="checkbox" name="tax_labor" defaultChecked={s.tax_labor} className="size-4" />
-          Charge tax on labor too (unchecked = tax on parts only)
-        </label>
       </section>
       <section className="card grid gap-3 sm:grid-cols-2">
         <h2 className="h2 sm:col-span-2">Company (printed on tickets)</h2>

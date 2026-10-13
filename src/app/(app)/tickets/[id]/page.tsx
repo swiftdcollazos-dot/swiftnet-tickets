@@ -205,7 +205,6 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
             </p>
           )}
           <Row label="Materials" value={money(totals.materialsCents)} />
-          {ticket.tax_rate_pct > 0 && <Row label={`Tax (${ticket.tax_rate_pct}%)`} value={money(totals.taxCents)} />}
           <div className="border-t border-slate-200 pt-1">
             <Row label="Total" value={money(totals.totalCents)} bold />
           </div>

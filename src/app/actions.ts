@@ -91,8 +91,9 @@ export async function createTicket(form: FormData) {
       client_id: clientId,
       technician_id: user.id,
       hourly_rate_cents: s.hourly_rate_cents,
-      tax_rate_pct: s.tax_rate_pct,
-      tax_labor: s.tax_labor,
+      // Swiftnet does not charge tax on service tickets.
+      tax_rate_pct: 0,
+      tax_labor: false,
       rounding_minutes: s.rounding_minutes,
       minimum_minutes: s.minimum_minutes,
     })
@@ -274,8 +275,6 @@ export async function updateSettings(form: FormData) {
       company_email: text(form, "company_email"),
       company_address: text(form, "company_address"),
       hourly_rate_cents: parseMoney(text(form, "hourly_rate")),
-      tax_rate_pct: num("tax_rate_pct", 0),
-      tax_labor: form.get("tax_labor") === "on",
       rounding_minutes: Math.round(num("rounding_minutes", 15)),
       minimum_minutes: Math.round(num("minimum_minutes", 0)),
       terms: text(form, "terms"),

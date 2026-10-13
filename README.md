@@ -15,8 +15,8 @@ on the screen, and print or save the ticket as a PDF. Labor is billed by the hou
   (adjustable in Settings), with an optional minimum charge. The customer's ticket shows only
   the total time, not each visit or the hourly rate.
 - **Parts and materials** with quantity, part number and price.
-- **Totals**: labor, materials and tax, worked out automatically.
-  Each ticket keeps the rate and tax it was created with, so changing settings never
+- **Totals**: labor and materials, worked out automatically (no tax is charged).
+  Each ticket keeps the rate it was created with, so changing settings never
   changes old tickets.
 - **Client signature** drawn with a finger on the phone.
 - **Print / PDF**: a clean repair-order layout. Use the phone's or browser's
@@ -58,8 +58,8 @@ Vercel (puts the app online).
 
 ### 3. Settings
 
-In the app, open **Settings** to confirm the hourly rate, set the tax rate and choose
-whether tax applies to labor, and fill in the company name, phone and address printed on tickets.
+In the app, open **Settings** to confirm the hourly rate and time rounding, and fill in the
+company name, phone and address printed on tickets.
 
 ## For developers
 

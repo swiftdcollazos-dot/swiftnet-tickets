@@ -93,7 +93,6 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
             <tbody>
               <Total label={`Total labor (${formatHours(totals.billableMinutes)})`} value={money(totals.laborCents)} />
               <Total label="Total materials" value={money(totals.materialsCents)} />
-              {ticket.tax_rate_pct > 0 && <Total label={`Tax (${ticket.tax_rate_pct}%)`} value={money(totals.taxCents)} />}
               <Total label="Total amount" value={money(totals.totalCents)} bold />
             </tbody>
           </table>

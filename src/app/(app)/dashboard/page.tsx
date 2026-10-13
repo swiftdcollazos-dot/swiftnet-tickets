@@ -56,23 +56,27 @@ async function Dashboard() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Stat label="Pending service calls" value={calls.length} href="/?view=calls&status=open" pending />
-        <Stat label="Pending service tickets" value={tickets.length} href="/?status=open" pending />
-        <Stat label="Pending special projects" value={projects.length} href="/?view=projects&status=open" pending />
+        <Stat label="Pending service calls" value={calls.length} href="/?view=calls&status=open" pending={CALL_FRAME} />
+        <Stat label="Pending service tickets" value={tickets.length} href="/?status=open" pending={OPEN_FRAME} />
+        <Stat label="Pending special projects" value={projects.length} href="/?view=projects&status=open" pending={OPEN_FRAME} />
         <Stat label="Timers running" value={runningCount} highlight={runningCount > 0} />
       </div>
 
-      <JobList title="Service calls being worked on" empty="No open service calls." jobs={calls} names={names} />
-      <JobList title="Open service tickets" empty="No open service tickets." jobs={tickets} names={names} />
-      <JobList title="Open special projects" empty="No open special projects." jobs={projects} names={names} />
+      <JobList title="Service calls being worked on" empty="No open service calls." jobs={calls} names={names} frame={CALL_FRAME} />
+      <JobList title="Open service tickets" empty="No open service tickets." jobs={tickets} names={names} frame={OPEN_FRAME} />
+      <JobList title="Open special projects" empty="No open special projects." jobs={projects} names={names} frame={OPEN_FRAME} />
       <p className="text-center text-xs text-slate-400">Updates every minute.</p>
     </div>
   );
 }
 
-function Stat(props: { label: string; value: number; href?: string; highlight?: boolean; pending?: boolean }) {
+// Pending frames: red for service calls, yellow for service tickets and special projects.
+const CALL_FRAME = "border-red-500";
+const OPEN_FRAME = "border-amber-400";
+
+function Stat(props: { label: string; value: number; href?: string; highlight?: boolean; pending?: string }) {
   const { label, value, href, highlight } = props;
-  const frame = props.pending && value > 0 ? "border-2 border-amber-400" : "";
+  const frame = props.pending && value > 0 ? `border-2 ${props.pending}` : "";
   const body = (
     <>
       <div className={`text-3xl font-bold ${highlight ? "text-red-600" : "text-brand"}`}>{value}</div>
@@ -86,7 +90,8 @@ function Stat(props: { label: string; value: number; href?: string; highlight?: 
   );
 }
 
-function JobList({ title, empty, jobs, names }: { title: string; empty: string; jobs: Job[]; names: Map<string, string> }) {
+function JobList(props: { title: string; empty: string; jobs: Job[]; names: Map<string, string>; frame: string }) {
+  const { title, empty, jobs, names, frame } = props;
   return (
     <section>
       <h2 className="h2 mb-2">{title} ({jobs.length})</h2>
@@ -100,7 +105,7 @@ function JobList({ title, empty, jobs, names }: { title: string; empty: string; 
             const detail = [j.item_to_service, j.machine_name].filter(Boolean).join(" · ");
             return (
               <li key={j.id}>
-                <Link href={`/tickets/${j.id}`} className={`card flex items-center gap-3 border-2 border-amber-400 ${running ? "bg-red-50" : ""}`}>
+                <Link href={`/tickets/${j.id}`} className={`card flex items-center gap-3 border-2 ${frame} ${running ? "bg-red-50" : ""}`}>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-sm text-slate-400">#{j.number}</span>

@@ -115,7 +115,6 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
             </div>
           </div>
           <div className="text-xs text-slate-600">
-            {ticket.date_wanted && <p>Date wanted: {formatDate(ticket.date_wanted)}</p>}
             <p>Technician: {techName(ticket.technician_id)}</p>
           </div>
         </section>

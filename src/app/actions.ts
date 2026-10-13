@@ -49,7 +49,6 @@ function ticketFields(form: FormData) {
     make: text(form, "make"),
     model: text(form, "model"),
     labor_performed: text(form, "labor_performed"),
-    date_wanted: text(form, "date_wanted") || null,
   };
 }
 

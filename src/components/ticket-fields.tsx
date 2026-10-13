@@ -43,10 +43,6 @@ export function TicketFields({ ticket, today }: { ticket?: Partial<Ticket>; toda
         <label className="label" htmlFor="labor_performed">Labor performed</label>
         <DictationTextarea rows={4} id="labor_performed" name="labor_performed" defaultValue={ticket?.labor_performed ?? ""} />
       </div>
-      <div>
-        <label className="label" htmlFor="date_wanted">Date wanted</label>
-        <input className="input" type="date" id="date_wanted" name="date_wanted" defaultValue={ticket?.date_wanted ?? ""} />
-      </div>
     </div>
   );
 }

@@ -9,9 +9,9 @@ import { Loading } from "@/components/loading";
 export default function TicketsPage(props: PageProps<"/">) {
   return (
     <>
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="h1">Tickets</h1>
-        <Link href="/tickets/new" className="btn">+ New ticket</Link>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="h1">Service Tickets</h1>
+        <Link href="/tickets/new" className="btn w-full sm:w-auto">+ New service ticket</Link>
       </div>
       <Suspense fallback={<Loading />}>
         <TicketList searchParams={props.searchParams} />
@@ -53,7 +53,7 @@ async function TicketList({ searchParams }: { searchParams: PageProps<"/">["sear
   return (
     <>
       <form className="mb-4 flex gap-2">
-        <input className="input" name="q" placeholder="Search client, device, ticket #" defaultValue={q ?? ""} />
+        <input className="input" name="q" placeholder="Search client, device, service ticket #" defaultValue={q ?? ""} />
         <select className="input w-36" name="status" defaultValue={status ?? ""}>
           <option value="">All</option>
           {Object.entries(STATUS_LABELS).map(([v, l]) => (
@@ -64,7 +64,7 @@ async function TicketList({ searchParams }: { searchParams: PageProps<"/">["sear
       </form>
 
       {rows.length === 0 ? (
-        <p className="card text-center text-slate-500">No tickets yet. Tap “New ticket” to create one.</p>
+        <p className="card text-center text-slate-500">No service tickets yet. Tap “New service ticket” to create one.</p>
       ) : (
         <ul className="space-y-2">
           {rows.map((t) => {

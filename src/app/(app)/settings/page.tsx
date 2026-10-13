@@ -9,7 +9,7 @@ export default function SettingsPage() {
     <>
       <h1 className="h1 mb-1">Settings</h1>
       <p className="mb-4 text-sm text-slate-500">
-        Changes apply to new tickets. Existing tickets keep the rate they were created with.
+        Changes apply to new service tickets. Existing service tickets keep the rate they were created with.
       </p>
       <Suspense fallback={<Loading />}>
         <SettingsForm />
@@ -33,7 +33,7 @@ async function SettingsForm() {
         <Field name="minimum_minutes" label="Minimum charge (minutes)" value={String(s.minimum_minutes)} decimal />
       </section>
       <section className="card grid gap-3 sm:grid-cols-2">
-        <h2 className="h2 sm:col-span-2">Company (printed on tickets)</h2>
+        <h2 className="h2 sm:col-span-2">Company (printed on service tickets)</h2>
         <Field name="company_name" label="Company name" value={s.company_name} />
         <Field name="company_phone" label="Phone" value={s.company_phone} />
         <Field name="company_email" label="Email" value={s.company_email} />

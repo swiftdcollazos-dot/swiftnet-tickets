@@ -45,7 +45,7 @@ type Supabase = Awaited<ReturnType<typeof requireUser>>["supabase"];
 async function assertOpen(supabase: Supabase, ticketId: string) {
   const { data, error } = await supabase.from("tickets").select("status").eq("id", ticketId).single();
   if (error) fail(error.message);
-  if (data.status !== "open") fail("This ticket is closed. Reopen it to make changes.");
+  if (data.status !== "open") fail("This service ticket is closed. Reopen it to make changes.");
 }
 
 function ticketFields(form: FormData) {

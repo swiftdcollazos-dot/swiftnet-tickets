@@ -10,7 +10,7 @@ import type { Client } from "@/lib/types";
 export default function NewTicketPage() {
   return (
     <>
-      <h1 className="h1 mb-4">New ticket</h1>
+      <h1 className="h1 mb-4">New service ticket</h1>
       <Suspense fallback={<Loading />}>
         <NewTicketForm />
       </Suspense>
@@ -29,7 +29,7 @@ async function NewTicketForm() {
       <section className="card">
         <TicketFields today={todayLocal()} />
       </section>
-      <button className="btn w-full">Create ticket</button>
+      <button className="btn w-full">Create service ticket</button>
     </form>
   );
 }

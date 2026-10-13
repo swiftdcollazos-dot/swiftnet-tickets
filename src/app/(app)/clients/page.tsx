@@ -8,7 +8,7 @@ export default function ClientsPage() {
   return (
     <>
       <h1 className="h1 mb-1">Clients</h1>
-      <p className="mb-4 text-sm text-slate-500">New clients are added when you create a ticket.</p>
+      <p className="mb-4 text-sm text-slate-500">New clients are added when you create a service ticket.</p>
       <Suspense fallback={<Loading />}>
         <ClientList />
       </Suspense>
@@ -31,7 +31,7 @@ async function ClientList() {
             <summary className="cursor-pointer">
               <span className="font-semibold">{c.name}</span>
               <span className="text-sm text-slate-500">
-                {c.phone ? ` · ${c.phone}` : ""} · {c.tickets[0]?.count ?? 0} tickets
+                {c.phone ? ` · ${c.phone}` : ""} · {c.tickets[0]?.count ?? 0} service tickets
               </span>
             </summary>
             <form action={updateClient.bind(null, c.id)} className="mt-3 grid gap-3 sm:grid-cols-2">

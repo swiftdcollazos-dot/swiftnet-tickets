@@ -42,7 +42,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
       <div className="flex flex-wrap items-start gap-3">
         <div className="flex-1">
           <p className="font-mono text-sm text-slate-400">
-            Ticket #{ticket.number} · {formatDate(ticket.ticket_date)}
+            Service Ticket #{ticket.number} · {formatDate(ticket.ticket_date)}
           </p>
           <h1 className="h1">{client.name}</h1>
           <p className="text-sm text-slate-500">
@@ -55,7 +55,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
       {closed ? (
         <div className="card flex flex-wrap items-center gap-2 border-green-300 bg-green-50">
           <span className="flex-1 font-semibold text-green-800">
-            ✓ {STATUS_LABELS[ticket.status]}. This ticket can no longer be edited.
+            ✓ {STATUS_LABELS[ticket.status]}. This service ticket can no longer be edited.
           </span>
           {ticket.status === "completed" && (
             <form action={setStatus.bind(null, ticket.id, "paid")}>
@@ -68,7 +68,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
         </div>
       ) : (
         <form action={closeTicket.bind(null, ticket.id)}>
-          <button className="btn w-full bg-green-700 py-3 text-base">✓ Complete &amp; close ticket</button>
+          <button className="btn w-full bg-green-700 py-3 text-base">✓ Complete &amp; close service ticket</button>
         </form>
       )}
 

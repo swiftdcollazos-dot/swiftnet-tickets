@@ -287,6 +287,20 @@ export async function updateClient(clientId: string, form: FormData) {
   revalidatePath("/clients");
 }
 
+/** Only clients without service tickets can be deleted, so no service ticket loses its client. */
+export async function deleteClient(clientId: string) {
+  const { supabase } = await requireUser();
+  const { count, error: countError } = await supabase
+    .from("tickets")
+    .select("id", { count: "exact", head: true })
+    .eq("client_id", clientId);
+  if (countError) fail(countError.message);
+  if (count) fail("This client has service tickets, so it can't be deleted.");
+  const { error } = await supabase.from("clients").delete().eq("id", clientId);
+  if (error) fail(error.message);
+  revalidatePath("/clients");
+}
+
 // ---------- Settings ----------
 
 export async function updateSettings(form: FormData) {

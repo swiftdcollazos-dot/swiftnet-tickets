@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/supabase/server";
 import { Loading } from "@/components/loading";
 import { formatMoney } from "@/lib/billing";
 import { ClientTypeFields } from "@/components/client-type-fields";
+import { DeleteClientButton } from "@/components/delete-client-button";
 import { CLIENT_TYPES, CLIENT_TYPE_LABELS, type Client } from "@/lib/types";
 
 export default function ClientsPage() {
@@ -53,6 +54,15 @@ async function ClientList() {
                         <ClientFields idPrefix={c.id} client={c} />
                         <button className="btn sm:col-span-2">Save</button>
                       </form>
+                      <div className="mt-3 border-t border-slate-200 pt-3">
+                        {(c.tickets[0]?.count ?? 0) === 0 ? (
+                          <DeleteClientButton clientId={c.id} name={c.name} />
+                        ) : (
+                          <p className="text-sm text-slate-500">
+                            This client has {ticketCount(c.tickets[0].count)}, so it can&apos;t be deleted.
+                          </p>
+                        )}
+                      </div>
                     </details>
                   </li>
                 ))}

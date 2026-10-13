@@ -22,7 +22,8 @@ on the screen, and print or save the ticket as a PDF. Labor is billed by the hou
 - **Print / PDF**: a clean repair-order layout. Use the phone's or browser's
   "Save as PDF" to send it to the client.
 - **Clients** list, split into hourly and contract clients. Add clients from the Clients page
-  or while creating a service ticket.
+  or while creating a service ticket. Contract clients are not charged for time: their
+  service tickets track the time spent and still charge parts.
 - **Two logins** to start: David Collazos and Daniel Felipe Torres. Each time entry records
   who did the work.
 

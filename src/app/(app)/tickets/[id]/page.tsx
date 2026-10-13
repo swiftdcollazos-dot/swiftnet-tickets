@@ -32,6 +32,7 @@ export default function TicketPage(props: PageProps<"/tickets/[id]">) {
 async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["params"] }) {
   const { id } = await params;
   const { ticket, client, entries, parts, totals, settings, techName } = await loadTicket(id);
+  const contract = client.client_type === "contract";
   const running = entries.find((e) => !e.ended_at);
   const closed = ticket.status !== "open";
   const money = (c: number) => formatMoney(c, settings.currency);
@@ -45,6 +46,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
             Service Ticket #{ticket.number} · {formatDate(ticket.ticket_date)}
           </p>
           <h1 className="h1">{client.name}</h1>
+          {contract && <p className="text-sm font-semibold text-brand">Contract client · time is tracked, not charged</p>}
           <p className="text-sm text-slate-500">
             {[client.phone, client.email, client.address].filter(Boolean).join(" · ")}
           </p>
@@ -197,8 +199,12 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
       <section className="card">
         <h2 className="h2">Total</h2>
         <dl className="space-y-1 text-sm">
-          <Row label={`Labor: ${formatMinutes(totals.billableMinutes)} × ${money(ticket.hourly_rate_cents)}/h`} value={money(totals.laborCents)} />
-          {totals.billableMinutes !== Math.round(totals.workedMinutes) && (
+          {contract ? (
+            <Row label={`Time spent: ${formatMinutes(totals.workedMinutes)}`} value="Contract" />
+          ) : (
+            <Row label={`Labor: ${formatMinutes(totals.billableMinutes)} × ${money(ticket.hourly_rate_cents)}/h`} value={money(totals.laborCents)} />
+          )}
+          {!contract && totals.billableMinutes !== Math.round(totals.workedMinutes) && (
             <p className="text-xs text-slate-400">
               Worked {formatMinutes(totals.workedMinutes)}, billed in whole hours with a one-hour minimum.
             </p>

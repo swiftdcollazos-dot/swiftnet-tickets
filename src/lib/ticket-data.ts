@@ -26,7 +26,7 @@ export async function loadTicket(id: string) {
   const totals = computeTotals(
     entries.map((e) => ({ startedAt: e.started_at, endedAt: e.ended_at })),
     parts.map((p) => ({ qty: p.qty, unitPriceCents: p.unit_price_cents })),
-    rulesOf(t),
+    rulesOf(t, (clients as Client).client_type ?? "hourly"),
     t.deposit_cents,
   );
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { rulesOf } from "./types";
 import { billableMinutes, computeTotals, formatHours, formatMinutes, parseMoney, type BillingRules } from "./billing";
 
 const rules: BillingRules = {
@@ -114,5 +115,23 @@ describe("Saint Martin time", () => {
   });
   it("does not shift plain dates", () => {
     expect(formatDate("2026-10-09")).toBe("Oct 9, 2026");
+  });
+});
+
+describe("client types", () => {
+  const ticket = { hourly_rate_cents: 9000, tax_labor: false };
+  const visit = [{ startedAt: "2026-10-13T10:00:00Z", endedAt: "2026-10-13T10:15:00Z" }];
+
+  it("bills hourly clients a full hour for 15 minutes", () => {
+    const t = computeTotals(visit, [], rulesOf(ticket, "hourly"));
+    expect(t.billableMinutes).toBe(60);
+    expect(t.laborCents).toBe(9000);
+  });
+
+  it("tracks contract client time without charging, but still charges parts", () => {
+    const t = computeTotals(visit, [{ qty: 1, unitPriceCents: 2500 }], rulesOf(ticket, "contract"));
+    expect(t.workedMinutes).toBe(15);
+    expect(t.laborCents).toBe(0);
+    expect(t.totalCents).toBe(2500);
   });
 });

@@ -92,14 +92,19 @@ export type PartRow = {
 /** Time is billed in whole hours, and any visit is at least one hour. */
 export const BILLING_BLOCK_MINUTES = 60;
 
-export function rulesOf(t: Pick<Ticket, "hourly_rate_cents" | "tax_rate_pct" | "tax_labor" | "rounding_minutes" | "minimum_minutes">) {
+/** Billing rules for a ticket. Contract clients aren't charged for time; it is only tracked. */
+export function rulesOf(
+  t: Pick<Ticket, "hourly_rate_cents" | "tax_labor">,
+  clientType: ClientType = "hourly",
+) {
+  const contract = clientType === "contract";
   return {
-    hourlyRateCents: t.hourly_rate_cents,
+    hourlyRateCents: contract ? 0 : t.hourly_rate_cents,
     // No tax is charged on service tickets, even on older tickets that stored a rate.
     taxRatePct: 0,
     taxLabor: t.tax_labor,
-    // Swiftnet always bills whole hours with a one-hour minimum, on every ticket.
-    roundingMinutes: BILLING_BLOCK_MINUTES,
-    minimumMinutes: BILLING_BLOCK_MINUTES,
+    // Hourly clients: whole hours with a one-hour minimum. Contract clients: actual minutes.
+    roundingMinutes: contract ? 1 : BILLING_BLOCK_MINUTES,
+    minimumMinutes: contract ? 0 : BILLING_BLOCK_MINUTES,
   };
 }

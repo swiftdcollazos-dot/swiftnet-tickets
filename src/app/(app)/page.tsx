@@ -32,7 +32,7 @@ async function TicketList({ searchParams }: { searchParams: PageProps<"/">["sear
 
   let query = supabase
     .from("tickets")
-    .select("*, clients(name), time_entries(started_at, ended_at), ticket_parts(qty, unit_price_cents)")
+    .select("*, clients(name, client_type), time_entries(started_at, ended_at), ticket_parts(qty, unit_price_cents)")
     .order("number", { ascending: false })
     .limit(100);
   if (status && status in STATUS_LABELS) query = query.eq("status", status);
@@ -71,7 +71,7 @@ async function TicketList({ searchParams }: { searchParams: PageProps<"/">["sear
             const totals = computeTotals(
               t.time_entries.map((e: { started_at: string; ended_at: string | null }) => ({ startedAt: e.started_at, endedAt: e.ended_at })),
               t.ticket_parts.map((p: { qty: number; unit_price_cents: number }) => ({ qty: Number(p.qty), unitPriceCents: p.unit_price_cents })),
-              rulesOf(t),
+              rulesOf(t, t.clients?.client_type ?? "hourly"),
               t.deposit_cents,
             );
             const running = t.time_entries.some((e: { ended_at: string | null }) => !e.ended_at);

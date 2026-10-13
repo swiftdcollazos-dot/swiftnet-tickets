@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { RunningTimers } from "@/components/running-timers";
+import { PendingBadge } from "@/components/pending-badge";
 import { signOut } from "@/app/actions";
 
 export default function AppLayout({ children }: LayoutProps<"/">) {
@@ -16,9 +17,14 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
           <form action={signOut} className="ml-auto sm:order-3 sm:ml-0">
             <button className="opacity-80 hover:opacity-100">Sign out</button>
           </form>
-          <div className="flex w-full items-center justify-between gap-3 sm:order-2 sm:w-auto sm:justify-end sm:gap-4">
+          <div className="flex w-full items-center justify-between gap-2 sm:order-2 sm:w-auto sm:justify-end sm:gap-4">
             <Link href="/dashboard">Dashboard</Link>
-            <Link href="/">Work Tickets</Link>
+            <Link href="/" className="inline-flex items-center">
+              Work Tickets
+              <Suspense fallback={null}>
+                <PendingBadge />
+              </Suspense>
+            </Link>
             <Link href="/clients">Clients</Link>
             <Link href="/settings">Settings</Link>
           </div>

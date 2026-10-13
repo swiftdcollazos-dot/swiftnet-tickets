@@ -102,7 +102,7 @@ export async function createTicket(form: FormData) {
     .single();
   if (error) fail(error.message);
 
-  revalidatePath("/");
+  revalidatePath("/", "layout"); // pending count in the header
   redirect(`/tickets/${ticket.id}`);
 }
 
@@ -148,7 +148,7 @@ export async function setStatus(ticketId: string, status: TicketStatus) {
   const { error } = await supabase.from("tickets").update({ status }).eq("id", ticketId);
   if (error) fail(error.message);
   revalidatePath(`/tickets/${ticketId}`);
-  revalidatePath("/");
+  revalidatePath("/", "layout"); // pending count in the header
 }
 
 /** Stops any running timer and marks the ticket closed, so it can no longer be edited. */

@@ -5,6 +5,8 @@ import { computeTotals, formatMoney } from "@/lib/billing";
 import { formatDate } from "@/lib/time";
 import { STATUS_LABELS, kindLabel, rulesOf, type TicketStatus } from "@/lib/types";
 import { Loading } from "@/components/loading";
+import { CountBadge } from "@/components/pending-badge";
+import { pendingCounts } from "@/lib/pending";
 
 export default function TicketsPage(props: PageProps<"/">) {
   return (
@@ -35,7 +37,7 @@ async function TicketList({ searchParams }: { searchParams: PageProps<"/">["sear
     .limit(100);
   if (status && status in STATUS_LABELS) query = query.eq("status", status);
   if (q && /^\d+$/.test(q)) query = query.eq("number", Number(q));
-  const { data: tickets, error } = await query;
+  const [{ data: tickets, error }, pending] = await Promise.all([query, pendingCounts(supabase)]);
   if (error) throw new Error(error.message);
 
   const needle = q && !/^\d+$/.test(q) ? q.toLowerCase() : "";
@@ -51,8 +53,12 @@ async function TicketList({ searchParams }: { searchParams: PageProps<"/">["sear
   return (
     <>
       <div className="mb-4 grid grid-cols-2 gap-1 rounded-lg bg-slate-200 p-1 text-center text-sm font-semibold">
-        <Link href="/" className={`rounded-md py-2 ${calls ? "text-slate-600" : "bg-white text-brand shadow"}`}>Service Tickets</Link>
-        <Link href="/?view=calls" className={`rounded-md py-2 ${calls ? "bg-white text-brand shadow" : "text-slate-600"}`}>Service Calls</Link>
+        <Link href="/" className={`rounded-md py-2 ${calls ? "text-slate-600" : "bg-white text-brand shadow"}`}>
+          Service Tickets <CountBadge count={pending.tickets} />
+        </Link>
+        <Link href="/?view=calls" className={`rounded-md py-2 ${calls ? "bg-white text-brand shadow" : "text-slate-600"}`}>
+          Service Calls <CountBadge count={pending.calls} />
+        </Link>
       </div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="h1">{calls ? "Service Calls" : "Service Tickets"}</h1>

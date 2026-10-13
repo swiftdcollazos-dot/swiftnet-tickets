@@ -54,8 +54,8 @@ async function Dashboard() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-3 gap-2">
-        <Stat label="Open service calls" value={calls.length} href="/?view=calls&status=open" />
-        <Stat label="Open service tickets" value={tickets.length} href="/?status=open" />
+        <Stat label="Pending service calls" value={calls.length} href="/?view=calls&status=open" />
+        <Stat label="Pending service tickets" value={tickets.length} href="/?status=open" />
         <Stat label="Timers running" value={runningCount} highlight={runningCount > 0} />
       </div>
 

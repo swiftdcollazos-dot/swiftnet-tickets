@@ -7,9 +7,13 @@ export function CountBadge({ count, className = "bg-amber-400 text-slate-900" }:
   return <span className={`ml-1 inline-flex min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-xs font-bold leading-5 ${className}`}>{count}</span>;
 }
 
-/** Total open service tickets, calls and special projects, for the Work Tickets link in the header. */
-export async function PendingBadge() {
+/** Open jobs for a header link: service tickets and calls for Work Tickets, or special projects. */
+export async function PendingBadge({ projects = false }: { projects?: boolean }) {
   const { supabase } = await requireUser();
-  const { tickets, calls, projects } = await pendingCounts(supabase);
-  return <CountBadge count={tickets + calls + projects} />;
+  const counts = await pendingCounts(supabase);
+  return projects ? (
+    <CountBadge count={counts.projects} className="bg-purple-500 text-white" />
+  ) : (
+    <CountBadge count={counts.tickets + counts.calls} />
+  );
 }

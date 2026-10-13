@@ -17,12 +17,18 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
           <form action={signOut} className="ml-auto sm:order-3 sm:ml-0">
             <button className="opacity-80 hover:opacity-100">Sign out</button>
           </form>
-          <div className="flex w-full items-center justify-between gap-2 sm:order-2 sm:w-auto sm:justify-end sm:gap-4">
+          <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 sm:order-2 sm:flex-nowrap sm:w-auto sm:justify-end sm:gap-4">
             <Link href="/dashboard">Dashboard</Link>
             <Link href="/" className="inline-flex items-center">
               Work Tickets
               <Suspense fallback={null}>
                 <PendingBadge />
+              </Suspense>
+            </Link>
+            <Link href="/projects" className="inline-flex items-center">
+              Projects
+              <Suspense fallback={null}>
+                <PendingBadge projects />
               </Suspense>
             </Link>
             <Link href="/clients">Clients</Link>

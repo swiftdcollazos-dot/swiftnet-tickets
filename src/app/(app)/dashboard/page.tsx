@@ -58,21 +58,22 @@ async function Dashboard() {
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Stat label="Pending service calls" value={calls.length} href="/?view=calls&status=open" pending={CALL_FRAME} />
         <Stat label="Pending service tickets" value={tickets.length} href="/?status=open" pending={OPEN_FRAME} />
-        <Stat label="Pending special projects" value={projects.length} href="/?view=projects&status=open" pending={OPEN_FRAME} />
+        <Stat label="Pending special projects" value={projects.length} href="/projects?status=open" pending={PROJECT_FRAME} />
         <Stat label="Timers running" value={runningCount} highlight={runningCount > 0} />
       </div>
 
       <JobList title="Service calls being worked on" empty="No open service calls." jobs={calls} names={names} frame={CALL_FRAME} />
       <JobList title="Open service tickets" empty="No open service tickets." jobs={tickets} names={names} frame={OPEN_FRAME} />
-      <JobList title="Open special projects" empty="No open special projects." jobs={projects} names={names} frame={OPEN_FRAME} />
+      <JobList title="Open special projects" empty="No open special projects." jobs={projects} names={names} frame={PROJECT_FRAME} />
       <p className="text-center text-xs text-slate-400">Updates every minute.</p>
     </div>
   );
 }
 
-// Pending frames: red for service calls, yellow for service tickets and special projects.
+// Pending frames: red for service calls, yellow for service tickets, purple for special projects.
 const CALL_FRAME = "border-red-500";
 const OPEN_FRAME = "border-amber-400";
+const PROJECT_FRAME = "border-purple-500";
 
 function Stat(props: { label: string; value: number; href?: string; highlight?: boolean; pending?: string }) {
   const { label, value, href, highlight } = props;

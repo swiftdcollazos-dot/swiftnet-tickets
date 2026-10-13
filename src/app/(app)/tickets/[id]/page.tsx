@@ -91,6 +91,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
           <p className="text-sm text-slate-500">
             {[client.phone, client.email, client.address].filter(Boolean).join(" · ")}
           </p>
+          {ticket.contacted_by && <p className="text-sm text-slate-700">Contacted by: <span className="font-semibold">{ticket.contacted_by}</span></p>}
         </div>
         <Link href={`/print/${ticket.id}`} className="btn-light">Print / PDF</Link>
       </div>

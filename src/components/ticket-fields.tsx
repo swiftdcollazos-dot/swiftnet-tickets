@@ -1,8 +1,17 @@
 import { DictationTextarea } from "@/components/dictation-textarea";
 import { SERVICE_TYPES, kindLabel, type Ticket } from "@/lib/types";
 
+export function ContactedByField({ value }: { value?: string }) {
+  return (
+    <div>
+      <label className="label" htmlFor="contacted_by">Contacted by</label>
+      <input className="input" id="contacted_by" name="contacted_by" placeholder="Who called or asked for this job" defaultValue={value ?? ""} />
+    </div>
+  );
+}
+
 /** The ticket's own fields, laid out like the paper repair order. */
-export function TicketFields({ ticket, today }: { ticket?: Partial<Ticket>; today: string }) {
+export function TicketFields({ ticket, today, withContactedBy = true }: { ticket?: Partial<Ticket>; today: string; withContactedBy?: boolean }) {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
@@ -21,10 +30,7 @@ export function TicketFields({ ticket, today }: { ticket?: Partial<Ticket>; toda
         </div>
       </div>
 
-      <div>
-        <label className="label" htmlFor="contacted_by">Contacted by</label>
-        <input className="input" id="contacted_by" name="contacted_by" placeholder="Who called or asked for this job" defaultValue={ticket?.contacted_by ?? ""} />
-      </div>
+      {withContactedBy && <ContactedByField value={ticket?.contacted_by} />}
 
       <div>
         <label className="label" htmlFor="item_to_service">Item to be serviced</label>

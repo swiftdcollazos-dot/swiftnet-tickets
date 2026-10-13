@@ -3,7 +3,7 @@ import { createTicket } from "@/app/actions";
 import { requireUser } from "@/lib/supabase/server";
 import { todayLocal } from "@/lib/time";
 import { ClientPicker } from "@/components/client-picker";
-import { TicketFields } from "@/components/ticket-fields";
+import { ContactedByField, TicketFields } from "@/components/ticket-fields";
 import { Loading } from "@/components/loading";
 import type { Client } from "@/lib/types";
 
@@ -36,9 +36,12 @@ async function NewTicketForm({ searchParams }: { searchParams: PageProps<"/ticke
         {project && <input type="hidden" name="is_project" value="1" />}
         <section className="card">
           <ClientPicker clients={(clients ?? []) as Client[]} serviceCall={serviceCall} />
+          <div className="mt-3">
+            <ContactedByField />
+          </div>
         </section>
         <section className="card">
-          <TicketFields today={todayLocal()} />
+          <TicketFields today={todayLocal()} withContactedBy={false} />
         </section>
         <button className="btn w-full">Create {label}</button>
       </form>

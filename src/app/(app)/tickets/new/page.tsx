@@ -16,8 +16,10 @@ export default function NewTicketPage(props: PageProps<"/tickets/new">) {
 }
 
 async function NewTicketForm({ searchParams }: { searchParams: PageProps<"/tickets/new">["searchParams"] }) {
-  const serviceCall = (await searchParams).call === "1";
-  const label = serviceCall ? "service call" : "service ticket";
+  const params = await searchParams;
+  const serviceCall = params.call === "1";
+  const project = !serviceCall && params.project === "1";
+  const label = serviceCall ? "service call" : project ? "special project" : "service ticket";
   const { supabase } = await requireUser();
   // Service calls are for contract clients; service tickets for hourly clients.
   const { data: clients } = await supabase
@@ -31,6 +33,7 @@ async function NewTicketForm({ searchParams }: { searchParams: PageProps<"/ticke
       {serviceCall && <p className="mb-4 text-sm text-slate-500">For contract clients. Time is tracked, not charged.</p>}
       <form action={createTicket} className="mt-4 space-y-4">
         {serviceCall && <input type="hidden" name="is_service_call" value="1" />}
+        {project && <input type="hidden" name="is_project" value="1" />}
         <section className="card">
           <ClientPicker clients={(clients ?? []) as Client[]} serviceCall={serviceCall} />
         </section>

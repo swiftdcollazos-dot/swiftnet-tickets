@@ -22,17 +22,25 @@ const STATUS_STYLES: Record<TicketStatus, string> = {
   paid: "bg-green-100 text-green-800",
 };
 
+const TABS = [
+  { view: "", title: "Service Tickets", count: "tickets", newPath: "/tickets/new" },
+  { view: "calls", title: "Service Calls", count: "calls", newPath: "/tickets/new?call=1" },
+  { view: "projects", title: "Special Projects", count: "projects", newPath: "/tickets/new?project=1" },
+] as const;
+
 async function TicketList({ searchParams }: { searchParams: PageProps<"/">["searchParams"] }) {
   const { q, status, view } = (await searchParams) as { q?: string; status?: string; view?: string };
-  // Service calls are the jobs for contract clients; service tickets, for hourly clients.
-  const calls = view === "calls";
-  const label = calls ? "service call" : "service ticket";
+  // Service calls are the jobs for contract clients; service tickets and special projects, for hourly clients.
+  const tab = TABS.find((t) => t.view === view) ?? TABS[0];
+  const calls = tab.view === "calls";
+  const label = tab.title.slice(0, -1).toLowerCase();
   const { supabase } = await requireUser();
 
   let query = supabase
     .from("tickets")
     .select("*, clients!inner(name, client_type), time_entries(started_at, ended_at), ticket_parts(qty, unit_price_cents)")
     .eq("clients.client_type", calls ? "contract" : "hourly")
+    .eq("is_project", tab.view === "projects")
     .order("number", { ascending: false })
     .limit(100);
   if (status && status in STATUS_LABELS) query = query.eq("status", status);
@@ -52,21 +60,24 @@ async function TicketList({ searchParams }: { searchParams: PageProps<"/">["sear
 
   return (
     <>
-      <div className="mb-4 grid grid-cols-2 gap-1 rounded-lg bg-slate-200 p-1 text-center text-sm font-semibold">
-        <Link href="/" className={`rounded-md py-2 ${calls ? "text-slate-600" : "bg-white text-brand shadow"}`}>
-          Service Tickets <CountBadge count={pending.tickets} />
-        </Link>
-        <Link href="/?view=calls" className={`rounded-md py-2 ${calls ? "bg-white text-brand shadow" : "text-slate-600"}`}>
-          Service Calls <CountBadge count={pending.calls} />
-        </Link>
+      <div className="mb-4 grid grid-cols-3 gap-1 rounded-lg bg-slate-200 p-1 text-center text-xs font-semibold leading-tight sm:text-sm">
+        {TABS.map((t) => (
+          <Link
+            key={t.view}
+            href={t.view ? `/?view=${t.view}` : "/"}
+            className={`flex flex-wrap items-center justify-center gap-y-1 rounded-md px-1 py-2 ${t === tab ? "bg-white text-brand shadow" : "text-slate-600"}`}
+          >
+            {t.title} <CountBadge count={pending[t.count]} />
+          </Link>
+        ))}
       </div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="h1">{calls ? "Service Calls" : "Service Tickets"}</h1>
-        <Link href={calls ? "/tickets/new?call=1" : "/tickets/new"} className="btn w-full sm:w-auto">+ New {label}</Link>
+        <h1 className="h1">{tab.title}</h1>
+        <Link href={tab.newPath} className="btn w-full sm:w-auto">+ New {label}</Link>
       </div>
       {calls && <p className="-mt-2 mb-4 text-sm text-slate-500">For contract clients. Time is tracked, not charged.</p>}
       <form className="mb-4 flex gap-2">
-        {calls && <input type="hidden" name="view" value="calls" />}
+        {tab.view && <input type="hidden" name="view" value={tab.view} />}
         <input className="input" name="q" placeholder={`Search client, device, ${label} #`} defaultValue={q ?? ""} />
         <select className="input w-36" name="status" defaultValue={status ?? ""}>
           <option value="">All</option>

@@ -95,6 +95,8 @@ create table if not exists public.ticket_parts (
 );
 
 alter table public.tickets add column if not exists machine_name text not null default '';
+-- Special projects: jobs like service tickets, listed on their own tab.
+alter table public.tickets add column if not exists is_project boolean not null default false;
 -- Service type is free text from the app's Type list (was a fixed 4-value list).
 alter table public.tickets alter column kind drop default;
 alter table public.tickets alter column kind type text using kind::text;

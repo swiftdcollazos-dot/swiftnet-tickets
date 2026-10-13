@@ -74,6 +74,8 @@ function ticketFields(form: FormData) {
 export async function createTicket(form: FormData) {
   const { supabase, user } = await requireUser();
   const isServiceCall = text(form, "is_service_call") === "1";
+  // Special projects work like service tickets (hourly clients), listed on their own tab.
+  const isProject = !isServiceCall && text(form, "is_project") === "1";
 
   const clientId = text(form, "client_id") || fail("Select a client.");
   const { data: client, error: clientError } = await supabase.from("clients").select("client_type").eq("id", clientId).single();
@@ -90,6 +92,7 @@ export async function createTicket(form: FormData) {
     .insert({
       ...ticketFields(form),
       client_id: clientId,
+      is_project: isProject,
       technician_id: user.id,
       hourly_rate_cents: s.hourly_rate_cents,
       // Swiftnet does not charge tax on service tickets.
@@ -136,7 +139,9 @@ export async function changeTicketClient(ticketId: string, move: boolean, form: 
   if (!move && currentType && client.client_type !== currentType) {
     fail(currentType === "contract" ? "Service calls are only for contract clients." : "Service tickets are only for hourly clients.");
   }
-  const { error } = await supabase.from("tickets").update({ client_id: clientId }).eq("id", ticketId);
+  // A special project moved to a contract client becomes a service call.
+  const update = client.client_type === "contract" ? { client_id: clientId, is_project: false } : { client_id: clientId };
+  const { error } = await supabase.from("tickets").update(update).eq("id", ticketId);
   if (error) fail(error.message);
   revalidatePath(`/tickets/${ticketId}`);
   revalidatePath("/", "layout");

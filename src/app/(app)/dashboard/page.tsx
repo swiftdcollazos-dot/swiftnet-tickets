@@ -26,6 +26,7 @@ type Job = {
   ticket_date: string;
   item_to_service: string;
   machine_name: string;
+  is_project: boolean;
   clients: { name: string; client_type: string };
   time_entries: Entry[];
 };
@@ -35,7 +36,7 @@ async function Dashboard() {
   const [{ data, error }, { data: profiles }] = await Promise.all([
     supabase
       .from("tickets")
-      .select("id, number, ticket_date, item_to_service, machine_name, clients!inner(name, client_type), time_entries(started_at, ended_at, technician_id)")
+      .select("id, number, ticket_date, item_to_service, machine_name, is_project, clients!inner(name, client_type), time_entries(started_at, ended_at, technician_id)")
       .eq("status", "open")
       .order("number", { ascending: false }),
     supabase.from("profiles").select("id, full_name"),
@@ -48,19 +49,22 @@ async function Dashboard() {
   const runningOf = (j: Job) => j.time_entries.find((e) => !e.ended_at);
   const sorted = [...jobs].sort((a, b) => Number(Boolean(runningOf(b))) - Number(Boolean(runningOf(a))));
   const calls = sorted.filter((j) => j.clients.client_type === "contract");
-  const tickets = sorted.filter((j) => j.clients.client_type !== "contract");
+  const projects = sorted.filter((j) => j.clients.client_type !== "contract" && j.is_project);
+  const tickets = sorted.filter((j) => j.clients.client_type !== "contract" && !j.is_project);
   const runningCount = jobs.filter(runningOf).length;
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Stat label="Pending service calls" value={calls.length} href="/?view=calls&status=open" pending />
         <Stat label="Pending service tickets" value={tickets.length} href="/?status=open" pending />
+        <Stat label="Pending special projects" value={projects.length} href="/?view=projects&status=open" pending />
         <Stat label="Timers running" value={runningCount} highlight={runningCount > 0} />
       </div>
 
       <JobList title="Service calls being worked on" empty="No open service calls." jobs={calls} names={names} />
       <JobList title="Open service tickets" empty="No open service tickets." jobs={tickets} names={names} />
+      <JobList title="Open special projects" empty="No open special projects." jobs={projects} names={names} />
       <p className="text-center text-xs text-slate-400">Updates every minute.</p>
     </div>
   );

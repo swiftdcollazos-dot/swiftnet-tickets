@@ -40,7 +40,7 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
             </p>
           </div>
           <div className="text-right">
-            <p className="font-bold tracking-wide">{recordLabel(client.client_type).toUpperCase()}</p>
+            <p className="font-bold tracking-wide">{recordLabel(client.client_type, ticket.is_project).toUpperCase()}</p>
             <p className="font-mono text-2xl text-red-600">#{ticket.number}</p>
             <p>{formatDate(ticket.ticket_date)}</p>
             <p className="text-slate-600">{kindLabel(ticket.kind)}</p>

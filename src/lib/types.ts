@@ -80,6 +80,7 @@ export type Ticket = {
   make: string;
   model: string;
   machine_name: string;
+  is_project: boolean;
   serial: string;
   service_request: string;
   labor_performed: string;
@@ -96,7 +97,8 @@ export type Ticket = {
 };
 
 /** Every job for a contract client is a service call; for an hourly client, a service ticket. */
-export function recordLabel(clientType: ClientType | null | undefined): string {
+export function recordLabel(clientType: ClientType | null | undefined, isProject = false): string {
+  if (isProject) return "Special Project";
   return clientType === "contract" ? "Service Call" : "Service Ticket";
 }
 

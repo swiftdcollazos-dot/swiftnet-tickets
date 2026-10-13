@@ -38,7 +38,7 @@ export async function signIn(_prev: SignInState, form: FormData): Promise<SignIn
   });
   // Return the email so the form can keep it filled in after a failed attempt.
   if (error) return { error: "Wrong email or password.", email };
-  redirect("/");
+  redirect("/dashboard");
 }
 
 export async function signOut() {

@@ -6,8 +6,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
     <>
       <header className="sticky top-0 z-10 bg-brand text-white shadow print:hidden">
         <nav className="mx-auto flex max-w-3xl items-center gap-3 whitespace-nowrap px-4 py-3 text-[13px] font-semibold sm:gap-4 sm:text-sm">
-          <Link href="/" className="mr-auto text-[15px] max-[360px]:hidden sm:text-base">Swiftnet</Link>
-          <Link href="/">Service Tickets</Link>
+          <Link href="/" className="mr-auto text-[15px] sm:text-base">Swiftnet</Link>
           <Link href="/clients">Clients</Link>
           <Link href="/settings">Settings</Link>
           <form action={signOut}>

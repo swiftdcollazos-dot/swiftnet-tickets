@@ -1,7 +1,19 @@
 "use client";
 
-import { useActionState, useRef, useState, type ReactNode } from "react";
+import { startTransition, useActionState, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createClientRecord, deleteClient, updateClient, type ClientResult } from "@/app/actions";
+
+/**
+ * Submits without React's automatic form reset, so a failed save keeps what was typed
+ * (and the client type and monthly fee boxes stay in step).
+ */
+function submitWith(action: (data: FormData) => void) {
+  return (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    startTransition(() => action(data));
+  };
+}
 
 function Result({ state, saved }: { state: ClientResult; saved: string }) {
   if (!state) return null;
@@ -24,7 +36,7 @@ export function AddClientForm({ children }: { children: ReactNode }) {
   return (
     <details ref={panel} className="card mb-6">
       <summary className="cursor-pointer font-semibold text-brand">+ Add client</summary>
-      <form key={formKey} action={action} className="mt-3 grid gap-3 sm:grid-cols-2">
+      <form key={formKey} onSubmit={submitWith(action)} className="mt-3 grid gap-3 sm:grid-cols-2">
         {children}
         {state && "error" in state && <Result state={state} saved="" />}
         <button className="btn sm:col-span-2" disabled={pending}>{pending ? "Adding…" : "Add client"}</button>
@@ -36,7 +48,7 @@ export function AddClientForm({ children }: { children: ReactNode }) {
 export function EditClientForm({ clientId, children }: { clientId: string; children: ReactNode }) {
   const [state, action, pending] = useActionState(updateClient.bind(null, clientId), null);
   return (
-    <form action={action} className="mt-3 grid gap-3 sm:grid-cols-2">
+    <form onSubmit={submitWith(action)} className="mt-3 grid gap-3 sm:grid-cols-2">
       {children}
       <Result state={state} saved="✓ Saved" />
       <button className="btn sm:col-span-2" disabled={pending}>{pending ? "Saving…" : "Save"}</button>

@@ -1,11 +1,9 @@
 import { Suspense } from "react";
-import { updateClient } from "@/app/actions";
-import { AddClientForm } from "@/components/add-client-form";
+import { AddClientForm, DeleteClientButton, EditClientForm } from "@/components/client-forms";
 import { requireUser } from "@/lib/supabase/server";
 import { Loading } from "@/components/loading";
 import { formatMoney } from "@/lib/billing";
 import { ClientTypeFields } from "@/components/client-type-fields";
-import { DeleteClientButton } from "@/components/delete-client-button";
 import { CLIENT_TYPES, CLIENT_TYPE_LABELS, type Client } from "@/lib/types";
 
 export default function ClientsPage() {
@@ -50,10 +48,9 @@ async function ClientList() {
                           {c.client_type === "contract" && c.monthly_fee_cents > 0 ? ` · ${formatMoney(c.monthly_fee_cents)}/month` : ""} · {ticketCount(c.tickets[0]?.count ?? 0)}
                         </span>
                       </summary>
-                      <form action={updateClient.bind(null, c.id)} className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <EditClientForm clientId={c.id}>
                         <ClientFields idPrefix={c.id} client={c} />
-                        <button className="btn sm:col-span-2">Save</button>
-                      </form>
+                      </EditClientForm>
                       <div className="mt-3 border-t border-slate-200 pt-3">
                         {(c.tickets[0]?.count ?? 0) === 0 ? (
                           <DeleteClientButton clientId={c.id} name={c.name} />

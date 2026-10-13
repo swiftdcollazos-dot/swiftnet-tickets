@@ -256,49 +256,68 @@ export async function clearSignature(ticketId: string) {
 
 // ---------- Clients ----------
 
-export async function createClientRecord(form: FormData) {
-  const { supabase } = await requireUser();
-  const { error } = await supabase.from("clients").insert({
-    name: text(form, "name") || fail("Enter the client's name."),
-    phone: text(form, "phone"),
-    email: text(form, "email"),
-    address: text(form, "address"),
-    client_type: clientType(form, "client_type"),
-    monthly_fee_cents: monthlyFee(form, "client_type", "monthly_fee"),
-  });
-  if (error) fail(error.message);
+/**
+ * Client actions return their error instead of throwing, because Next hides thrown
+ * error messages in production and the person would only see "Something went wrong".
+ */
+export type ClientResult = { error: string } | { ok: true } | null;
+
+async function clientAction(work: () => Promise<void>): Promise<ClientResult> {
+  try {
+    await work();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
   revalidatePath("/clients");
+  return { ok: true };
 }
 
-export async function updateClient(clientId: string, form: FormData) {
-  const { supabase } = await requireUser();
-  const { error } = await supabase
-    .from("clients")
-    .update({
+export async function createClientRecord(_prev: ClientResult, form: FormData): Promise<ClientResult> {
+  return clientAction(async () => {
+    const { supabase } = await requireUser();
+    const { error } = await supabase.from("clients").insert({
       name: text(form, "name") || fail("Enter the client's name."),
       phone: text(form, "phone"),
       email: text(form, "email"),
       address: text(form, "address"),
       client_type: clientType(form, "client_type"),
       monthly_fee_cents: monthlyFee(form, "client_type", "monthly_fee"),
-    })
-    .eq("id", clientId);
-  if (error) fail(error.message);
-  revalidatePath("/clients");
+    });
+    if (error) fail(error.message);
+  });
+}
+
+export async function updateClient(clientId: string, _prev: ClientResult, form: FormData): Promise<ClientResult> {
+  return clientAction(async () => {
+    const { supabase } = await requireUser();
+    const { error } = await supabase
+      .from("clients")
+      .update({
+        name: text(form, "name") || fail("Enter the client's name."),
+        phone: text(form, "phone"),
+        email: text(form, "email"),
+        address: text(form, "address"),
+        client_type: clientType(form, "client_type"),
+        monthly_fee_cents: monthlyFee(form, "client_type", "monthly_fee"),
+      })
+      .eq("id", clientId);
+    if (error) fail(error.message);
+  });
 }
 
 /** Only clients without service tickets can be deleted, so no service ticket loses its client. */
-export async function deleteClient(clientId: string) {
-  const { supabase } = await requireUser();
-  const { count, error: countError } = await supabase
-    .from("tickets")
-    .select("id", { count: "exact", head: true })
-    .eq("client_id", clientId);
-  if (countError) fail(countError.message);
-  if (count) fail("This client has service tickets, so it can't be deleted.");
-  const { error } = await supabase.from("clients").delete().eq("id", clientId);
-  if (error) fail(error.message);
-  revalidatePath("/clients");
+export async function deleteClient(clientId: string): Promise<ClientResult> {
+  return clientAction(async () => {
+    const { supabase } = await requireUser();
+    const { count, error: countError } = await supabase
+      .from("tickets")
+      .select("id", { count: "exact", head: true })
+      .eq("client_id", clientId);
+    if (countError) fail(countError.message);
+    if (count) fail("This client has service tickets, so it can't be deleted.");
+    const { error } = await supabase.from("clients").delete().eq("id", clientId);
+    if (error) fail(error.message);
+  });
 }
 
 // ---------- Settings ----------

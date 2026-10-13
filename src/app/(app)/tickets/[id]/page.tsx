@@ -56,7 +56,8 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
           </p>
           <h1 className="h1">{client.name}</h1>
           {!closed && (
-            <details className="mb-1">
+            // Keyed by client, so the panel closes itself once a new client is saved.
+            <details key={client.id} className="mb-1">
               <summary className="cursor-pointer text-sm font-semibold text-brand">Change client</summary>
               <form action={changeTicketClient.bind(null, ticket.id)} className="mt-2 space-y-2">
                 <ClientPicker clients={sameTypeClients} serviceCall={call} initial={client} />

@@ -40,8 +40,10 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
   const label = recordLabel(client.client_type);
   const listPath = call ? "/?view=calls" : "/";
   const { supabase } = await requireUser();
-  const { data: clientRows } = await supabase.from("clients").select("*").eq("client_type", client.client_type).order("name");
-  const sameTypeClients = (clientRows ?? []) as Client[];
+  const { data: clientRows } = await supabase.from("clients").select("*").order("name");
+  const allClients = (clientRows ?? []) as Client[];
+  const sameTypeClients = allClients.filter((c) => c.client_type === client.client_type);
+  const otherTypeClients = allClients.filter((c) => c.client_type !== client.client_type);
   const running = entries.find((e) => !e.ended_at);
   const closed = ticket.status !== "open";
   const money = (c: number) => formatMoney(c, settings.currency);
@@ -56,14 +58,30 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
           </p>
           <h1 className="h1">{client.name}</h1>
           {!closed && (
-            // Keyed by client, so the panel closes itself once a new client is saved.
-            <details key={client.id} className="mb-1">
-              <summary className="cursor-pointer text-sm font-semibold text-brand">Change client</summary>
-              <form action={changeTicketClient.bind(null, ticket.id)} className="mt-2 space-y-2">
-                <ClientPicker clients={sameTypeClients} serviceCall={call} initial={client} />
-                <button className="btn-light w-full">Save client</button>
-              </form>
-            </details>
+            // Keyed by client, so the panels close themselves once a new client is saved.
+            <div key={client.id} className="mb-1 space-y-1">
+              <details>
+                <summary className="cursor-pointer text-sm font-semibold text-brand">Change client</summary>
+                <form action={changeTicketClient.bind(null, ticket.id, false)} className="mt-2 space-y-2">
+                  <ClientPicker clients={sameTypeClients} serviceCall={call} initial={client} />
+                  <button className="btn-light w-full">Save client</button>
+                </form>
+              </details>
+              <details>
+                <summary className="cursor-pointer text-sm font-semibold text-brand">
+                  {call ? "Move to service ticket" : "Move to service call"}
+                </summary>
+                <form action={changeTicketClient.bind(null, ticket.id, true)} className="mt-2 space-y-2">
+                  <p className="text-sm text-slate-600">
+                    {call
+                      ? "Service tickets are for hourly clients. Pick the hourly client; the time will be charged."
+                      : "Service calls are for contract clients. Pick the contract client; the time will be tracked, not charged."}
+                  </p>
+                  <ClientPicker clients={otherTypeClients} serviceCall={!call} />
+                  <button className="btn-light w-full">{call ? "Move to service ticket" : "Move to service call"}</button>
+                </form>
+              </details>
+            </div>
           )}
           {call && <p className="text-sm font-semibold text-brand">Service call · time is tracked, not charged</p>}
           <p className="text-sm text-slate-500">

@@ -115,7 +115,11 @@ export async function updateTicket(ticketId: string, form: FormData) {
 }
 
 /** Moves an open ticket to another client of the same type (hourly ↔ hourly, contract ↔ contract). */
-export async function changeTicketClient(ticketId: string, form: FormData) {
+/**
+ * Changes the client. With `move`, the new client must be the other type, which turns a
+ * service ticket into a service call (contract client) or a call into a ticket (hourly client).
+ */
+export async function changeTicketClient(ticketId: string, move: boolean, form: FormData) {
   const { supabase } = await requireUser();
   await assertOpen(supabase, ticketId);
   const clientId = text(form, "client_id") || fail("Select a client.");
@@ -126,7 +130,10 @@ export async function changeTicketClient(ticketId: string, form: FormData) {
   if (ticketError) fail(ticketError.message);
   if (clientError) fail(clientError.message);
   const currentType = (ticket.clients as unknown as { client_type: string } | null)?.client_type;
-  if (currentType && client.client_type !== currentType) {
+  if (move && client.client_type === currentType) {
+    fail(currentType === "contract" ? "Pick an hourly client to make this a service ticket." : "Pick a contract client to make this a service call.");
+  }
+  if (!move && currentType && client.client_type !== currentType) {
     fail(currentType === "contract" ? "Service calls are only for contract clients." : "Service tickets are only for hourly clients.");
   }
   const { error } = await supabase.from("tickets").update({ client_id: clientId }).eq("id", ticketId);

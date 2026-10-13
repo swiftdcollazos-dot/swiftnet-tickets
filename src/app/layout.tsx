@@ -5,8 +5,9 @@ import "./globals.css";
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Swiftnet Service Tickets",
-  description: "Service tickets and hourly billing for Swiftnet",
+  title: "Swiftnet Work Tracker",
+  description: "Service tickets and service calls for Swiftnet I.T.",
+  appleWebApp: { title: "Work Tracker", capable: true },
 };
 
 export const viewport: Viewport = {

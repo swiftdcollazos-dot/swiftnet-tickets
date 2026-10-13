@@ -42,6 +42,8 @@ export type Client = {
   id: string;
   name: string;
   client_type: ClientType;
+  /** What a contract client pays per month, for the records. Not added to service tickets. */
+  monthly_fee_cents: number;
   phone: string;
   email: string;
   address: string;

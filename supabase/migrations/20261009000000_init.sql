@@ -37,6 +37,7 @@ create table if not exists public.clients (
 -- Hourly clients pay per visit; contract clients are on a service agreement.
 alter table public.clients add column if not exists client_type text not null default 'hourly'
   check (client_type in ('hourly', 'contract'));
+alter table public.clients add column if not exists monthly_fee_cents int not null default 0;
 
 do $$ begin
   create type public.ticket_kind as enum ('service', 'install', 'will_call', 'deliver');

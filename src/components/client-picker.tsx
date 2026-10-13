@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { CLIENT_TYPES, CLIENT_TYPE_LABELS, type Client } from "@/lib/types";
+import { ClientTypeFields } from "@/components/client-type-fields";
+import type { Client } from "@/lib/types";
 
 export function ClientPicker({ clients }: { clients: Client[] }) {
   const [clientId, setClientId] = useState("");
@@ -34,14 +35,7 @@ export function ClientPicker({ clients }: { clients: Client[] }) {
             <label className="label" htmlFor="client_address">Address</label>
             <input className="input" id="client_address" name="client_address" />
           </div>
-          <div>
-            <label className="label" htmlFor="client_type">Client type</label>
-            <select className="input" id="client_type" name="client_type" defaultValue="hourly">
-              {CLIENT_TYPES.map((t) => (
-                <option key={t} value={t}>{CLIENT_TYPE_LABELS[t]}</option>
-              ))}
-            </select>
-          </div>
+          <ClientTypeFields idPrefix="new" typeName="client_type" feeName="client_monthly_fee" />
         </div>
       )}
     </div>

@@ -23,7 +23,8 @@ on the screen, and print or save the ticket as a PDF. Labor is billed by the hou
   "Save as PDF" to send it to the client.
 - **Clients** list, split into hourly and contract clients. Add clients from the Clients page
   or while creating a service ticket. Contract clients are not charged for time: their
-  service tickets track the time spent and still charge parts.
+  service tickets track the time spent and still charge parts. Each contract client has a
+  monthly fee on record.
 - **Two logins** to start: David Collazos and Daniel Felipe Torres. Each time entry records
   who did the work.
 

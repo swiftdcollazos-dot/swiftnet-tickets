@@ -20,6 +20,11 @@ function clientType(form: FormData, key: string): ClientType {
   return CLIENT_TYPES.includes(value) ? value : "hourly";
 }
 
+/** The monthly fee only applies to contract clients. */
+function monthlyFee(form: FormData, typeKey: string, feeKey: string): number {
+  return clientType(form, typeKey) === "contract" ? parseMoney(text(form, feeKey)) : 0;
+}
+
 // ---------- Login ----------
 
 export type SignInState = { error: string; email: string } | null;
@@ -79,6 +84,7 @@ export async function createTicket(form: FormData) {
         email: text(form, "client_email"),
         address: text(form, "client_address"),
         client_type: clientType(form, "client_type"),
+        monthly_fee_cents: monthlyFee(form, "client_type", "client_monthly_fee"),
       })
       .select("id")
       .single();
@@ -258,6 +264,7 @@ export async function createClientRecord(form: FormData) {
     email: text(form, "email"),
     address: text(form, "address"),
     client_type: clientType(form, "client_type"),
+    monthly_fee_cents: monthlyFee(form, "client_type", "monthly_fee"),
   });
   if (error) fail(error.message);
   revalidatePath("/clients");
@@ -273,6 +280,7 @@ export async function updateClient(clientId: string, form: FormData) {
       email: text(form, "email"),
       address: text(form, "address"),
       client_type: clientType(form, "client_type"),
+      monthly_fee_cents: monthlyFee(form, "client_type", "monthly_fee"),
     })
     .eq("id", clientId);
   if (error) fail(error.message);

@@ -1,5 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Suspense } from "react";
+import { RunningTimers } from "@/components/running-timers";
 import { signOut } from "@/app/actions";
 
 export default function AppLayout({ children }: LayoutProps<"/">) {
@@ -20,6 +22,9 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
             </form>
           </div>
         </nav>
+        <Suspense fallback={null}>
+          <RunningTimers />
+        </Suspense>
       </header>
       <main className="mx-auto max-w-3xl p-4 pb-16">{children}</main>
     </>

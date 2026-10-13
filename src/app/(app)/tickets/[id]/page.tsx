@@ -35,6 +35,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
   const { ticket, client, entries, parts, totals, settings, techName } = await loadTicket(id);
   const call = client.client_type === "contract";
   const label = recordLabel(client.client_type);
+  const listPath = call ? "/?view=calls" : "/";
   const running = entries.find((e) => !e.ended_at);
   const closed = ticket.status !== "open";
   const money = (c: number) => formatMoney(c, settings.currency);
@@ -70,21 +71,23 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
             <button className="btn-light">Reopen</button>
           </form>
         </div>
-      ) : (
-        <form action={closeTicket.bind(null, ticket.id)}>
-          <button className="btn w-full bg-green-700 py-3 text-base">✓ Complete &amp; close {label.toLowerCase()}</button>
-        </form>
-      )}
+      ) : null}
 
       {/* Time */}
       <section className="card">
         <h2 className="h2">Time</h2>
         {closed ? null : running ? (
-          <form action={stopTimer.bind(null, ticket.id, running.id)} className="mb-4 flex items-center gap-3 rounded-lg bg-red-50 p-3">
-            <span className="text-red-700">● Working</span>
-            <span className="flex-1 text-xl text-red-700"><LiveTimer startedAt={running.started_at} /></span>
-            <button className="btn bg-red-600">Stop</button>
-          </form>
+          <div className="mb-4 rounded-lg bg-red-50 p-3">
+            <form action={stopTimer.bind(null, ticket.id, running.id)} className="flex items-center gap-3">
+              <span className="text-red-700">● Working</span>
+              <span className="flex-1 text-xl text-red-700"><LiveTimer startedAt={running.started_at} /></span>
+              <button className="btn bg-red-600">Stop</button>
+            </form>
+            <Link href={listPath} className="btn-light mt-3 block w-full text-center">
+              ↔ Switch to another {label.toLowerCase()}
+            </Link>
+            <p className="mt-1 text-xs text-slate-500">This timer keeps running. Tap it in the bar at the top to come back.</p>
+          </div>
         ) : (
           <form action={startTimer.bind(null, ticket.id)} className="mb-4">
             <button className="btn w-full">▶ Start timer (time in)</button>
@@ -257,6 +260,12 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
           </>
         )}
       </section>
+
+      {!closed && (
+        <form action={closeTicket.bind(null, ticket.id)} className="flex justify-center pt-2">
+          <button className="btn bg-green-700 px-6">✓ Complete &amp; close {label.toLowerCase()}</button>
+        </form>
+      )}
     </div>
   );
 }

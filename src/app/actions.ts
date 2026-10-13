@@ -134,6 +134,7 @@ export async function closeTicket(ticketId: string) {
   const { error } = await supabase.from("tickets").update({ status: "completed" }).eq("id", ticketId);
   if (error) fail(error.message);
   revalidatePath(`/tickets/${ticketId}`);
+  revalidatePath("/", "layout"); // running-timers bar
   revalidatePath("/");
 }
 
@@ -149,6 +150,7 @@ export async function startTimer(ticketId: string) {
   });
   if (error) fail(error.message);
   revalidatePath(`/tickets/${ticketId}`);
+  revalidatePath("/", "layout"); // running-timers bar
 }
 
 export async function stopTimer(ticketId: string, entryId: string) {
@@ -160,6 +162,7 @@ export async function stopTimer(ticketId: string, entryId: string) {
     .is("ended_at", null);
   if (error) fail(error.message);
   revalidatePath(`/tickets/${ticketId}`);
+  revalidatePath("/", "layout"); // running-timers bar
 }
 
 /** For time that wasn't tracked with the timer: date, time in, time out. */
@@ -186,6 +189,7 @@ export async function deleteTimeEntry(ticketId: string, entryId: string) {
   const { error } = await supabase.from("time_entries").delete().eq("id", entryId);
   if (error) fail(error.message);
   revalidatePath(`/tickets/${ticketId}`);
+  revalidatePath("/", "layout"); // running-timers bar
 }
 
 // ---------- Parts ----------

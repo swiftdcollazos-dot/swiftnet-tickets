@@ -20,11 +20,6 @@ export function TicketFields({ ticket, today }: { ticket?: Partial<Ticket>; toda
         </div>
       </div>
 
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="is_estimate" defaultChecked={ticket?.is_estimate ?? false} className="size-4" />
-        This is an estimate (valid for 30 days)
-      </label>
-
       <div>
         <label className="label" htmlFor="item_to_service">Item to be serviced</label>
         <input className="input" id="item_to_service" name="item_to_service" placeholder="Laptop, server, printer, network…" defaultValue={ticket?.item_to_service ?? ""} />

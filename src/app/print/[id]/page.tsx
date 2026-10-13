@@ -19,7 +19,6 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
   const { id } = await params;
   const { ticket, client, parts, totals, settings, techName } = await loadTicket(id);
   const money = (c: number) => formatMoney(c, settings.currency);
-  const title = ticket.is_estimate ? "ESTIMATE" : "SERVICE TICKET";
 
   return (
     <div className="min-h-screen bg-slate-100 p-4 print:bg-white print:p-0">
@@ -38,11 +37,10 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
             </p>
           </div>
           <div className="text-right">
-            <p className="font-bold tracking-wide">{title}</p>
+            <p className="font-bold tracking-wide">SERVICE TICKET</p>
             <p className="font-mono text-2xl text-red-600">#{ticket.number}</p>
             <p>{formatDate(ticket.ticket_date)}</p>
             <p className="text-slate-600">{KIND_LABELS[ticket.kind]}</p>
-            {ticket.is_estimate && <p className="text-xs text-slate-500">Valid for 30 days</p>}
           </div>
         </header>
 
@@ -120,7 +118,6 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
         </section>
 
         <footer className="border-t border-slate-200 pt-3 text-center text-xs text-slate-500">
-          {ticket.is_estimate && <p>Estimates are for labor only, material additional.</p>}
           <p>{settings.disclaimer}</p>
           <p className="mt-1 font-semibold">{settings.terms}</p>
         </footer>

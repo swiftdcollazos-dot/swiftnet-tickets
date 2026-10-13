@@ -44,7 +44,6 @@ function ticketFields(form: FormData) {
   return {
     ticket_date: text(form, "ticket_date") || undefined,
     kind: KINDS.includes(kind) ? kind : "service",
-    is_estimate: form.get("is_estimate") === "on",
     item_to_service: text(form, "item_to_service"),
     make: text(form, "make"),
     model: text(form, "model"),

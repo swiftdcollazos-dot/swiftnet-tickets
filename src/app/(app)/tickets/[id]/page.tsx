@@ -40,7 +40,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
       <div className="flex flex-wrap items-start gap-3">
         <div className="flex-1">
           <p className="font-mono text-sm text-slate-400">
-            {ticket.is_estimate ? "Estimate" : "Ticket"} #{ticket.number} · {formatDate(ticket.ticket_date)}
+            Ticket #{ticket.number} · {formatDate(ticket.ticket_date)}
           </p>
           <h1 className="h1">{client.name}</h1>
           <p className="text-sm text-slate-500">

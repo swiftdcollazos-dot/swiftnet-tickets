@@ -92,7 +92,7 @@ async function TicketList({ searchParams }: { searchParams: PageProps<"/">["sear
                   <div className="text-right">
                     <div className="font-semibold">{formatMoney(totals.totalCents)}</div>
                     <span className={`rounded px-1.5 text-xs font-semibold ${STATUS_STYLES[t.status as TicketStatus]}`}>
-                      {t.is_estimate ? "Estimate" : STATUS_LABELS[t.status as TicketStatus]}
+                      {STATUS_LABELS[t.status as TicketStatus]}
                     </span>
                   </div>
                 </Link>

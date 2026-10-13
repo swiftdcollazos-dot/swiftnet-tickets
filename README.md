@@ -8,7 +8,7 @@ on the screen, and print or save the ticket as a PDF. Labor is billed by the hou
 ## What it does
 
 - **Tickets** with the same fields as the paper form: date, service / install / will call /
-  deliver, estimate, client, item to be serviced, make, model,
+  deliver, client, item to be serviced, make, model,
   and labor performed.
 - **Time in / time out**: a start/stop timer, or type the times in afterwards. Several
   visits per ticket are added together. Billable time rounds up to whole hours

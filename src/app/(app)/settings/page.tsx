@@ -37,14 +37,6 @@ async function SettingsForm() {
         <Field name="company_phone" label="Phone" value={s.company_phone} />
         <Field name="company_email" label="Email" value={s.company_email} />
         <Field name="company_address" label="Address" value={s.company_address} />
-        <div className="sm:col-span-2">
-          <label className="label" htmlFor="terms">Terms</label>
-          <textarea className="input" rows={2} id="terms" name="terms" defaultValue={s.terms} />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="label" htmlFor="disclaimer">Disclaimer</label>
-          <textarea className="input" rows={3} id="disclaimer" name="disclaimer" defaultValue={s.disclaimer} />
-        </div>
       </section>
       <button className="btn w-full">Save settings</button>
     </form>

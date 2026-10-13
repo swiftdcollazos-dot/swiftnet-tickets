@@ -346,8 +346,6 @@ export async function updateSettings(form: FormData) {
       company_email: text(form, "company_email"),
       company_address: text(form, "company_address"),
       hourly_rate_cents: parseMoney(text(form, "hourly_rate")),
-      terms: text(form, "terms"),
-      disclaimer: text(form, "disclaimer"),
     })
     .eq("id", 1);
   if (error) fail(error.message);

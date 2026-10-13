@@ -123,11 +123,6 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
             <p>Technician: {techName(ticket.technician_id)}</p>
           </div>
         </section>
-
-        <footer className="border-t border-slate-200 pt-3 text-center text-xs text-slate-500">
-          <p>{settings.disclaimer}</p>
-          <p className="mt-1 font-semibold">{settings.terms}</p>
-        </footer>
       </article>
     </div>
   );

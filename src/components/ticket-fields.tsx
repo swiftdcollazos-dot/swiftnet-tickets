@@ -24,7 +24,7 @@ export function TicketFields({ ticket, today }: { ticket?: Partial<Ticket>; toda
         <label className="label" htmlFor="item_to_service">Item to be serviced</label>
         <input className="input" id="item_to_service" name="item_to_service" placeholder="Laptop, server, printer, network…" defaultValue={ticket?.item_to_service ?? ""} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div>
           <label className="label" htmlFor="make">Make</label>
           <input className="input" id="make" name="make" defaultValue={ticket?.make ?? ""} />
@@ -32,6 +32,10 @@ export function TicketFields({ ticket, today }: { ticket?: Partial<Ticket>; toda
         <div>
           <label className="label" htmlFor="model">Model</label>
           <input className="input" id="model" name="model" defaultValue={ticket?.model ?? ""} />
+        </div>
+        <div className="col-span-2 sm:col-span-1">
+          <label className="label" htmlFor="machine_name">Machine name</label>
+          <input className="input" id="machine_name" name="machine_name" placeholder="e.g. FRONT-DESK-PC" defaultValue={ticket?.machine_name ?? ""} />
         </div>
       </div>
       <div>

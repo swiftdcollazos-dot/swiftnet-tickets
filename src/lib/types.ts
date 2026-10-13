@@ -61,6 +61,7 @@ export type Ticket = {
   item_to_service: string;
   make: string;
   model: string;
+  machine_name: string;
   serial: string;
   service_request: string;
   labor_performed: string;

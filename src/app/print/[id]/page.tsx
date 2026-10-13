@@ -60,6 +60,7 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
             <p className="font-semibold">{ticket.item_to_service || "—"}</p>
             {ticket.make && <p>Make: {ticket.make}</p>}
             {ticket.model && <p>Model: {ticket.model}</p>}
+            {ticket.machine_name && <p>Machine name: {ticket.machine_name}</p>}
           </div>
         </section>
 

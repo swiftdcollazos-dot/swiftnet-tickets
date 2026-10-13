@@ -94,6 +94,8 @@ create table if not exists public.ticket_parts (
   unit_price_cents int not null default 0
 );
 
+alter table public.tickets add column if not exists machine_name text not null default '';
+
 create index if not exists tickets_client_id_idx on public.tickets (client_id);
 create index if not exists time_entries_ticket_id_idx on public.time_entries (ticket_id);
 create index if not exists ticket_parts_ticket_id_idx on public.ticket_parts (ticket_id);

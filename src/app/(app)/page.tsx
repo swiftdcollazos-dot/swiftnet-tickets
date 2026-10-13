@@ -42,7 +42,7 @@ async function TicketList({ searchParams }: { searchParams: PageProps<"/">["sear
   const rows = (tickets ?? []).filter(
     (t) =>
       !needle ||
-      [t.clients?.name, t.item_to_service, t.make, t.model]
+      [t.clients?.name, t.item_to_service, t.make, t.model, t.machine_name]
         .join(" ")
         .toLowerCase()
         .includes(needle),

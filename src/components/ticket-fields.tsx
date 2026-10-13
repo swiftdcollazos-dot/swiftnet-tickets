@@ -12,15 +12,11 @@ export function TicketFields({ ticket, today }: { ticket?: Partial<Ticket>; toda
         </div>
         <div>
           <label className="label" htmlFor="kind">Type</label>
-          <select className="input" id="kind" name="kind" defaultValue={ticket?.kind ?? ""}>
-            <option value="">Select a type</option>
+          <select className="input" id="kind" name="kind" defaultValue={kindLabel(ticket?.kind)}>
+            <option value="">Select a service type</option>
             {SERVICE_TYPES.map((type) => (
               <option key={type} value={type}>{type}</option>
             ))}
-            {/* Keep an older ticket's type selectable so saving doesn't wipe it. */}
-            {ticket?.kind && !(SERVICE_TYPES as readonly string[]).includes(ticket.kind) && (
-              <option value={ticket.kind}>{kindLabel(ticket.kind)}</option>
-            )}
           </select>
         </div>
       </div>

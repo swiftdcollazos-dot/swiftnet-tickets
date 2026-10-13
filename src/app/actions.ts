@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { parseMoney } from "@/lib/billing";
 import { localToIso } from "@/lib/time";
-import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, isKnownKind, type ClientType, type TicketStatus } from "@/lib/types";
+import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, isServiceType, type ClientType, type TicketStatus } from "@/lib/types";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 const STATUSES: TicketStatus[] = ["open", "completed", "paid"];
@@ -61,7 +61,7 @@ function ticketFields(form: FormData) {
   const kind = text(form, "kind");
   return {
     ticket_date: text(form, "ticket_date") || undefined,
-    kind: isKnownKind(kind) ? kind : "",
+    kind: isServiceType(kind) ? kind : "",
     item_to_service: text(form, "item_to_service"),
     make: text(form, "make"),
     model: text(form, "model"),

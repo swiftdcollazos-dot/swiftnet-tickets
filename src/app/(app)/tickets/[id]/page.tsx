@@ -14,7 +14,7 @@ import {
   stopTimer,
   updateTicket,
 } from "@/app/actions";
-import { entryMinutes, formatMinutes, formatMoney } from "@/lib/billing";
+import { entryMinutes, formatHours, formatMinutes, formatMoney } from "@/lib/billing";
 import { loadTicket } from "@/lib/ticket-data";
 import { formatDate, formatTime, todayLocal } from "@/lib/time";
 import { STATUS_LABELS, recordLabel, type Client } from "@/lib/types";
@@ -111,32 +111,26 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
       {/* Time */}
       <CollapsibleCard
         title="Time"
-        summary={
-          running ? (
-            <span className="font-mono font-semibold text-red-700">● <LiveTimer startedAt={running.started_at} /></span>
-          ) : totals.workedMinutes > 0 ? (
-            formatMinutes(totals.workedMinutes)
+        action={
+          closed ? null : running ? (
+            <form action={stopTimer.bind(null, ticket.id, running.id)} className="flex items-center gap-2">
+              <span className="font-mono text-sm font-semibold text-red-700">● <LiveTimer startedAt={running.started_at} /></span>
+              <button className="btn bg-red-600 py-1.5">■ Stop</button>
+            </form>
           ) : (
-            "No time yet"
+            <form action={startTimer.bind(null, ticket.id)}>
+              <button className="btn py-1.5">▶ Start</button>
+            </form>
           )
         }
       >
-        {closed ? null : running ? (
-          <div className="mb-4 rounded-lg bg-red-50 p-3">
-            <form action={stopTimer.bind(null, ticket.id, running.id)} className="flex items-center gap-3">
-              <span className="text-red-700">● Working</span>
-              <span className="flex-1 text-xl text-red-700"><LiveTimer startedAt={running.started_at} /></span>
-              <button className="btn bg-red-600">Stop</button>
-            </form>
-            <Link href={listPath} className="btn-light mt-3 block w-full text-center">
+        {running && !closed && (
+          <div className="mb-4">
+            <Link href={listPath} className="btn-light block w-full text-center">
               ↔ Switch to another {label.toLowerCase()}
             </Link>
             <p className="mt-1 text-xs text-slate-500">This timer keeps running. Tap it in the bar at the top to come back.</p>
           </div>
-        ) : (
-          <form action={startTimer.bind(null, ticket.id)} className="mb-4">
-            <button className="btn w-full">▶ Start timer (time in)</button>
-          </form>
         )}
 
         {entries.length > 0 && (
@@ -247,7 +241,15 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
       </CollapsibleCard>
 
       {/* Totals */}
-      <CollapsibleCard title="Total" summary={<span className="font-semibold text-slate-800">{money(totals.totalCents)}</span>}>
+      <CollapsibleCard
+        title="Total"
+        summary={
+          <span className="font-semibold text-slate-800">
+            {/* Whole hours, matching the printout. */}
+            {formatHours(call ? Math.ceil(Math.round(totals.workedMinutes) / 60) * 60 : totals.billableMinutes)}
+          </span>
+        }
+      >
         <dl className="space-y-1 text-sm">
           {call ? (
             <Row label={`Time spent: ${formatMinutes(totals.workedMinutes)}`} value="Not charged" />

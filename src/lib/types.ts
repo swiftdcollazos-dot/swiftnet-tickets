@@ -17,20 +17,13 @@ export const SERVICE_TYPES = [
   "IT roadmapping",
 ] as const;
 
-/** Types saved before the list above existed. */
-const OLD_KIND_LABELS: Record<string, string> = {
-  service: "Service",
-  install: "Install",
-  will_call: "Will call",
-  deliver: "Deliver",
-};
-
-export function kindLabel(kind: string | null | undefined): string {
-  return (kind && OLD_KIND_LABELS[kind]) ?? kind ?? "";
+export function isServiceType(kind: string | null | undefined): kind is string {
+  return (SERVICE_TYPES as readonly string[]).includes(kind ?? "");
 }
 
-export function isKnownKind(kind: string): boolean {
-  return (SERVICE_TYPES as readonly string[]).includes(kind) || kind in OLD_KIND_LABELS;
+/** The ticket's service type, or "" for none (including the old Service/Install/... values). */
+export function kindLabel(kind: string | null | undefined): string {
+  return isServiceType(kind) ? kind : "";
 }
 
 export const STATUS_LABELS: Record<TicketStatus, string> = {

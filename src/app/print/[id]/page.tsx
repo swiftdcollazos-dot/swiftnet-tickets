@@ -55,6 +55,7 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
             {client.address && <p>{client.address}</p>}
             {client.phone && <p>{client.phone}</p>}
             {client.email && <p>{client.email}</p>}
+            {ticket.contacted_by && <p>Contacted by: {ticket.contacted_by}</p>}
           </div>
           <div>
             <h2 className="mb-1 text-xs font-bold uppercase text-slate-500">Item serviced</h2>

@@ -22,6 +22,11 @@ export function TicketFields({ ticket, today }: { ticket?: Partial<Ticket>; toda
       </div>
 
       <div>
+        <label className="label" htmlFor="contacted_by">Contacted by</label>
+        <input className="input" id="contacted_by" name="contacted_by" placeholder="Who called or asked for this job" defaultValue={ticket?.contacted_by ?? ""} />
+      </div>
+
+      <div>
         <label className="label" htmlFor="item_to_service">Item to be serviced</label>
         <input className="input" id="item_to_service" name="item_to_service" placeholder="Laptop, server, printer, network…" defaultValue={ticket?.item_to_service ?? ""} />
       </div>

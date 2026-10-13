@@ -83,6 +83,7 @@ export type Ticket = {
   model: string;
   machine_name: string;
   is_project: boolean;
+  contacted_by: string;
   serial: string;
   service_request: string;
   labor_performed: string;

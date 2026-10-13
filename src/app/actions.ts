@@ -74,31 +74,11 @@ export async function createTicket(form: FormData) {
   const { supabase, user } = await requireUser();
   const isServiceCall = text(form, "is_service_call") === "1";
 
-  let clientId = text(form, "client_id");
-  if (clientId) {
-    const { data, error } = await supabase.from("clients").select("client_type").eq("id", clientId).single();
-    if (error) fail(error.message);
-    if (isServiceCall && data.client_type !== "contract") fail("Service calls are only for contract clients.");
-    if (!isServiceCall && data.client_type === "contract") fail("Contract clients get service calls, not service tickets.");
-  }
-  if (!clientId) {
-    const name = text(form, "client_name") || fail("Enter the client's name.");
-    const { data, error } = await supabase
-      .from("clients")
-      .insert({
-        name,
-        phone: text(form, "client_phone"),
-        email: text(form, "client_email"),
-        address: text(form, "client_address"),
-        // Service calls are for contract clients; service tickets for hourly clients.
-        client_type: isServiceCall ? "contract" : "hourly",
-        monthly_fee_cents: monthlyFee(form, "client_type", "client_monthly_fee"),
-      })
-      .select("id")
-      .single();
-    if (error) fail(error.message);
-    clientId = data.id;
-  }
+  const clientId = text(form, "client_id") || fail("Select a client.");
+  const { data: client, error: clientError } = await supabase.from("clients").select("client_type").eq("id", clientId).single();
+  if (clientError) fail(clientError.message);
+  if (isServiceCall && client.client_type !== "contract") fail("Service calls are only for contract clients.");
+  if (!isServiceCall && client.client_type === "contract") fail("Contract clients get service calls, not service tickets.");
 
   // Copy today's billing rules onto the ticket.
   const { data: s, error: settingsError } = await supabase.from("settings").select("*").single();

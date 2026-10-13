@@ -1,99 +1,90 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ClientTypeFields } from "@/components/client-type-fields";
-import { RequiredNote } from "@/components/required-note";
+import Link from "next/link";
 import type { Client } from "@/lib/types";
 
-/** Search existing clients by name, or add a new one. */
+/** Dropdown of client names. New clients are added on the Clients page. */
 export function ClientPicker({ clients, serviceCall = false }: { clients: Client[]; serviceCall?: boolean }) {
-  const [adding, setAdding] = useState(clients.length === 0);
   const [selected, setSelected] = useState<Client | null>(null);
   const [search, setSearch] = useState("");
-  const searchRef = useRef<HTMLInputElement>(null);
-  const newLabel = serviceCall ? "+ New contract client" : "+ New client";
+  const [open, setOpen] = useState(false);
+  const guardRef = useRef<HTMLInputElement>(null);
 
   // The browser won't submit until a client from the list is picked.
   useEffect(() => {
-    searchRef.current?.setCustomValidity(selected ? "" : "Pick a client from the list.");
-  }, [selected, adding]);
+    guardRef.current?.setCustomValidity(selected ? "" : "Select a client.");
+  }, [selected]);
 
   const needle = search.trim().toLowerCase();
   const matches = clients.filter((c) => c.name.toLowerCase().includes(needle));
 
-  if (adding) {
+  if (clients.length === 0) {
     return (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="h2 mb-0">{serviceCall ? "New contract client" : "New client"}</h2>
-          {clients.length > 0 && (
-            <button type="button" className="text-sm font-semibold text-brand" onClick={() => setAdding(false)}>
-              Choose an existing client
-            </button>
-          )}
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <RequiredNote className="sm:col-span-2" />
-          <div>
-            <label className="label" htmlFor="client_name">Name</label>
-            <input className="input" id="client_name" name="client_name" required />
-          </div>
-          <div>
-            <label className="label" htmlFor="client_phone">Phone</label>
-            <input className="input" type="tel" id="client_phone" name="client_phone" />
-          </div>
-          <div>
-            <label className="label" htmlFor="client_email">Email</label>
-            <input className="input" type="email" id="client_email" name="client_email" />
-          </div>
-          <div>
-            <label className="label" htmlFor="client_address">Address</label>
-            <input className="input" id="client_address" name="client_address" />
-          </div>
-          <ClientTypeFields idPrefix="new" typeName="client_type" feeName="client_monthly_fee" type={serviceCall ? "contract" : "hourly"} locked />
-        </div>
+      <div>
+        <span className="label">Client</span>
+        <p className="text-sm text-slate-600">
+          {serviceCall ? "There are no contract clients yet." : "There are no hourly clients yet."}{" "}
+          <Link href="/clients" className="font-semibold text-brand">Add one on the Clients page</Link> first.
+        </p>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="relative">
       <input type="hidden" name="client_id" value={selected?.id ?? ""} />
-      {selected ? (
-        <>
-          <p className="label">Client</p>
-          <div className="flex items-center gap-3 rounded-lg border border-brand bg-blue-50 px-3 py-3">
-            <span className="flex-1 text-base font-semibold">{selected.name}</span>
-            <button type="button" className="text-sm font-semibold text-brand" onClick={() => setSelected(null)}>
-              Change
-            </button>
-          </div>
-        </>
-      ) : (
-        <>
-          <label className="label" htmlFor="client_search">Client</label>
-          <input
-            ref={searchRef}
-            className="input"
-            id="client_search"
-            type="search"
-            placeholder="Type to search clients"
-            autoComplete="off"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            required
-          />
-          <ul className="mt-2 max-h-64 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200 bg-white" role="listbox" aria-label="Clients">
+      {/* Invisible stand-in so the browser can say "pick a client" when none is chosen. */}
+      <input
+        ref={guardRef}
+        tabIndex={-1}
+        aria-hidden
+        required
+        value={selected?.id ?? ""}
+        onChange={() => {}}
+        onInvalid={() => setOpen(true)}
+        className="pointer-events-none absolute bottom-0 left-1/2 h-px w-px opacity-0"
+      />
+      <span className="label">
+        Client <span className="font-bold text-red-600">*</span>
+      </span>
+      <button
+        type="button"
+        className="input flex items-center justify-between text-left"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className={selected ? "font-semibold" : "text-slate-400"}>{selected?.name ?? "Select a client"}</span>
+        <span className="text-slate-500">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div className="absolute inset-x-0 z-20 mt-1 rounded-lg border border-slate-200 bg-white shadow-lg">
+          {clients.length > 8 && (
+            <div className="border-b border-slate-100 p-2">
+              <input
+                className="input"
+                type="search"
+                placeholder="Search"
+                autoComplete="off"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                aria-label="Search clients"
+              />
+            </div>
+          )}
+          <ul className="max-h-72 divide-y divide-slate-100 overflow-y-auto" role="listbox" aria-label="Clients">
             {matches.map((c) => (
               <li key={c.id}>
                 <button
                   type="button"
                   role="option"
-                  aria-selected={false}
-                  className="block w-full px-3 py-3 text-left text-base hover:bg-slate-50 active:bg-slate-100"
+                  aria-selected={selected?.id === c.id}
+                  className={`block w-full px-3 py-3 text-left text-base hover:bg-slate-50 ${selected?.id === c.id ? "font-semibold text-brand" : ""}`}
                   onClick={() => {
                     setSelected(c);
                     setSearch("");
+                    setOpen(false);
                   }}
                 >
                   {c.name}
@@ -102,10 +93,7 @@ export function ClientPicker({ clients, serviceCall = false }: { clients: Client
             ))}
             {matches.length === 0 && <li className="px-3 py-3 text-sm text-slate-500">No client called “{search.trim()}”.</li>}
           </ul>
-          <button type="button" className="btn-light mt-3 w-full" onClick={() => setAdding(true)}>
-            {newLabel}
-          </button>
-        </>
+        </div>
       )}
     </div>
   );

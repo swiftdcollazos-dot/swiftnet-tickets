@@ -91,7 +91,7 @@ async function TicketList({ searchParams }: { searchParams: PageProps<"/">["sear
             const running = t.time_entries.some((e: { ended_at: string | null }) => !e.ended_at);
             return (
               <li key={t.id}>
-                <Link href={`/tickets/${t.id}`} className="card flex items-center gap-3 hover:border-brand">
+                <Link href={`/tickets/${t.id}`} className={`card flex items-center gap-3 ${t.status === "open" ? "hover:border-brand" : "border-2 border-green-500"}`}>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-sm text-slate-400">#{t.number}</span>

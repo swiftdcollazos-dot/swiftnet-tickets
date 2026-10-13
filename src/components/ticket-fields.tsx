@@ -28,7 +28,7 @@ export function TicketFields({ ticket, today }: { ticket?: Partial<Ticket>; toda
         <label className="label" htmlFor="item_to_service">Item to be serviced</label>
         <input className="input" id="item_to_service" name="item_to_service" placeholder="Laptop, server, printer, network…" defaultValue={ticket?.item_to_service ?? ""} />
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="label" htmlFor="make">Make</label>
           <input className="input" id="make" name="make" defaultValue={ticket?.make ?? ""} />
@@ -37,28 +37,14 @@ export function TicketFields({ ticket, today }: { ticket?: Partial<Ticket>; toda
           <label className="label" htmlFor="model">Model</label>
           <input className="input" id="model" name="model" defaultValue={ticket?.model ?? ""} />
         </div>
-        <div>
-          <label className="label" htmlFor="serial">Serial</label>
-          <input className="input" id="serial" name="serial" defaultValue={ticket?.serial ?? ""} />
-        </div>
-      </div>
-      <div>
-        <label className="label" htmlFor="service_request">Nature of service request</label>
-        <textarea className="input" rows={3} id="service_request" name="service_request" defaultValue={ticket?.service_request ?? ""} />
       </div>
       <div>
         <label className="label" htmlFor="labor_performed">Labor performed</label>
         <textarea className="input" rows={4} id="labor_performed" name="labor_performed" defaultValue={ticket?.labor_performed ?? ""} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="label" htmlFor="date_wanted">Date wanted</label>
-          <input className="input" type="date" id="date_wanted" name="date_wanted" defaultValue={ticket?.date_wanted ?? ""} />
-        </div>
-        <div>
-          <label className="label" htmlFor="deposit">Deposit ($)</label>
-          <input className="input" inputMode="decimal" id="deposit" name="deposit" defaultValue={ticket?.deposit_cents ? (ticket.deposit_cents / 100).toFixed(2) : ""} />
-        </div>
+      <div>
+        <label className="label" htmlFor="date_wanted">Date wanted</label>
+        <input className="input" type="date" id="date_wanted" name="date_wanted" defaultValue={ticket?.date_wanted ?? ""} />
       </div>
     </div>
   );

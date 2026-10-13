@@ -48,11 +48,8 @@ function ticketFields(form: FormData) {
     item_to_service: text(form, "item_to_service"),
     make: text(form, "make"),
     model: text(form, "model"),
-    serial: text(form, "serial"),
-    service_request: text(form, "service_request"),
     labor_performed: text(form, "labor_performed"),
     date_wanted: text(form, "date_wanted") || null,
-    deposit_cents: parseMoney(text(form, "deposit")),
   };
 }
 

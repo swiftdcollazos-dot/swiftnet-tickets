@@ -8,14 +8,14 @@ on the screen, and print or save the ticket as a PDF. Labor is billed by the hou
 ## What it does
 
 - **Tickets** with the same fields as the paper form: date, service / install / will call /
-  deliver, estimate, client, item to be serviced, make, model, serial, nature of the request,
-  labor performed, date wanted and deposit.
+  deliver, estimate, client, item to be serviced, make, model,
+  labor performed and date wanted.
 - **Time in / time out**: a start/stop timer, or type the times in afterwards. Several
   visits per ticket are added together. Billable time rounds up to whole hours
   (adjustable in Settings), with an optional minimum charge. The customer's ticket shows only
   the total time, not each visit or the hourly rate.
 - **Parts and materials** with quantity, part number and price.
-- **Totals**: labor, materials, tax, deposit and balance due, worked out automatically.
+- **Totals**: labor, materials and tax, worked out automatically.
   Each ticket keeps the rate and tax it was created with, so changing settings never
   changes old tickets.
 - **Client signature** drawn with a finger on the phone.

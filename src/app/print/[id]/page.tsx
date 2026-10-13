@@ -59,16 +59,9 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
             <p className="font-semibold">{ticket.item_to_service || "—"}</p>
             {ticket.make && <p>Make: {ticket.make}</p>}
             {ticket.model && <p>Model: {ticket.model}</p>}
-            {ticket.serial && <p>Serial: {ticket.serial}</p>}
           </div>
         </section>
 
-        {ticket.service_request && (
-          <section className="mb-4">
-            <h2 className="mb-1 text-xs font-bold uppercase text-slate-500">Nature of service request</h2>
-            <p className="whitespace-pre-line">{ticket.service_request}</p>
-          </section>
-        )}
         {ticket.labor_performed && (
           <section className="mb-6">
             <h2 className="mb-1 text-xs font-bold uppercase text-slate-500">Labor performed</h2>
@@ -104,12 +97,6 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
               <Total label="Total materials" value={money(totals.materialsCents)} />
               {ticket.tax_rate_pct > 0 && <Total label={`Tax (${ticket.tax_rate_pct}%)`} value={money(totals.taxCents)} />}
               <Total label="Total amount" value={money(totals.totalCents)} bold />
-              {totals.depositCents > 0 && (
-                <>
-                  <Total label="Deposit" value={`− ${money(totals.depositCents)}`} />
-                  <Total label="Balance due" value={money(totals.balanceDueCents)} bold />
-                </>
-              )}
             </tbody>
           </table>
         </section>

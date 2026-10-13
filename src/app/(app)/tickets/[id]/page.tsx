@@ -193,12 +193,6 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
           <div className="border-t border-slate-200 pt-1">
             <Row label="Total" value={money(totals.totalCents)} bold />
           </div>
-          {totals.depositCents > 0 && (
-            <>
-              <Row label="Deposit" value={`− ${money(totals.depositCents)}`} />
-              <Row label="Balance due" value={money(totals.balanceDueCents)} bold />
-            </>
-          )}
         </dl>
         {running && <p className="mt-2 text-xs text-amber-700">The timer is still running, so this total will keep going up.</p>}
       </section>

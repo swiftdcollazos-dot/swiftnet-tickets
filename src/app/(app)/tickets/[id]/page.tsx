@@ -253,11 +253,6 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
           ) : (
             <Row label={`Labor: ${formatMinutes(totals.billableMinutes)} × ${money(ticket.hourly_rate_cents)}/h`} value={money(totals.laborCents)} />
           )}
-          {!call && totals.billableMinutes !== Math.round(totals.workedMinutes) && (
-            <p className="text-xs text-slate-400">
-              Worked {formatMinutes(totals.workedMinutes)}, billed in whole hours with a one-hour minimum.
-            </p>
-          )}
           <Row label="Materials" value={money(totals.materialsCents)} />
           <div className="border-t border-slate-200 pt-1">
             <Row label="Total" value={money(totals.totalCents)} bold />

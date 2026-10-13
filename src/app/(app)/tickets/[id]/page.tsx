@@ -21,6 +21,7 @@ import { STATUS_LABELS, recordLabel, type Client } from "@/lib/types";
 import { requireUser } from "@/lib/supabase/server";
 import { ClientPicker } from "@/components/client-picker";
 import { LiveTimer } from "@/components/live-timer";
+import { CollapsibleCard } from "@/components/collapsible-card";
 import { Loading } from "@/components/loading";
 import { SignaturePad } from "@/components/signature-pad";
 import { TicketFields } from "@/components/ticket-fields";
@@ -108,8 +109,18 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
       ) : null}
 
       {/* Time */}
-      <section className="card">
-        <h2 className="h2">Time</h2>
+      <CollapsibleCard
+        title="Time"
+        summary={
+          running ? (
+            <span className="font-mono font-semibold text-red-700">● <LiveTimer startedAt={running.started_at} /></span>
+          ) : totals.workedMinutes > 0 ? (
+            formatMinutes(totals.workedMinutes)
+          ) : (
+            "No time yet"
+          )
+        }
+      >
         {closed ? null : running ? (
           <div className="mb-4 rounded-lg bg-red-50 p-3">
             <form action={stopTimer.bind(null, ticket.id, running.id)} className="flex items-center gap-3">
@@ -177,18 +188,10 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
             </form>
           </details>
         )}
-      </section>
+      </CollapsibleCard>
 
-      {/* Parts (collapsed until tapped) */}
-      <details className="card group">
-        <summary className="flex cursor-pointer list-none items-center justify-between [&::-webkit-details-marker]:hidden">
-          <h2 className="h2 mb-0">Parts and materials</h2>
-          <span className="text-sm text-slate-500">
-            {parts.length > 0 && `${parts.length} · ${money(totals.materialsCents)} `}
-            <span className="inline-block transition-transform group-open:rotate-180">▼</span>
-          </span>
-        </summary>
-        <div className="mt-3">
+      {/* Parts */}
+      <CollapsibleCard title="Parts and materials" summary={parts.length > 0 ? `${parts.length} · ${money(totals.materialsCents)}` : null}>
         {parts.length > 0 && (
           <table className="mb-4 w-full text-sm">
             <thead className="text-left text-xs uppercase text-slate-500">
@@ -241,12 +244,10 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
             </form>
           </details>
         )}
-        </div>
-      </details>
+      </CollapsibleCard>
 
       {/* Totals */}
-      <section className="card">
-        <h2 className="h2">Total</h2>
+      <CollapsibleCard title="Total" summary={<span className="font-semibold text-slate-800">{money(totals.totalCents)}</span>}>
         <dl className="space-y-1 text-sm">
           {call ? (
             <Row label={`Time spent: ${formatMinutes(totals.workedMinutes)}`} value="Not charged" />
@@ -259,7 +260,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
           </div>
         </dl>
         {running && <p className="mt-2 text-xs text-amber-700">The timer is still running, so this total will keep going up.</p>}
-      </section>
+      </CollapsibleCard>
 
       {/* Details */}
       <section className="card">

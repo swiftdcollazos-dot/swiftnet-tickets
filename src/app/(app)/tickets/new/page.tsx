@@ -7,29 +7,38 @@ import { TicketFields } from "@/components/ticket-fields";
 import { Loading } from "@/components/loading";
 import type { Client } from "@/lib/types";
 
-export default function NewTicketPage() {
+export default function NewTicketPage(props: PageProps<"/tickets/new">) {
   return (
-    <>
-      <h1 className="h1 mb-4">New service ticket</h1>
-      <Suspense fallback={<Loading />}>
-        <NewTicketForm />
-      </Suspense>
-    </>
+    <Suspense fallback={<Loading />}>
+      <NewTicketForm searchParams={props.searchParams} />
+    </Suspense>
   );
 }
 
-async function NewTicketForm() {
+async function NewTicketForm({ searchParams }: { searchParams: PageProps<"/tickets/new">["searchParams"] }) {
+  const serviceCall = (await searchParams).call === "1";
+  const label = serviceCall ? "service call" : "service ticket";
   const { supabase } = await requireUser();
-  const { data: clients } = await supabase.from("clients").select("*").order("name");
+  // Service calls are for contract clients; service tickets for hourly clients.
+  const { data: clients } = await supabase
+    .from("clients")
+    .select("*")
+    .eq("client_type", serviceCall ? "contract" : "hourly")
+    .order("name");
   return (
-    <form action={createTicket} className="space-y-4">
-      <section className="card">
-        <ClientPicker clients={(clients ?? []) as Client[]} />
-      </section>
-      <section className="card">
-        <TicketFields today={todayLocal()} />
-      </section>
-      <button className="btn w-full">Create service ticket</button>
-    </form>
+    <>
+      <h1 className="h1 mb-1">New {label}</h1>
+      {serviceCall && <p className="mb-4 text-sm text-slate-500">For contract clients. Time is tracked, not charged.</p>}
+      <form action={createTicket} className="mt-4 space-y-4">
+        {serviceCall && <input type="hidden" name="is_service_call" value="1" />}
+        <section className="card">
+          <ClientPicker clients={(clients ?? []) as Client[]} serviceCall={serviceCall} />
+        </section>
+        <section className="card">
+          <TicketFields today={todayLocal()} />
+        </section>
+        <button className="btn w-full">Create {label}</button>
+      </form>
+    </>
   );
 }

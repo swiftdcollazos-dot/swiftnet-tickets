@@ -4,7 +4,8 @@ import { requireUser } from "@/lib/supabase/server";
 import { Loading } from "@/components/loading";
 import { formatMoney } from "@/lib/billing";
 import { ClientTypeFields } from "@/components/client-type-fields";
-import { CLIENT_TYPES, CLIENT_TYPE_LABELS, type Client } from "@/lib/types";
+import { RequiredNote } from "@/components/required-note";
+import { CLIENT_TYPES, CLIENT_TYPE_LABELS, recordLabel, type Client, type ClientType } from "@/lib/types";
 
 export default function ClientsPage() {
   return (
@@ -45,7 +46,7 @@ async function ClientList() {
                         <span className="font-semibold">{c.name}</span>
                         <span className="text-sm text-slate-500">
                           {c.phone ? ` · ${c.phone}` : ""}
-                          {c.client_type === "contract" && c.monthly_fee_cents > 0 ? ` · ${formatMoney(c.monthly_fee_cents)}/month` : ""} · {ticketCount(c.tickets[0]?.count ?? 0)}
+                          {c.client_type === "contract" && c.monthly_fee_cents > 0 ? ` · ${formatMoney(c.monthly_fee_cents)}/month` : ""} · {ticketCount(c.tickets[0]?.count ?? 0, c.client_type)}
                         </span>
                       </summary>
                       <EditClientForm clientId={c.id}>
@@ -56,7 +57,7 @@ async function ClientList() {
                           <DeleteClientButton clientId={c.id} name={c.name} />
                         ) : (
                           <p className="text-sm text-slate-500">
-                            This client has {ticketCount(c.tickets[0].count)}, so it can&apos;t be deleted.
+                            This client has {ticketCount(c.tickets[0].count, c.client_type)}, so it can&apos;t be deleted.
                           </p>
                         )}
                       </div>
@@ -72,13 +73,15 @@ async function ClientList() {
   );
 }
 
-function ticketCount(n: number) {
-  return n === 1 ? "1 service ticket" : `${n} service tickets`;
+function ticketCount(n: number, type: ClientType) {
+  const label = recordLabel(type).toLowerCase();
+  return n === 1 ? `1 ${label}` : `${n} ${label}s`;
 }
 
 function ClientFields({ idPrefix, client }: { idPrefix: string; client?: Client }) {
   return (
     <>
+      <RequiredNote className="sm:col-span-2" />
       <Field idPrefix={idPrefix} name="name" label="Name" value={client?.name ?? ""} required />
       <Field idPrefix={idPrefix} name="phone" label="Phone" value={client?.phone ?? ""} type="tel" />
       <Field idPrefix={idPrefix} name="email" label="Email" value={client?.email ?? ""} type="email" />

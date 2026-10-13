@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { formatHours, formatMinutes, formatMoney } from "@/lib/billing";
 import { loadTicket } from "@/lib/ticket-data";
 import { formatDate, formatTime } from "@/lib/time";
-import { KIND_LABELS } from "@/lib/types";
+import { KIND_LABELS, recordLabel } from "@/lib/types";
 import { Loading } from "@/components/loading";
 import { PrintButton } from "@/components/print-button";
 
@@ -37,7 +37,7 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
             </p>
           </div>
           <div className="text-right">
-            <p className="font-bold tracking-wide">SERVICE TICKET</p>
+            <p className="font-bold tracking-wide">{recordLabel(client.client_type).toUpperCase()}</p>
             <p className="font-mono text-2xl text-red-600">#{ticket.number}</p>
             <p>{formatDate(ticket.ticket_date)}</p>
             <p className="text-slate-600">{KIND_LABELS[ticket.kind]}</p>
@@ -92,7 +92,7 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
           <table className="w-72">
             <tbody>
               {client.client_type === "contract" ? (
-                <Total label={`Time spent (${formatMinutes(Math.round(totals.workedMinutes))})`} value="Contract" />
+                <Total label={`Time spent (${formatMinutes(Math.round(totals.workedMinutes))})`} value="Not charged" />
               ) : (
                 <Total label={`Total labor (${formatHours(totals.billableMinutes)})`} value={money(totals.laborCents)} />
               )}

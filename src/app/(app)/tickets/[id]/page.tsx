@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RequiredNote } from "@/components/required-note";
 import { Suspense } from "react";
 import {
   addPart,
@@ -15,7 +16,7 @@ import {
 import { entryMinutes, formatMinutes, formatMoney } from "@/lib/billing";
 import { loadTicket } from "@/lib/ticket-data";
 import { formatDate, formatTime, todayLocal } from "@/lib/time";
-import { STATUS_LABELS } from "@/lib/types";
+import { STATUS_LABELS, recordLabel } from "@/lib/types";
 import { LiveTimer } from "@/components/live-timer";
 import { Loading } from "@/components/loading";
 import { SignaturePad } from "@/components/signature-pad";
@@ -32,7 +33,8 @@ export default function TicketPage(props: PageProps<"/tickets/[id]">) {
 async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["params"] }) {
   const { id } = await params;
   const { ticket, client, entries, parts, totals, settings, techName } = await loadTicket(id);
-  const contract = client.client_type === "contract";
+  const call = client.client_type === "contract";
+  const label = recordLabel(client.client_type);
   const running = entries.find((e) => !e.ended_at);
   const closed = ticket.status !== "open";
   const money = (c: number) => formatMoney(c, settings.currency);
@@ -43,10 +45,10 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
       <div className="flex flex-wrap items-start gap-3">
         <div className="flex-1">
           <p className="font-mono text-sm text-slate-400">
-            Service Ticket #{ticket.number} · {formatDate(ticket.ticket_date)}
+            {label} #{ticket.number} · {formatDate(ticket.ticket_date)}
           </p>
           <h1 className="h1">{client.name}</h1>
-          {contract && <p className="text-sm font-semibold text-brand">Contract client · time is tracked, not charged</p>}
+          {call && <p className="text-sm font-semibold text-brand">Service call · time is tracked, not charged</p>}
           <p className="text-sm text-slate-500">
             {[client.phone, client.email, client.address].filter(Boolean).join(" · ")}
           </p>
@@ -57,7 +59,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
       {closed ? (
         <div className="card flex flex-wrap items-center gap-2 border-green-300 bg-green-50">
           <span className="flex-1 font-semibold text-green-800">
-            ✓ {STATUS_LABELS[ticket.status]}. This service ticket can no longer be edited.
+            ✓ {STATUS_LABELS[ticket.status]}. This {label.toLowerCase()} can no longer be edited.
           </span>
           {ticket.status === "completed" && (
             <form action={setStatus.bind(null, ticket.id, "paid")}>
@@ -70,7 +72,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
         </div>
       ) : (
         <form action={closeTicket.bind(null, ticket.id)}>
-          <button className="btn w-full bg-green-700 py-3 text-base">✓ Complete &amp; close service ticket</button>
+          <button className="btn w-full bg-green-700 py-3 text-base">✓ Complete &amp; close {label.toLowerCase()}</button>
         </form>
       )}
 
@@ -133,6 +135,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
                 <label className="label" htmlFor="time_out">Time out</label>
                 <input className="input" type="time" id="time_out" name="time_out" required />
               </div>
+              <RequiredNote className="col-span-3" />
               <button className="btn-light col-span-3">Add time</button>
             </form>
           </details>
@@ -189,6 +192,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
                 <label className="label" htmlFor="price">Price each ($)</label>
                 <input className="input" inputMode="decimal" id="price" name="price" required />
               </div>
+              <RequiredNote className="col-span-4" />
               <button className="btn-light col-span-4">Add part</button>
             </form>
           </details>
@@ -199,12 +203,12 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
       <section className="card">
         <h2 className="h2">Total</h2>
         <dl className="space-y-1 text-sm">
-          {contract ? (
-            <Row label={`Time spent: ${formatMinutes(totals.workedMinutes)}`} value="Contract" />
+          {call ? (
+            <Row label={`Time spent: ${formatMinutes(totals.workedMinutes)}`} value="Not charged" />
           ) : (
             <Row label={`Labor: ${formatMinutes(totals.billableMinutes)} × ${money(ticket.hourly_rate_cents)}/h`} value={money(totals.laborCents)} />
           )}
-          {!contract && totals.billableMinutes !== Math.round(totals.workedMinutes) && (
+          {!call && totals.billableMinutes !== Math.round(totals.workedMinutes) && (
             <p className="text-xs text-slate-400">
               Worked {formatMinutes(totals.workedMinutes)}, billed in whole hours with a one-hour minimum.
             </p>

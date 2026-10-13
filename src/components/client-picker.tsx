@@ -2,16 +2,17 @@
 
 import { useState } from "react";
 import { ClientTypeFields } from "@/components/client-type-fields";
+import { RequiredNote } from "@/components/required-note";
 import type { Client } from "@/lib/types";
 
-export function ClientPicker({ clients }: { clients: Client[] }) {
+export function ClientPicker({ clients, serviceCall = false }: { clients: Client[]; serviceCall?: boolean }) {
   const [clientId, setClientId] = useState("");
   return (
     <div className="space-y-3">
       <div>
         <label className="label" htmlFor="client_id">Client</label>
         <select className="input" id="client_id" name="client_id" value={clientId} onChange={(e) => setClientId(e.target.value)}>
-          <option value="">+ New client</option>
+          <option value="">{serviceCall ? "+ New contract client" : "+ New client"}</option>
           {clients.map((c) => (
             <option key={c.id} value={c.id}>{c.name}{c.phone ? ` · ${c.phone}` : ""}</option>
           ))}
@@ -19,6 +20,7 @@ export function ClientPicker({ clients }: { clients: Client[] }) {
       </div>
       {!clientId && (
         <div className="grid gap-3 sm:grid-cols-2">
+          <RequiredNote className="sm:col-span-2" />
           <div>
             <label className="label" htmlFor="client_name">Name</label>
             <input className="input" id="client_name" name="client_name" required />
@@ -35,7 +37,7 @@ export function ClientPicker({ clients }: { clients: Client[] }) {
             <label className="label" htmlFor="client_address">Address</label>
             <input className="input" id="client_address" name="client_address" />
           </div>
-          <ClientTypeFields idPrefix="new" typeName="client_type" feeName="client_monthly_fee" />
+          <ClientTypeFields idPrefix="new" typeName="client_type" feeName="client_monthly_fee" type={serviceCall ? "contract" : "hourly"} locked />
         </div>
       )}
     </div>

@@ -72,8 +72,15 @@ function ticketFields(form: FormData) {
 
 export async function createTicket(form: FormData) {
   const { supabase, user } = await requireUser();
+  const isServiceCall = text(form, "is_service_call") === "1";
 
   let clientId = text(form, "client_id");
+  if (clientId) {
+    const { data, error } = await supabase.from("clients").select("client_type").eq("id", clientId).single();
+    if (error) fail(error.message);
+    if (isServiceCall && data.client_type !== "contract") fail("Service calls are only for contract clients.");
+    if (!isServiceCall && data.client_type === "contract") fail("Contract clients get service calls, not service tickets.");
+  }
   if (!clientId) {
     const name = text(form, "client_name") || fail("Enter the client's name.");
     const { data, error } = await supabase
@@ -83,7 +90,8 @@ export async function createTicket(form: FormData) {
         phone: text(form, "client_phone"),
         email: text(form, "client_email"),
         address: text(form, "client_address"),
-        client_type: clientType(form, "client_type"),
+        // Service calls are for contract clients; service tickets for hourly clients.
+        client_type: isServiceCall ? "contract" : "hourly",
         monthly_fee_cents: monthlyFee(form, "client_type", "client_monthly_fee"),
       })
       .select("id")

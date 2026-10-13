@@ -76,6 +76,11 @@ export type Ticket = {
   signed_at: string | null;
 };
 
+/** Every job for a contract client is a service call; for an hourly client, a service ticket. */
+export function recordLabel(clientType: ClientType | null | undefined): string {
+  return clientType === "contract" ? "Service Call" : "Service Ticket";
+}
+
 export type TimeEntryRow = {
   id: string;
   technician_id: string | null;
@@ -94,7 +99,7 @@ export type PartRow = {
 /** Time is billed in whole hours, and any visit is at least one hour. */
 export const BILLING_BLOCK_MINUTES = 60;
 
-/** Billing rules for a ticket. Contract clients aren't charged for time; it is only tracked. */
+/** Billing rules for a ticket. Service calls (contract clients) aren't charged for time; it is only tracked. */
 export function rulesOf(
   t: Pick<Ticket, "hourly_rate_cents" | "tax_labor">,
   clientType: ClientType = "hourly",
@@ -105,7 +110,7 @@ export function rulesOf(
     // No tax is charged on service tickets, even on older tickets that stored a rate.
     taxRatePct: 0,
     taxLabor: t.tax_labor,
-    // Hourly clients: whole hours with a one-hour minimum. Contract clients: actual minutes.
+    // Service tickets: whole hours with a one-hour minimum. Service calls: actual minutes.
     roundingMinutes: contract ? 1 : BILLING_BLOCK_MINUTES,
     minimumMinutes: contract ? 0 : BILLING_BLOCK_MINUTES,
   };

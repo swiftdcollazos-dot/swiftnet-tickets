@@ -1,12 +1,37 @@
-export type TicketKind = "service" | "install" | "will_call" | "deliver";
 export type TicketStatus = "open" | "completed" | "paid";
 
-export const KIND_LABELS: Record<TicketKind, string> = {
+/** The Type dropdown on service tickets and calls. The label itself is what gets saved. */
+export const SERVICE_TYPES = [
+  "Tiered technical support",
+  "Account and access management",
+  "Hardware and software troubleshooting",
+  "Network setup and maintenance",
+  "Wi-Fi and connectivity support",
+  "VoIP communication systems",
+  "Threat monitoring",
+  "Data backup and disaster recovery",
+  "Compliance management",
+  "Cloud computing support",
+  "Software installation and updates",
+  "Hardware lifecycle management",
+  "IT roadmapping",
+] as const;
+
+/** Types saved before the list above existed. */
+const OLD_KIND_LABELS: Record<string, string> = {
   service: "Service",
   install: "Install",
   will_call: "Will call",
   deliver: "Deliver",
 };
+
+export function kindLabel(kind: string | null | undefined): string {
+  return (kind && OLD_KIND_LABELS[kind]) ?? kind ?? "";
+}
+
+export function isKnownKind(kind: string): boolean {
+  return (SERVICE_TYPES as readonly string[]).includes(kind) || kind in OLD_KIND_LABELS;
+}
 
 export const STATUS_LABELS: Record<TicketStatus, string> = {
   open: "Open",
@@ -55,7 +80,7 @@ export type Ticket = {
   client_id: string;
   technician_id: string | null;
   ticket_date: string;
-  kind: TicketKind;
+  kind: string;
   is_estimate: boolean;
   status: TicketStatus;
   item_to_service: string;

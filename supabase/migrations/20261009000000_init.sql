@@ -95,6 +95,10 @@ create table if not exists public.ticket_parts (
 );
 
 alter table public.tickets add column if not exists machine_name text not null default '';
+-- Service type is free text from the app's Type list (was a fixed 4-value list).
+alter table public.tickets alter column kind drop default;
+alter table public.tickets alter column kind type text using kind::text;
+alter table public.tickets alter column kind set default '';
 
 create index if not exists tickets_client_id_idx on public.tickets (client_id);
 create index if not exists time_entries_ticket_id_idx on public.time_entries (ticket_id);

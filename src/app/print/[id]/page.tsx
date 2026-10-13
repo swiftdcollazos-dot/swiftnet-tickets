@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { formatHours, formatMoney } from "@/lib/billing";
 import { loadTicket } from "@/lib/ticket-data";
 import { formatDate, formatTime } from "@/lib/time";
-import { KIND_LABELS, recordLabel } from "@/lib/types";
+import { kindLabel, recordLabel } from "@/lib/types";
 import { Loading } from "@/components/loading";
 import { PrintButton } from "@/components/print-button";
 
@@ -43,7 +43,7 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
             <p className="font-bold tracking-wide">{recordLabel(client.client_type).toUpperCase()}</p>
             <p className="font-mono text-2xl text-red-600">#{ticket.number}</p>
             <p>{formatDate(ticket.ticket_date)}</p>
-            <p className="text-slate-600">{KIND_LABELS[ticket.kind]}</p>
+            <p className="text-slate-600">{kindLabel(ticket.kind)}</p>
           </div>
         </header>
 

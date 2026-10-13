@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { requireUser } from "@/lib/supabase/server";
 import { computeTotals, formatMoney } from "@/lib/billing";
 import { formatDate } from "@/lib/time";
-import { KIND_LABELS, STATUS_LABELS, rulesOf, type TicketStatus } from "@/lib/types";
+import { STATUS_LABELS, kindLabel, rulesOf, type TicketStatus } from "@/lib/types";
 import { Loading } from "@/components/loading";
 
 export default function TicketsPage(props: PageProps<"/">) {
@@ -93,7 +93,7 @@ async function TicketList({ searchParams }: { searchParams: PageProps<"/">["sear
                       {running && <span className="rounded bg-red-100 px-1.5 text-xs font-semibold text-red-700">● timer</span>}
                     </div>
                     <div className="truncate text-sm text-slate-500">
-                      {formatDate(t.ticket_date)} · {KIND_LABELS[t.kind as keyof typeof KIND_LABELS]}
+                      {[formatDate(t.ticket_date), kindLabel(t.kind)].filter(Boolean).join(" · ")}
                       {t.item_to_service ? ` · ${t.item_to_service}` : ""}
                     </div>
                   </div>

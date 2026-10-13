@@ -1,21 +1,26 @@
 import { DictationTextarea } from "@/components/dictation-textarea";
-import { KIND_LABELS, type Ticket } from "@/lib/types";
+import { SERVICE_TYPES, kindLabel, type Ticket } from "@/lib/types";
 
 /** The ticket's own fields, laid out like the paper repair order. */
 export function TicketFields({ ticket, today }: { ticket?: Partial<Ticket>; today: string }) {
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
         <div>
           <label className="label" htmlFor="ticket_date">Date</label>
           <input className="input" type="date" id="ticket_date" name="ticket_date" defaultValue={ticket?.ticket_date ?? today} />
         </div>
         <div>
           <label className="label" htmlFor="kind">Type</label>
-          <select className="input" id="kind" name="kind" defaultValue={ticket?.kind ?? "service"}>
-            {Object.entries(KIND_LABELS).map(([v, l]) => (
-              <option key={v} value={v}>{l}</option>
+          <select className="input" id="kind" name="kind" defaultValue={ticket?.kind ?? ""}>
+            <option value="">Select a type</option>
+            {SERVICE_TYPES.map((type) => (
+              <option key={type} value={type}>{type}</option>
             ))}
+            {/* Keep an older ticket's type selectable so saving doesn't wipe it. */}
+            {ticket?.kind && !(SERVICE_TYPES as readonly string[]).includes(ticket.kind) && (
+              <option value={ticket.kind}>{kindLabel(ticket.kind)}</option>
+            )}
           </select>
         </div>
       </div>

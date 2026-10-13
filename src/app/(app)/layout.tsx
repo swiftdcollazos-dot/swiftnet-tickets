@@ -3,11 +3,12 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { RunningTimers } from "@/components/running-timers";
 import { PendingBadge } from "@/components/pending-badge";
+import { HeaderMenu } from "@/components/header-menu";
 import { signOut } from "@/app/actions";
 
 function GearIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-6 w-6" aria-hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5" aria-hidden>
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -22,19 +23,26 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <>
       <header className="sticky top-0 z-10 bg-brand text-white shadow print:hidden">
-        {/* On phones the logo and Sign out share the top row so the links always fit. */}
+        {/* On phones the logo and the menu share the top row so the links always fit. */}
         <nav className="mx-auto flex max-w-3xl flex-wrap items-center gap-x-4 gap-y-2 whitespace-nowrap px-4 py-2 text-[13px] font-semibold sm:flex-nowrap sm:py-3 sm:text-sm">
           <Link href="/dashboard" className="shrink-0 sm:mr-auto">
             <Image src="/logo.png" alt="Swiftnet I.T." width={1163} height={198} priority className="h-6 w-auto" />
           </Link>
-          {/* Sign out with the Settings gear under it, top right. */}
-          <div className="ml-auto flex flex-col items-end gap-1 sm:order-3 sm:ml-0">
-            <form action={signOut}>
-              <button className="opacity-80 hover:opacity-100">Sign out</button>
-            </form>
-            <Link href="/settings" aria-label="Settings" title="Settings" className="opacity-90 hover:opacity-100">
-              <GearIcon />
-            </Link>
+          {/* ☰ menu with Settings and Sign out, top right. */}
+          <div className="ml-auto sm:order-3 sm:ml-0">
+            <HeaderMenu>
+              <Link href="/settings" className="flex items-center gap-2 px-3 py-2.5 hover:bg-slate-100">
+                <GearIcon /> Settings
+              </Link>
+              <form action={signOut} className="border-t border-slate-100">
+                <button className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-slate-100">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>
+                    <path d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
+                  </svg>{" "}
+                  Sign out
+                </button>
+              </form>
+            </HeaderMenu>
           </div>
           <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 sm:order-2 sm:flex-nowrap sm:w-auto sm:justify-end sm:gap-4">
             <Link href="/dashboard">Dashboard</Link>

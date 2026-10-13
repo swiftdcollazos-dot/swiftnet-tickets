@@ -31,7 +31,10 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
       <article className="mx-auto max-w-[800px] bg-white p-8 text-sm text-slate-900 shadow print:max-w-none print:shadow-none">
         <header className="mb-6 flex items-start justify-between border-b-2 border-brand pb-4">
           <div>
-            <h1 className="text-2xl font-bold text-brand">{settings.company_name}</h1>
+            <h1 className="mb-2">
+              {/* eslint-disable-next-line @next/next/no-img-element -- plain img prints reliably */}
+              <img src="/logo.png" alt={settings.company_name || "Swiftnet I.T."} className="h-12 w-auto" />
+            </h1>
             <p className="whitespace-pre-line text-slate-600">
               {[settings.company_address, settings.company_phone, settings.company_email].filter(Boolean).join("\n")}
             </p>

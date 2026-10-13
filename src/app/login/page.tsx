@@ -1,10 +1,13 @@
+import Image from "next/image";
 import { LoginForm } from "./login-form";
 
 export default function LoginPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center p-4">
-      <h1 className="h1 mb-1 text-brand">Swiftnet</h1>
-      <p className="mb-6 text-slate-500">Service tickets</p>
+      <h1 className="mb-2">
+        <Image src="/logo.png" alt="Swiftnet I.T." width={1163} height={198} priority className="h-auto w-64" />
+      </h1>
+      <p className="mb-6 text-slate-500">Work tickets</p>
       <LoginForm />
     </main>
   );

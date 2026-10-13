@@ -48,9 +48,9 @@ async function Dashboard() {
   // Jobs with a running timer first, then newest.
   const runningOf = (j: Job) => j.time_entries.find((e) => !e.ended_at);
   const sorted = [...jobs].sort((a, b) => Number(Boolean(runningOf(b))) - Number(Boolean(runningOf(a))));
-  const calls = sorted.filter((j) => j.clients.client_type === "contract");
-  const projects = sorted.filter((j) => j.clients.client_type !== "contract" && j.is_project);
-  const tickets = sorted.filter((j) => j.clients.client_type !== "contract" && !j.is_project);
+  const projects = sorted.filter((j) => j.is_project);
+  const calls = sorted.filter((j) => !j.is_project && j.clients.client_type === "contract");
+  const tickets = sorted.filter((j) => !j.is_project && j.clients.client_type !== "contract");
   const runningCount = jobs.filter(runningOf).length;
 
   return (

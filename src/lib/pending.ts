@@ -4,16 +4,18 @@ type Supabase = Awaited<ReturnType<typeof createClient>>;
 
 /** How many service tickets, service calls (contract clients) and special projects are still open. */
 export async function pendingCounts(supabase: Supabase) {
-  const count = async (clientType: "hourly" | "contract", isProject: boolean) => {
-    const { count, error } = await supabase
+  // Special projects count whatever the client type.
+  const count = async (clientType: "hourly" | "contract" | null, isProject: boolean) => {
+    let query = supabase
       .from("tickets")
       .select("id, clients!inner(client_type)", { count: "exact", head: true })
       .eq("status", "open")
-      .eq("clients.client_type", clientType)
       .eq("is_project", isProject);
+    if (clientType) query = query.eq("clients.client_type", clientType);
+    const { count, error } = await query;
     if (error) throw new Error(error.message);
     return count ?? 0;
   };
-  const [tickets, calls, projects] = await Promise.all([count("hourly", false), count("contract", false), count("hourly", true)]);
+  const [tickets, calls, projects] = await Promise.all([count("hourly", false), count("contract", false), count(null, true)]);
   return { tickets, calls, projects };
 }

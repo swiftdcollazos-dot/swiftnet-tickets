@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/supabase/server";
 import { computeTotals } from "@/lib/billing";
-import { rulesOf, type Client, type PartRow, type Settings, type Ticket, type TimeEntryRow } from "@/lib/types";
+import { billingType, rulesOf, type Client, type PartRow, type Settings, type Ticket, type TimeEntryRow } from "@/lib/types";
 
 /** Loads everything needed to show or print one ticket. */
 export async function loadTicket(id: string) {
@@ -26,7 +26,7 @@ export async function loadTicket(id: string) {
   const totals = computeTotals(
     entries.map((e) => ({ startedAt: e.started_at, endedAt: e.ended_at })),
     parts.map((p) => ({ qty: p.qty, unitPriceCents: p.unit_price_cents })),
-    rulesOf(t, (clients as Client).client_type ?? "hourly"),
+    rulesOf(t, billingType((clients as Client).client_type, t.is_project)),
     t.deposit_cents,
   );
 

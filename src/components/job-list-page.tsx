@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/supabase/server";
 import { computeTotals, formatMoney } from "@/lib/billing";
 import { formatDate } from "@/lib/time";
-import { STATUS_LABELS, kindLabel, rulesOf, type TicketStatus } from "@/lib/types";
+import { STATUS_LABELS, billingType, kindLabel, rulesOf, type TicketStatus } from "@/lib/types";
 import { Loading } from "@/components/loading";
 import { CountBadge } from "@/components/pending-badge";
 import { PaidStamp } from "@/components/paid-stamp";
@@ -35,10 +35,11 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
   let query = supabase
     .from("tickets")
     .select("*, clients!inner(name, client_type), time_entries(started_at, ended_at), ticket_parts(qty, unit_price_cents)")
-    .eq("clients.client_type", calls ? "contract" : "hourly")
     .eq("is_project", tab.view === "projects")
     .order("number", { ascending: false })
     .limit(100);
+  // Special projects can be for any client.
+  if (tab.view !== "projects") query = query.eq("clients.client_type", calls ? "contract" : "hourly");
   if (status && status in STATUS_LABELS) query = query.eq("status", status);
   if (q && /^\d+$/.test(q)) query = query.eq("number", Number(q));
   const [{ data: tickets, error }, pending] = await Promise.all([query, pendingCounts(supabase)]);
@@ -90,7 +91,7 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
             const totals = computeTotals(
               t.time_entries.map((e: { started_at: string; ended_at: string | null }) => ({ startedAt: e.started_at, endedAt: e.ended_at })),
               t.ticket_parts.map((p: { qty: number; unit_price_cents: number }) => ({ qty: Number(p.qty), unitPriceCents: p.unit_price_cents })),
-              rulesOf(t, t.clients?.client_type ?? "hourly"),
+              rulesOf(t, billingType(t.clients?.client_type, t.is_project)),
               t.deposit_cents,
             );
             const running = t.time_entries.some((e: { ended_at: string | null }) => !e.ended_at);

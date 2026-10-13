@@ -82,7 +82,7 @@ export async function createTicket(form: FormData) {
   const { data: client, error: clientError } = await supabase.from("clients").select("client_type").eq("id", clientId).single();
   if (clientError) fail(clientError.message);
   if (isServiceCall && client.client_type !== "contract") fail("Service calls are only for contract clients.");
-  if (!isServiceCall && client.client_type === "contract") fail("Contract clients get service calls, not service tickets.");
+  if (!isServiceCall && !isProject && client.client_type === "contract") fail("Contract clients get service calls, not service tickets.");
 
   // Copy today's billing rules onto the ticket.
   const { data: s, error: settingsError } = await supabase.from("settings").select("*").single();
@@ -128,7 +128,7 @@ export async function changeTicketClient(ticketId: string, move: boolean, form: 
   await assertOpen(supabase, ticketId);
   const clientId = text(form, "client_id") || fail("Select a client.");
   const [{ data: ticket, error: ticketError }, { data: client, error: clientError }] = await Promise.all([
-    supabase.from("tickets").select("clients(client_type)").eq("id", ticketId).single(),
+    supabase.from("tickets").select("is_project, clients(client_type)").eq("id", ticketId).single(),
     supabase.from("clients").select("client_type").eq("id", clientId).single(),
   ]);
   if (ticketError) fail(ticketError.message);
@@ -137,12 +137,11 @@ export async function changeTicketClient(ticketId: string, move: boolean, form: 
   if (move && client.client_type === currentType) {
     fail(currentType === "contract" ? "Pick an hourly client to make this a service ticket." : "Pick a contract client to make this a service call.");
   }
-  if (!move && currentType && client.client_type !== currentType) {
+  // Special projects can be for any client.
+  if (!move && !ticket.is_project && currentType && client.client_type !== currentType) {
     fail(currentType === "contract" ? "Service calls are only for contract clients." : "Service tickets are only for hourly clients.");
   }
-  // A special project moved to a contract client becomes a service call.
-  const update = client.client_type === "contract" ? { client_id: clientId, is_project: false } : { client_id: clientId };
-  const { error } = await supabase.from("tickets").update(update).eq("id", ticketId);
+  const { error } = await supabase.from("tickets").update({ client_id: clientId }).eq("id", ticketId);
   if (error) fail(error.message);
   revalidatePath(`/tickets/${ticketId}`);
   revalidatePath("/", "layout");

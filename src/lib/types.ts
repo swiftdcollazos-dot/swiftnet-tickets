@@ -100,6 +100,11 @@ export type Ticket = {
 };
 
 /** Every job for a contract client is a service call; for an hourly client, a service ticket. */
+/** How a job is billed: special projects are always by the hour, whatever the client type. */
+export function billingType(clientType: ClientType | null | undefined, isProject: boolean): ClientType {
+  return isProject ? "hourly" : (clientType ?? "hourly");
+}
+
 export function recordLabel(clientType: ClientType | null | undefined, isProject = false): string {
   if (isProject) return "Special Project";
   return clientType === "contract" ? "Service Call" : "Service Ticket";

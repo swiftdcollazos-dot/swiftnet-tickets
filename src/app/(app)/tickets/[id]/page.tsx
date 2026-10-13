@@ -38,13 +38,14 @@ export default function TicketPage(props: PageProps<"/tickets/[id]">) {
 async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["params"] }) {
   const { id } = await params;
   const { ticket, client, entries, parts, totals, settings, techName } = await loadTicket(id);
-  const call = client.client_type === "contract";
+  const call = client.client_type === "contract" && !ticket.is_project;
   const label = recordLabel(client.client_type, ticket.is_project);
   const listPath = call ? "/?view=calls" : ticket.is_project ? "/projects" : "/";
   const { supabase } = await requireUser();
   const { data: clientRows } = await supabase.from("clients").select("*").order("name");
   const allClients = (clientRows ?? []) as Client[];
-  const sameTypeClients = allClients.filter((c) => c.client_type === client.client_type);
+  // Special projects can move to any client; tickets and calls stay with their client type.
+  const sameTypeClients = ticket.is_project ? allClients : allClients.filter((c) => c.client_type === client.client_type);
   const otherTypeClients = allClients.filter((c) => c.client_type !== client.client_type);
   const running = entries.find((e) => !e.ended_at);
   const closed = ticket.status !== "open";
@@ -71,7 +72,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
                   <button className="btn-light w-full">Save client</button>
                 </form>
               </details>
-              <details>
+              {!ticket.is_project && <details>
                 <summary className="cursor-pointer text-sm font-semibold text-brand">
                   {call ? "Move to service ticket" : "Move to service call"}
                 </summary>
@@ -84,7 +85,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
                   <ClientPicker clients={otherTypeClients} serviceCall={!call} />
                   <button className="btn-light w-full">{call ? "Move to service ticket" : "Move to service call"}</button>
                 </form>
-              </details>
+              </details>}
             </div>
           )}
           {call && <p className="text-sm font-semibold text-brand">Service call · time is tracked, not charged</p>}

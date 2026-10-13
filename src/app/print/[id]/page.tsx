@@ -19,6 +19,7 @@ export default function PrintPage(props: PageProps<"/print/[id]">) {
 async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["params"] }) {
   const { id } = await params;
   const { ticket, client, parts, totals, settings, techName } = await loadTicket(id);
+  const call = client.client_type === "contract" && !ticket.is_project; // special projects are billed like tickets
   const money = (c: number) => formatMoney(c, settings.currency);
 
   return (
@@ -95,10 +96,10 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
         )}
 
         <section className="mb-8 flex items-center justify-end">
-          {ticket.status === "paid" && client.client_type !== "contract" && <PaidStamp className="mr-auto ml-8 w-36" />}
+          {ticket.status === "paid" && !call && <PaidStamp className="mr-auto ml-8 w-36" />}
           <table className="w-72">
             <tbody>
-              {client.client_type === "contract" ? (
+              {call ? (
                 <Total label={`Time spent (${formatHours(Math.ceil(Math.round(totals.workedMinutes) / 60) * 60)})`} value="Not charged" />
               ) : (
                 <Total label={`Total labor (${formatHours(totals.billableMinutes)})`} value={money(totals.laborCents)} />

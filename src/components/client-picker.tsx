@@ -5,8 +5,16 @@ import Link from "next/link";
 import type { Client } from "@/lib/types";
 
 /** Dropdown of client names. New clients are added on the Clients page. */
-export function ClientPicker({ clients, serviceCall = false }: { clients: Client[]; serviceCall?: boolean }) {
-  const [selected, setSelected] = useState<Client | null>(null);
+export function ClientPicker({
+  clients,
+  serviceCall = false,
+  initial = null,
+}: {
+  clients: Client[];
+  serviceCall?: boolean;
+  initial?: Client | null;
+}) {
+  const [selected, setSelected] = useState<Client | null>(initial);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const guardRef = useRef<HTMLInputElement>(null);

@@ -113,6 +113,27 @@ export async function updateTicket(ticketId: string, form: FormData) {
   revalidatePath(`/tickets/${ticketId}`);
 }
 
+/** Moves an open ticket to another client of the same type (hourly ↔ hourly, contract ↔ contract). */
+export async function changeTicketClient(ticketId: string, form: FormData) {
+  const { supabase } = await requireUser();
+  await assertOpen(supabase, ticketId);
+  const clientId = text(form, "client_id") || fail("Select a client.");
+  const [{ data: ticket, error: ticketError }, { data: client, error: clientError }] = await Promise.all([
+    supabase.from("tickets").select("clients(client_type)").eq("id", ticketId).single(),
+    supabase.from("clients").select("client_type").eq("id", clientId).single(),
+  ]);
+  if (ticketError) fail(ticketError.message);
+  if (clientError) fail(clientError.message);
+  const currentType = (ticket.clients as unknown as { client_type: string } | null)?.client_type;
+  if (currentType && client.client_type !== currentType) {
+    fail(currentType === "contract" ? "Service calls are only for contract clients." : "Service tickets are only for hourly clients.");
+  }
+  const { error } = await supabase.from("tickets").update({ client_id: clientId }).eq("id", ticketId);
+  if (error) fail(error.message);
+  revalidatePath(`/tickets/${ticketId}`);
+  revalidatePath("/", "layout");
+}
+
 export async function setStatus(ticketId: string, status: TicketStatus) {
   if (!STATUSES.includes(status)) fail("Unknown status.");
   const { supabase } = await requireUser();

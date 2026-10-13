@@ -5,6 +5,7 @@ import {
   addPart,
   closeTicket,
   addTimeEntry,
+  changeTicketClient,
   clearSignature,
   deletePart,
   deleteTimeEntry,
@@ -16,7 +17,9 @@ import {
 import { entryMinutes, formatMinutes, formatMoney } from "@/lib/billing";
 import { loadTicket } from "@/lib/ticket-data";
 import { formatDate, formatTime, todayLocal } from "@/lib/time";
-import { STATUS_LABELS, recordLabel } from "@/lib/types";
+import { STATUS_LABELS, recordLabel, type Client } from "@/lib/types";
+import { requireUser } from "@/lib/supabase/server";
+import { ClientPicker } from "@/components/client-picker";
 import { LiveTimer } from "@/components/live-timer";
 import { Loading } from "@/components/loading";
 import { SignaturePad } from "@/components/signature-pad";
@@ -36,6 +39,9 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
   const call = client.client_type === "contract";
   const label = recordLabel(client.client_type);
   const listPath = call ? "/?view=calls" : "/";
+  const { supabase } = await requireUser();
+  const { data: clientRows } = await supabase.from("clients").select("*").eq("client_type", client.client_type).order("name");
+  const sameTypeClients = (clientRows ?? []) as Client[];
   const running = entries.find((e) => !e.ended_at);
   const closed = ticket.status !== "open";
   const money = (c: number) => formatMoney(c, settings.currency);
@@ -49,6 +55,15 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
             {label} #{ticket.number} · {formatDate(ticket.ticket_date)}
           </p>
           <h1 className="h1">{client.name}</h1>
+          {!closed && (
+            <details className="mb-1">
+              <summary className="cursor-pointer text-sm font-semibold text-brand">Change client</summary>
+              <form action={changeTicketClient.bind(null, ticket.id)} className="mt-2 space-y-2">
+                <ClientPicker clients={sameTypeClients} serviceCall={call} initial={client} />
+                <button className="btn-light w-full">Save client</button>
+              </form>
+            </details>
+          )}
           {call && <p className="text-sm font-semibold text-brand">Service call · time is tracked, not charged</p>}
           <p className="text-sm text-slate-500">
             {[client.phone, client.email, client.address].filter(Boolean).join(" · ")}

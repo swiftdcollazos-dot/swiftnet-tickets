@@ -79,13 +79,17 @@ export type PartRow = {
   unit_price_cents: number;
 };
 
+/** Time is billed in whole hours, and any visit is at least one hour. */
+export const BILLING_BLOCK_MINUTES = 60;
+
 export function rulesOf(t: Pick<Ticket, "hourly_rate_cents" | "tax_rate_pct" | "tax_labor" | "rounding_minutes" | "minimum_minutes">) {
   return {
     hourlyRateCents: t.hourly_rate_cents,
     // No tax is charged on service tickets, even on older tickets that stored a rate.
     taxRatePct: 0,
     taxLabor: t.tax_labor,
-    roundingMinutes: t.rounding_minutes,
-    minimumMinutes: t.minimum_minutes,
+    // Swiftnet always bills whole hours with a one-hour minimum, on every ticket.
+    roundingMinutes: BILLING_BLOCK_MINUTES,
+    minimumMinutes: BILLING_BLOCK_MINUTES,
   };
 }

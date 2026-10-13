@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { parseMoney } from "@/lib/billing";
 import { localToIso } from "@/lib/time";
-import type { TicketKind, TicketStatus } from "@/lib/types";
+import { BILLING_BLOCK_MINUTES, type TicketKind, type TicketStatus } from "@/lib/types";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 const KINDS: TicketKind[] = ["service", "install", "will_call", "deliver"];
@@ -94,8 +94,8 @@ export async function createTicket(form: FormData) {
       // Swiftnet does not charge tax on service tickets.
       tax_rate_pct: 0,
       tax_labor: false,
-      rounding_minutes: s.rounding_minutes,
-      minimum_minutes: s.minimum_minutes,
+      rounding_minutes: BILLING_BLOCK_MINUTES,
+      minimum_minutes: BILLING_BLOCK_MINUTES,
     })
     .select("id")
     .single();
@@ -263,10 +263,6 @@ export async function updateClient(clientId: string, form: FormData) {
 
 export async function updateSettings(form: FormData) {
   const { supabase } = await requireUser();
-  const num = (key: string, fallback: number) => {
-    const n = Number(text(form, key));
-    return Number.isFinite(n) && n >= 0 ? n : fallback;
-  };
   const { error } = await supabase
     .from("settings")
     .update({
@@ -275,8 +271,6 @@ export async function updateSettings(form: FormData) {
       company_email: text(form, "company_email"),
       company_address: text(form, "company_address"),
       hourly_rate_cents: parseMoney(text(form, "hourly_rate")),
-      rounding_minutes: Math.round(num("rounding_minutes", 15)),
-      minimum_minutes: Math.round(num("minimum_minutes", 0)),
       terms: text(form, "terms"),
       disclaimer: text(form, "disclaimer"),
     })

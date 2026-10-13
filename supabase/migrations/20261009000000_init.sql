@@ -14,7 +14,7 @@ create table if not exists public.settings (
   tax_rate_pct     numeric(5,2) not null default 0, -- e.g. 5.00 for 5%
   tax_labor        boolean not null default true,   -- false = tax materials only
   rounding_minutes int not null default 60,         -- billable time rounds up to this (60 = whole hours)
-  minimum_minutes  int not null default 0,          -- minimum billable time per ticket
+  minimum_minutes  int not null default 60,         -- minimum billable time per ticket
   terms            text not null default 'TERMS - NET CASH. NO GOODS HELD OVER 30 DAYS.',
   disclaimer       text not null default 'We will not be responsible for loss or damage caused by fire, theft, testing, or any other causes beyond our control.'
 );

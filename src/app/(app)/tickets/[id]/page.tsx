@@ -200,8 +200,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
           <Row label={`Labor: ${formatMinutes(totals.billableMinutes)} × ${money(ticket.hourly_rate_cents)}/h`} value={money(totals.laborCents)} />
           {totals.billableMinutes !== Math.round(totals.workedMinutes) && (
             <p className="text-xs text-slate-400">
-              Worked {formatMinutes(totals.workedMinutes)}, billed in {ticket.rounding_minutes}-minute blocks
-              {ticket.minimum_minutes > 0 ? ` with a ${formatMinutes(ticket.minimum_minutes)} minimum` : ""}.
+              Worked {formatMinutes(totals.workedMinutes)}, billed in whole hours with a one-hour minimum.
             </p>
           )}
           <Row label="Materials" value={money(totals.materialsCents)} />

@@ -11,8 +11,8 @@ on the screen, and print or save the ticket as a PDF. Labor is billed by the hou
   deliver, client, item to be serviced, make, model,
   and labor performed.
 - **Time in / time out**: a start/stop timer, or type the times in afterwards. Several
-  visits per ticket are added together. Billable time rounds up to whole hours
-  (adjustable in Settings), with an optional minimum charge. The customer's ticket shows only
+  visits per ticket are added together. Billable time rounds up to whole hours,
+  with a one-hour minimum, so a 10 minute visit is billed as 1 hour. The customer's ticket shows only
   the total time, not each visit or the hourly rate.
 - **Parts and materials** with quantity, part number and price.
 - **Totals**: labor and materials, worked out automatically (no tax is charged).
@@ -58,7 +58,7 @@ Vercel (puts the app online).
 
 ### 3. Settings
 
-In the app, open **Settings** to confirm the hourly rate and time rounding, and fill in the
+In the app, open **Settings** to confirm the hourly rate, and fill in the
 company name, phone and address printed on tickets.
 
 ## For developers

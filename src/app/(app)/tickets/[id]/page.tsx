@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import {
   addPart,
+  closeTicket,
   addTimeEntry,
   clearSignature,
   deletePart,
@@ -14,7 +15,7 @@ import {
 import { entryMinutes, formatMinutes, formatMoney } from "@/lib/billing";
 import { loadTicket } from "@/lib/ticket-data";
 import { formatDate, formatTime, todayLocal } from "@/lib/time";
-import { STATUS_LABELS, type TicketStatus } from "@/lib/types";
+import { STATUS_LABELS } from "@/lib/types";
 import { LiveTimer } from "@/components/live-timer";
 import { Loading } from "@/components/loading";
 import { SignaturePad } from "@/components/signature-pad";
@@ -32,6 +33,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
   const { id } = await params;
   const { ticket, client, entries, parts, totals, settings, techName } = await loadTicket(id);
   const running = entries.find((e) => !e.ended_at);
+  const closed = ticket.status !== "open";
   const money = (c: number) => formatMoney(c, settings.currency);
 
   return (
@@ -50,24 +52,30 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
         <Link href={`/print/${ticket.id}`} className="btn-light">Print / PDF</Link>
       </div>
 
-      <div className="flex gap-2">
-        {(Object.keys(STATUS_LABELS) as TicketStatus[]).map((s) => (
-          <form key={s} action={setStatus.bind(null, ticket.id, s)} className="flex-1">
-            <button
-              className={`w-full rounded-lg border px-3 py-2 text-sm font-semibold ${
-                ticket.status === s ? "border-brand bg-brand text-white" : "border-slate-300 bg-white text-slate-600"
-              }`}
-            >
-              {STATUS_LABELS[s]}
-            </button>
+      {closed ? (
+        <div className="card flex flex-wrap items-center gap-2 border-green-300 bg-green-50">
+          <span className="flex-1 font-semibold text-green-800">
+            ✓ {STATUS_LABELS[ticket.status]}. This ticket can no longer be edited.
+          </span>
+          {ticket.status === "completed" && (
+            <form action={setStatus.bind(null, ticket.id, "paid")}>
+              <button className="btn">Mark as paid</button>
+            </form>
+          )}
+          <form action={setStatus.bind(null, ticket.id, "open")}>
+            <button className="btn-light">Reopen</button>
           </form>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <form action={closeTicket.bind(null, ticket.id)}>
+          <button className="btn w-full bg-green-700 py-3 text-base">✓ Complete &amp; close ticket</button>
+        </form>
+      )}
 
       {/* Time */}
       <section className="card">
         <h2 className="h2">Time</h2>
-        {running ? (
+        {closed ? null : running ? (
           <form action={stopTimer.bind(null, ticket.id, running.id)} className="mb-4 flex items-center gap-3 rounded-lg bg-red-50 p-3">
             <span className="text-red-700">● Working</span>
             <span className="flex-1 text-xl text-red-700"><LiveTimer startedAt={running.started_at} /></span>
@@ -95,9 +103,11 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
                   <td>{e.ended_at ? formatTime(e.ended_at) : "…"}</td>
                   <td>{formatMinutes(entryMinutes({ startedAt: e.started_at, endedAt: e.ended_at }))}</td>
                   <td className="text-right">
-                    <form action={deleteTimeEntry.bind(null, ticket.id, e.id)}>
-                      <button className="btn-danger">Remove</button>
-                    </form>
+                    {!closed && (
+                      <form action={deleteTimeEntry.bind(null, ticket.id, e.id)}>
+                        <button className="btn-danger">Remove</button>
+                      </form>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -105,24 +115,26 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
           </table>
         )}
 
-        <details>
-          <summary className="cursor-pointer text-sm font-semibold text-brand">Add time manually</summary>
-          <form action={addTimeEntry.bind(null, ticket.id)} className="mt-3 grid grid-cols-3 gap-2">
-            <div>
-              <label className="label" htmlFor="date">Date</label>
-              <input className="input" type="date" id="date" name="date" defaultValue={todayLocal()} required />
-            </div>
-            <div>
-              <label className="label" htmlFor="time_in">Time in</label>
-              <input className="input" type="time" id="time_in" name="time_in" required />
-            </div>
-            <div>
-              <label className="label" htmlFor="time_out">Time out</label>
-              <input className="input" type="time" id="time_out" name="time_out" required />
-            </div>
-            <button className="btn-light col-span-3">Add time</button>
-          </form>
-        </details>
+        {!closed && (
+          <details>
+            <summary className="cursor-pointer text-sm font-semibold text-brand">Add time manually</summary>
+            <form action={addTimeEntry.bind(null, ticket.id)} className="mt-3 grid grid-cols-3 gap-2">
+              <div>
+                <label className="label" htmlFor="date">Date</label>
+                <input className="input" type="date" id="date" name="date" defaultValue={todayLocal()} required />
+              </div>
+              <div>
+                <label className="label" htmlFor="time_in">Time in</label>
+                <input className="input" type="time" id="time_in" name="time_in" required />
+              </div>
+              <div>
+                <label className="label" htmlFor="time_out">Time out</label>
+                <input className="input" type="time" id="time_out" name="time_out" required />
+              </div>
+              <button className="btn-light col-span-3">Add time</button>
+            </form>
+          </details>
+        )}
       </section>
 
       {/* Parts */}
@@ -144,37 +156,41 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
                   <td className="text-right">{money(p.unit_price_cents)}</td>
                   <td className="text-right">{money(Math.round(p.qty * p.unit_price_cents))}</td>
                   <td className="pl-2 text-right">
-                    <form action={deletePart.bind(null, ticket.id, p.id)}>
-                      <button className="btn-danger">✕</button>
-                    </form>
+                    {!closed && (
+                      <form action={deletePart.bind(null, ticket.id, p.id)}>
+                        <button className="btn-danger">✕</button>
+                      </form>
+                    )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
-        <details open={parts.length === 0}>
-          <summary className="cursor-pointer text-sm font-semibold text-brand">Add a part</summary>
-          <form action={addPart.bind(null, ticket.id)} className="mt-3 grid grid-cols-4 gap-2">
-            <div>
-              <label className="label" htmlFor="qty">Qty</label>
-              <input className="input" inputMode="decimal" id="qty" name="qty" defaultValue="1" />
-            </div>
-            <div className="col-span-3">
-              <label className="label" htmlFor="description">Description</label>
-              <input className="input" id="description" name="description" required />
-            </div>
-            <div className="col-span-2">
-              <label className="label" htmlFor="part_number">Part #</label>
-              <input className="input" id="part_number" name="part_number" />
-            </div>
-            <div className="col-span-2">
-              <label className="label" htmlFor="price">Price each ($)</label>
-              <input className="input" inputMode="decimal" id="price" name="price" required />
-            </div>
-            <button className="btn-light col-span-4">Add part</button>
-          </form>
-        </details>
+        {!closed && (
+          <details open={parts.length === 0}>
+            <summary className="cursor-pointer text-sm font-semibold text-brand">Add a part</summary>
+            <form action={addPart.bind(null, ticket.id)} className="mt-3 grid grid-cols-4 gap-2">
+              <div>
+                <label className="label" htmlFor="qty">Qty</label>
+                <input className="input" inputMode="decimal" id="qty" name="qty" defaultValue="1" />
+              </div>
+              <div className="col-span-3">
+                <label className="label" htmlFor="description">Description</label>
+                <input className="input" id="description" name="description" required />
+              </div>
+              <div className="col-span-2">
+                <label className="label" htmlFor="part_number">Part #</label>
+                <input className="input" id="part_number" name="part_number" />
+              </div>
+              <div className="col-span-2">
+                <label className="label" htmlFor="price">Price each ($)</label>
+                <input className="input" inputMode="decimal" id="price" name="price" required />
+              </div>
+              <button className="btn-light col-span-4">Add part</button>
+            </form>
+          </details>
+        )}
       </section>
 
       {/* Totals */}
@@ -200,9 +216,11 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
       {/* Details */}
       <section className="card">
         <h2 className="h2">Job details</h2>
-        <form action={updateTicket.bind(null, ticket.id)} className="space-y-4">
-          <TicketFields ticket={ticket} today={todayLocal()} />
-          <button className="btn w-full">Save details</button>
+        <form action={updateTicket.bind(null, ticket.id)}>
+          <fieldset disabled={closed} className="space-y-4 disabled:opacity-70">
+            <TicketFields ticket={ticket} today={todayLocal()} />
+            {!closed && <button className="btn w-full">Save details</button>}
+          </fieldset>
         </form>
       </section>
 

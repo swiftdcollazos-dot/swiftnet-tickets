@@ -39,6 +39,15 @@ export async function signOut() {
 
 // ---------- Tickets ----------
 
+type Supabase = Awaited<ReturnType<typeof requireUser>>["supabase"];
+
+/** Closed and paid tickets are locked; only reopening changes them. */
+async function assertOpen(supabase: Supabase, ticketId: string) {
+  const { data, error } = await supabase.from("tickets").select("status").eq("id", ticketId).single();
+  if (error) fail(error.message);
+  if (data.status !== "open") fail("This ticket is closed. Reopen it to make changes.");
+}
+
 function ticketFields(form: FormData) {
   const kind = text(form, "kind") as TicketKind;
   return {
@@ -97,6 +106,7 @@ export async function createTicket(form: FormData) {
 
 export async function updateTicket(ticketId: string, form: FormData) {
   const { supabase } = await requireUser();
+  await assertOpen(supabase, ticketId);
   const { error } = await supabase.from("tickets").update(ticketFields(form)).eq("id", ticketId);
   if (error) fail(error.message);
   revalidatePath(`/tickets/${ticketId}`);
@@ -111,10 +121,26 @@ export async function setStatus(ticketId: string, status: TicketStatus) {
   revalidatePath("/");
 }
 
+/** Stops any running timer and marks the ticket closed, so it can no longer be edited. */
+export async function closeTicket(ticketId: string) {
+  const { supabase } = await requireUser();
+  const { error: timerError } = await supabase
+    .from("time_entries")
+    .update({ ended_at: new Date().toISOString() })
+    .eq("ticket_id", ticketId)
+    .is("ended_at", null);
+  if (timerError) fail(timerError.message);
+  const { error } = await supabase.from("tickets").update({ status: "completed" }).eq("id", ticketId);
+  if (error) fail(error.message);
+  revalidatePath(`/tickets/${ticketId}`);
+  revalidatePath("/");
+}
+
 // ---------- Time ----------
 
 export async function startTimer(ticketId: string) {
   const { supabase, user } = await requireUser();
+  await assertOpen(supabase, ticketId);
   const { error } = await supabase.from("time_entries").insert({
     ticket_id: ticketId,
     technician_id: user.id,
@@ -138,6 +164,7 @@ export async function stopTimer(ticketId: string, entryId: string) {
 /** For time that wasn't tracked with the timer: date, time in, time out. */
 export async function addTimeEntry(ticketId: string, form: FormData) {
   const { supabase, user } = await requireUser();
+  await assertOpen(supabase, ticketId);
   const date = text(form, "date") || fail("Enter the date.");
   const startedAt = localToIso(date, text(form, "time_in") || fail("Enter the time in."));
   const endedAt = localToIso(date, text(form, "time_out") || fail("Enter the time out."));
@@ -154,6 +181,7 @@ export async function addTimeEntry(ticketId: string, form: FormData) {
 
 export async function deleteTimeEntry(ticketId: string, entryId: string) {
   const { supabase } = await requireUser();
+  await assertOpen(supabase, ticketId);
   const { error } = await supabase.from("time_entries").delete().eq("id", entryId);
   if (error) fail(error.message);
   revalidatePath(`/tickets/${ticketId}`);
@@ -163,6 +191,7 @@ export async function deleteTimeEntry(ticketId: string, entryId: string) {
 
 export async function addPart(ticketId: string, form: FormData) {
   const { supabase } = await requireUser();
+  await assertOpen(supabase, ticketId);
   const qty = Number(text(form, "qty") || "1");
   const { error } = await supabase.from("ticket_parts").insert({
     ticket_id: ticketId,
@@ -177,6 +206,7 @@ export async function addPart(ticketId: string, form: FormData) {
 
 export async function deletePart(ticketId: string, partId: string) {
   const { supabase } = await requireUser();
+  await assertOpen(supabase, ticketId);
   const { error } = await supabase.from("ticket_parts").delete().eq("id", partId);
   if (error) fail(error.message);
   revalidatePath(`/tickets/${ticketId}`);

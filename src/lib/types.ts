@@ -10,7 +10,7 @@ export const KIND_LABELS: Record<TicketKind, string> = {
 
 export const STATUS_LABELS: Record<TicketStatus, string> = {
   open: "Open",
-  completed: "Completed",
+  completed: "Closed",
   paid: "Paid",
 };
 

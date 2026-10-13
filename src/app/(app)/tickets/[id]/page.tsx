@@ -22,6 +22,7 @@ import { requireUser } from "@/lib/supabase/server";
 import { ClientPicker } from "@/components/client-picker";
 import { LiveTimer } from "@/components/live-timer";
 import { CollapsibleCard } from "@/components/collapsible-card";
+import { PaidStamp } from "@/components/paid-stamp";
 import { Loading } from "@/components/loading";
 import { SignaturePad } from "@/components/signature-pad";
 import { TicketFields } from "@/components/ticket-fields";
@@ -96,6 +97,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
 
       {closed ? (
         <div className="card flex flex-wrap items-center gap-2 border-green-300 bg-green-50">
+          {ticket.status === "paid" && !call && <PaidStamp className="w-20" />}
           <span className="flex-1 font-semibold text-green-800">
             ✓ {STATUS_LABELS[ticket.status]}. This {label.toLowerCase()} can no longer be edited.
           </span>

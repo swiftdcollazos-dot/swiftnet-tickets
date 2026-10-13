@@ -6,6 +6,7 @@ import { formatDate, formatTime } from "@/lib/time";
 import { kindLabel, recordLabel } from "@/lib/types";
 import { Loading } from "@/components/loading";
 import { PrintButton } from "@/components/print-button";
+import { PaidStamp } from "@/components/paid-stamp";
 
 export default function PrintPage(props: PageProps<"/print/[id]">) {
   return (
@@ -92,7 +93,8 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
           </table>
         )}
 
-        <section className="mb-8 flex justify-end">
+        <section className="mb-8 flex items-center justify-end">
+          {ticket.status === "paid" && client.client_type !== "contract" && <PaidStamp className="mr-auto ml-8 w-36" />}
           <table className="w-72">
             <tbody>
               {client.client_type === "contract" ? (

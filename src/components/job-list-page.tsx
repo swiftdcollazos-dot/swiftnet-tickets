@@ -5,6 +5,7 @@ import { formatDate } from "@/lib/time";
 import { STATUS_LABELS, kindLabel, rulesOf, type TicketStatus } from "@/lib/types";
 import { Loading } from "@/components/loading";
 import { CountBadge } from "@/components/pending-badge";
+import { PaidStamp } from "@/components/paid-stamp";
 import { pendingCounts } from "@/lib/pending";
 
 const STATUS_STYLES: Record<TicketStatus, string> = {
@@ -107,6 +108,7 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
                       {t.item_to_service ? ` · ${t.item_to_service}` : ""}
                     </div>
                   </div>
+                  {t.status === "paid" && !calls && <PaidStamp className="w-14" />}
                   <div className="text-right">
                     <div className="font-semibold">{formatMoney(totals.totalCents)}</div>
                     <span className={`rounded px-1.5 text-xs font-semibold ${STATUS_STYLES[t.status as TicketStatus]}`}>

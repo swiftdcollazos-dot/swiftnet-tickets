@@ -54,8 +54,8 @@ async function Dashboard() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-3 gap-2">
-        <Stat label="Pending service calls" value={calls.length} href="/?view=calls&status=open" />
-        <Stat label="Pending service tickets" value={tickets.length} href="/?status=open" />
+        <Stat label="Pending service calls" value={calls.length} href="/?view=calls&status=open" pending />
+        <Stat label="Pending service tickets" value={tickets.length} href="/?status=open" pending />
         <Stat label="Timers running" value={runningCount} highlight={runningCount > 0} />
       </div>
 
@@ -66,7 +66,9 @@ async function Dashboard() {
   );
 }
 
-function Stat({ label, value, href, highlight }: { label: string; value: number; href?: string; highlight?: boolean }) {
+function Stat(props: { label: string; value: number; href?: string; highlight?: boolean; pending?: boolean }) {
+  const { label, value, href, highlight } = props;
+  const frame = props.pending && value > 0 ? "border-2 border-amber-400" : "";
   const body = (
     <>
       <div className={`text-3xl font-bold ${highlight ? "text-red-600" : "text-brand"}`}>{value}</div>
@@ -74,7 +76,7 @@ function Stat({ label, value, href, highlight }: { label: string; value: number;
     </>
   );
   return href ? (
-    <Link href={href} className="card p-3 text-center hover:border-brand">{body}</Link>
+    <Link href={href} className={`card p-3 text-center hover:border-brand ${frame}`}>{body}</Link>
   ) : (
     <div className="card p-3 text-center">{body}</div>
   );
@@ -94,7 +96,7 @@ function JobList({ title, empty, jobs, names }: { title: string; empty: string; 
             const detail = [j.item_to_service, j.machine_name].filter(Boolean).join(" · ");
             return (
               <li key={j.id}>
-                <Link href={`/tickets/${j.id}`} className={`card flex items-center gap-3 hover:border-brand ${running ? "border-red-300 bg-red-50" : ""}`}>
+                <Link href={`/tickets/${j.id}`} className={`card flex items-center gap-3 border-2 border-amber-400 ${running ? "bg-red-50" : ""}`}>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-sm text-slate-400">#{j.number}</span>

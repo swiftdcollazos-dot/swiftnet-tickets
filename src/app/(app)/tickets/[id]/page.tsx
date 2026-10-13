@@ -161,9 +161,16 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
         )}
       </section>
 
-      {/* Parts */}
-      <section className="card">
-        <h2 className="h2">Parts and materials</h2>
+      {/* Parts (collapsed until tapped) */}
+      <details className="card group">
+        <summary className="flex cursor-pointer list-none items-center justify-between [&::-webkit-details-marker]:hidden">
+          <h2 className="h2 mb-0">Parts and materials</h2>
+          <span className="text-sm text-slate-500">
+            {parts.length > 0 && `${parts.length} · ${money(totals.materialsCents)} `}
+            <span className="inline-block transition-transform group-open:rotate-180">▼</span>
+          </span>
+        </summary>
+        <div className="mt-3">
         {parts.length > 0 && (
           <table className="mb-4 w-full text-sm">
             <thead className="text-left text-xs uppercase text-slate-500">
@@ -216,7 +223,8 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
             </form>
           </details>
         )}
-      </section>
+        </div>
+      </details>
 
       {/* Totals */}
       <section className="card">

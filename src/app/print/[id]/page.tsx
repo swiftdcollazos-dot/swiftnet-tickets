@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { formatHours, formatMinutes, formatMoney } from "@/lib/billing";
+import { formatHours, formatMoney } from "@/lib/billing";
 import { loadTicket } from "@/lib/ticket-data";
 import { formatDate, formatTime } from "@/lib/time";
 import { KIND_LABELS, recordLabel } from "@/lib/types";
@@ -96,7 +96,7 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
           <table className="w-72">
             <tbody>
               {client.client_type === "contract" ? (
-                <Total label={`Time spent (${formatMinutes(Math.round(totals.workedMinutes))})`} value="Not charged" />
+                <Total label={`Time spent (${formatHours(Math.ceil(Math.round(totals.workedMinutes) / 60) * 60)})`} value="Not charged" />
               ) : (
                 <Total label={`Total labor (${formatHours(totals.billableMinutes)})`} value={money(totals.laborCents)} />
               )}

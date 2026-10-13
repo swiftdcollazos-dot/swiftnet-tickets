@@ -1,3 +1,4 @@
+import { DictationTextarea } from "@/components/dictation-textarea";
 import { KIND_LABELS, type Ticket } from "@/lib/types";
 
 /** The ticket's own fields, laid out like the paper repair order. */
@@ -40,7 +41,7 @@ export function TicketFields({ ticket, today }: { ticket?: Partial<Ticket>; toda
       </div>
       <div>
         <label className="label" htmlFor="labor_performed">Labor performed</label>
-        <textarea className="input" rows={4} id="labor_performed" name="labor_performed" defaultValue={ticket?.labor_performed ?? ""} />
+        <DictationTextarea rows={4} id="labor_performed" name="labor_performed" defaultValue={ticket?.labor_performed ?? ""} />
       </div>
       <div>
         <label className="label" htmlFor="date_wanted">Date wanted</label>

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { parseMoney } from "@/lib/billing";
 import { localToIso } from "@/lib/time";
-import { BILLING_BLOCK_MINUTES, type TicketKind, type TicketStatus } from "@/lib/types";
+import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, type ClientType, type TicketKind, type TicketStatus } from "@/lib/types";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 const KINDS: TicketKind[] = ["service", "install", "will_call", "deliver"];
@@ -13,6 +13,11 @@ const STATUSES: TicketStatus[] = ["open", "completed", "paid"];
 
 function fail(message: string): never {
   throw new Error(message);
+}
+
+function clientType(form: FormData, key: string): ClientType {
+  const value = text(form, key) as ClientType;
+  return CLIENT_TYPES.includes(value) ? value : "hourly";
 }
 
 // ---------- Login ----------
@@ -73,6 +78,7 @@ export async function createTicket(form: FormData) {
         phone: text(form, "client_phone"),
         email: text(form, "client_email"),
         address: text(form, "client_address"),
+        client_type: clientType(form, "client_type"),
       })
       .select("id")
       .single();
@@ -244,6 +250,19 @@ export async function clearSignature(ticketId: string) {
 
 // ---------- Clients ----------
 
+export async function createClientRecord(form: FormData) {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.from("clients").insert({
+    name: text(form, "name") || fail("Enter the client's name."),
+    phone: text(form, "phone"),
+    email: text(form, "email"),
+    address: text(form, "address"),
+    client_type: clientType(form, "client_type"),
+  });
+  if (error) fail(error.message);
+  revalidatePath("/clients");
+}
+
 export async function updateClient(clientId: string, form: FormData) {
   const { supabase } = await requireUser();
   const { error } = await supabase
@@ -253,6 +272,7 @@ export async function updateClient(clientId: string, form: FormData) {
       phone: text(form, "phone"),
       email: text(form, "email"),
       address: text(form, "address"),
+      client_type: clientType(form, "client_type"),
     })
     .eq("id", clientId);
   if (error) fail(error.message);

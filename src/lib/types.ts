@@ -29,9 +29,19 @@ export type Settings = {
   disclaimer: string;
 };
 
+export type ClientType = "hourly" | "contract";
+
+export const CLIENT_TYPES: ClientType[] = ["hourly", "contract"];
+
+export const CLIENT_TYPE_LABELS: Record<ClientType, string> = {
+  hourly: "Hourly",
+  contract: "Contract",
+};
+
 export type Client = {
   id: string;
   name: string;
+  client_type: ClientType;
   phone: string;
   email: string;
   address: string;

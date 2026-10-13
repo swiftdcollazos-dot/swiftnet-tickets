@@ -232,6 +232,7 @@ export async function saveSignature(ticketId: string, signedName: string, dataUr
 
 export async function clearSignature(ticketId: string) {
   const { supabase } = await requireUser();
+  await assertOpen(supabase, ticketId);
   const { error } = await supabase
     .from("tickets")
     .update({ signature: null, signed_name: null, signed_at: null })

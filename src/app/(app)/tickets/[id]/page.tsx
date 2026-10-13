@@ -234,9 +234,11 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
             <p className="text-sm text-slate-500">
               Signed by {ticket.signed_name || "client"} on {formatDate(ticket.signed_at)} at {formatTime(ticket.signed_at)}
             </p>
-            <form action={clearSignature.bind(null, ticket.id)}>
-              <button className="btn-danger">Remove signature</button>
-            </form>
+            {!closed && (
+              <form action={clearSignature.bind(null, ticket.id)}>
+                <button className="btn-danger">Remove signature</button>
+              </form>
+            )}
           </div>
         ) : (
           <>

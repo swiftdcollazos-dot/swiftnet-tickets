@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import { RunningTimers } from "@/components/running-timers";
 import { PendingBadge } from "@/components/pending-badge";
 import { HeaderMenu } from "@/components/header-menu";
+import { NotificationsToggle } from "@/components/notifications-toggle";
+import { VAPID_PUBLIC_KEY } from "@/lib/vapid";
 import { signOut } from "@/app/actions";
 
 function GearIcon() {
@@ -34,6 +36,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
               <Link href="/settings" className="flex items-center gap-2 px-3 py-2.5 hover:bg-slate-100">
                 <GearIcon /> Settings
               </Link>
+              <NotificationsToggle publicKey={VAPID_PUBLIC_KEY} />
               <form action={signOut} className="border-t border-slate-100">
                 <button className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-slate-100">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>

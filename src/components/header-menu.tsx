@@ -33,7 +33,7 @@ export function HeaderMenu({ children }: { children: ReactNode }) {
         <div
           // Close after following a link. (Not on the Sign out button: closing first would cancel its form.)
           onClick={(e) => (e.target as HTMLElement).closest("a") && setOpen(false)}
-          className="absolute right-0 z-30 mt-1 w-44 overflow-hidden rounded-lg bg-white py-1 text-sm text-slate-800 shadow-lg ring-1 ring-black/10">
+          className="absolute right-0 z-30 mt-1 w-56 overflow-hidden rounded-lg bg-white py-1 text-sm text-slate-800 shadow-lg ring-1 ring-black/10">
           {children}
         </div>
       )}

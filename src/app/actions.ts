@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
+import { notifyAssignee } from "@/lib/push";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseMoney } from "@/lib/billing";
@@ -110,19 +112,27 @@ export async function createTicket(form: FormData) {
       rounding_minutes: BILLING_BLOCK_MINUTES,
       minimum_minutes: BILLING_BLOCK_MINUTES,
     })
-    .select("id")
+    .select("id, technician_id")
     .single();
   if (error) fail(error.message);
 
+  after(() => notifyAssignee(ticket.id, ticket.technician_id, user.id));
   revalidatePath("/", "layout"); // pending count in the header
   redirect(`/tickets/${ticket.id}`);
 }
 
 export async function updateTicket(ticketId: string, form: FormData) {
-  const { supabase } = await requireUser();
+  const { supabase, user } = await requireUser();
   await assertOpen(supabase, ticketId);
-  const { error } = await supabase.from("tickets").update(ticketFields(form)).eq("id", ticketId);
+  const fields = ticketFields(form);
+  const { data: before } = await supabase.from("tickets").select("technician_id").eq("id", ticketId).single();
+  const { error } = await supabase.from("tickets").update(fields).eq("id", ticketId);
   if (error) fail(error.message);
+  // Tell the new technician when the job is handed to them.
+  if (fields.technician_id && fields.technician_id !== before?.technician_id) {
+    const assignee = fields.technician_id;
+    after(() => notifyAssignee(ticketId, assignee, user.id));
+  }
   revalidatePath(`/tickets/${ticketId}`);
 }
 
@@ -368,6 +378,24 @@ export async function deleteTicket(ticketId: string): Promise<ClientResult> {
   revalidatePath("/", "layout");
   const contract = (ticket.clients as unknown as { client_type: string } | null)?.client_type === "contract";
   redirect(ticket.is_project ? "/projects" : contract ? "/?view=calls" : "/");
+}
+
+// ---------- Notifications ----------
+
+/** Remembers this device so jobs assigned to the signed-in user show up as notifications on it. */
+export async function savePushSubscription(sub: { endpoint: string; keys: { p256dh: string; auth: string } }) {
+  const { supabase, user } = await requireUser();
+  if (!sub?.endpoint?.startsWith("https://") || !sub.keys?.p256dh || !sub.keys?.auth) fail("Invalid subscription.");
+  const { error } = await supabase
+    .from("push_subscriptions")
+    .upsert({ endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth, user_id: user.id }, { onConflict: "endpoint" });
+  if (error) fail(error.message);
+}
+
+export async function deletePushSubscription(endpoint: string) {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
+  if (error) fail(error.message);
 }
 
 // ---------- Settings ----------

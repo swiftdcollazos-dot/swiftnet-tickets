@@ -93,13 +93,15 @@ export async function createTicket(form: FormData) {
   const { data: s, error: settingsError } = await supabase.from("settings").select("*").single();
   if (settingsError) fail(settingsError.message);
 
+  const fields = ticketFields(form);
   const { data: ticket, error } = await supabase
     .from("tickets")
     .insert({
-      ...ticketFields(form),
+      ...fields,
       client_id: clientId,
       is_project: isProject,
-      technician_id: user.id,
+      // Assigned to whoever the form picked, the creator by default.
+      technician_id: fields.technician_id ?? user.id,
       created_by: user.id,
       hourly_rate_cents: s.hourly_rate_cents,
       // Swiftnet does not charge tax on service tickets.

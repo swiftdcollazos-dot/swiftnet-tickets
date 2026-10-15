@@ -20,11 +20,15 @@ async function NewTicketForm({ searchParams }: { searchParams: PageProps<"/ticke
   const serviceCall = params.call === "1";
   const project = !serviceCall && params.project === "1";
   const label = serviceCall ? "service call" : project ? "special project" : "service ticket";
-  const { supabase } = await requireUser();
+  const { supabase, user } = await requireUser();
   // Service calls are for contract clients, service tickets for hourly clients, special projects for anyone.
   let clientQuery = supabase.from("clients").select("*").order("name");
   if (!project) clientQuery = clientQuery.eq("client_type", serviceCall ? "contract" : "hourly");
-  const { data: clients } = await clientQuery;
+  const [{ data: clients }, { data: profiles }] = await Promise.all([
+    clientQuery,
+    supabase.from("profiles").select("id, full_name").order("full_name"),
+  ]);
+  const technicians = (profiles ?? []).map((p) => ({ id: p.id, name: p.full_name }));
   return (
     <>
       <h1 className="h1 mb-1">New {label}</h1>
@@ -39,7 +43,7 @@ async function NewTicketForm({ searchParams }: { searchParams: PageProps<"/ticke
           </div>
         </section>
         <section className="card">
-          <TicketFields today={todayLocal()} withContactedBy={false} project={project} />
+          <TicketFields ticket={{ technician_id: user.id }} today={todayLocal()} withContactedBy={false} project={project} technicians={technicians} />
         </section>
         <button className="btn w-full">Create {label}</button>
       </form>

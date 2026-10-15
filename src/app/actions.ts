@@ -72,6 +72,8 @@ function ticketFields(form: FormData) {
     contacted_by: text(form, "contacted_by"),
     service_request: optional("service_request"),
     labor_performed: text(form, "labor_performed"),
+    // Only the job page's details form has "Assigned to".
+    technician_id: form.get("technician_id") ? text(form, "technician_id") : undefined,
   };
 }
 
@@ -98,6 +100,7 @@ export async function createTicket(form: FormData) {
       client_id: clientId,
       is_project: isProject,
       technician_id: user.id,
+      created_by: user.id,
       hourly_rate_cents: s.hourly_rate_cents,
       // Swiftnet does not charge tax on service tickets.
       tax_rate_pct: 0,

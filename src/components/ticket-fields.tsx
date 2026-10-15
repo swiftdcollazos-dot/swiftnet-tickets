@@ -14,7 +14,7 @@ export function ContactedByField({ value }: { value?: string }) {
  * The ticket's own fields, laid out like the paper repair order.
  * Special projects get a shorter form: several project types can be ticked, and there are no item, issue, make, model or machine fields.
  */
-export function TicketFields({ ticket, today, withContactedBy = true, project = false }: { ticket?: Partial<Ticket>; today: string; withContactedBy?: boolean; project?: boolean }) {
+export function TicketFields({ ticket, today, withContactedBy = true, project = false, technicians }: { ticket?: Partial<Ticket>; today: string; withContactedBy?: boolean; project?: boolean; technicians?: { id: string; name: string }[] }) {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
@@ -38,6 +38,18 @@ export function TicketFields({ ticket, today, withContactedBy = true, project = 
       {project && <ProjectTypes kind={ticket?.kind} />}
 
       {withContactedBy && <ContactedByField value={ticket?.contacted_by} />}
+
+      {technicians && (
+        <div>
+          <label className="label" htmlFor="technician_id">Assigned to</label>
+          <select className="input" id="technician_id" name="technician_id" defaultValue={ticket?.technician_id ?? ""}>
+            {!ticket?.technician_id && <option value="">Not assigned</option>}
+            {technicians.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {!project && (
         <>

@@ -41,5 +41,6 @@ export async function loadTicket(id: string) {
     totals,
     settings: settingsRes.data as Settings,
     techName: (id: string | null) => (id ? names.get(id) ?? "" : ""),
+    technicians: [...names].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)),
   };
 }

@@ -39,7 +39,7 @@ export default function TicketPage(props: PageProps<"/tickets/[id]">) {
 
 async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["params"] }) {
   const { id } = await params;
-  const { ticket, client, entries, parts, totals, settings, techName } = await loadTicket(id);
+  const { ticket, client, entries, parts, totals, settings, techName, technicians } = await loadTicket(id);
   const call = client.client_type === "contract" && !ticket.is_project;
   const label = recordLabel(client.client_type, ticket.is_project);
   const listPath = call ? "/?view=calls" : ticket.is_project ? "/projects" : "/";
@@ -95,6 +95,12 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
             {[client.phone, client.email, client.address].filter(Boolean).join(" · ")}
           </p>
           {ticket.contacted_by && <p className="text-sm text-slate-700">Contacted by: <span className="font-semibold">{ticket.contacted_by}</span></p>}
+          <p className="text-sm text-slate-700">
+            {[
+              ticket.created_by && `Created by ${techName(ticket.created_by) || "a former user"}`,
+              `Assigned to ${techName(ticket.technician_id) || "nobody"}`,
+            ].filter(Boolean).join(" · ")}
+          </p>
         </div>
         <Link href={`/print/${ticket.id}`} className="btn-light">Print / PDF</Link>
       </div>
@@ -276,7 +282,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
         <h2 className="h2">{ticket.is_project ? "Project details" : "Job details"}</h2>
         <form action={updateTicket.bind(null, ticket.id)}>
           <fieldset disabled={closed} className="space-y-4 disabled:opacity-70">
-            <TicketFields ticket={ticket} today={todayLocal()} project={ticket.is_project} />
+            <TicketFields ticket={ticket} today={todayLocal()} project={ticket.is_project} technicians={technicians} />
             {!closed && <button className="btn w-full">Save details</button>}
           </fieldset>
         </form>

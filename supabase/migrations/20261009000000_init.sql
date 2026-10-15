@@ -99,6 +99,9 @@ alter table public.tickets add column if not exists machine_name text not null d
 alter table public.tickets add column if not exists is_project boolean not null default false;
 -- "Contacted by" on service tickets, calls and projects.
 alter table public.tickets add column if not exists contacted_by text not null default '';
+-- Who created the job; technician_id is who it is assigned to and can change.
+alter table public.tickets add column if not exists created_by uuid references public.profiles (id);
+update public.tickets set created_by = technician_id where created_by is null;
 -- Service type is free text from the app's Type list (was a fixed 4-value list).
 alter table public.tickets alter column kind drop default;
 alter table public.tickets alter column kind type text using kind::text;

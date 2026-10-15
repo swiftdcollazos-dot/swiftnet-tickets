@@ -6,6 +6,7 @@ import { createClient, requireUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseMoney } from "@/lib/billing";
 import { localToIso } from "@/lib/time";
+import { isOwner } from "@/lib/owner";
 import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
@@ -346,6 +347,22 @@ export async function deleteClient(clientId: string): Promise<ClientResult> {
     const { error } = await supabase.from("clients").delete().eq("id", clientId);
     if (error) fail(error.message);
   });
+}
+
+/** Deletes a service ticket, call or project with its time and parts. Owner only. */
+export async function deleteTicket(ticketId: string): Promise<ClientResult> {
+  const { supabase, user } = await requireUser();
+  if (!isOwner(user.email)) return { error: "Only the owner can delete jobs." };
+  const { data: ticket, error } = await supabase
+    .from("tickets")
+    .delete()
+    .eq("id", ticketId)
+    .select("is_project, clients(client_type)")
+    .single();
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  const contract = (ticket.clients as unknown as { client_type: string } | null)?.client_type === "contract";
+  redirect(ticket.is_project ? "/projects" : contract ? "/?view=calls" : "/");
 }
 
 // ---------- Settings ----------

@@ -26,6 +26,8 @@ import { PaidStamp } from "@/components/paid-stamp";
 import { Loading } from "@/components/loading";
 import { SignaturePad } from "@/components/signature-pad";
 import { TicketFields } from "@/components/ticket-fields";
+import { DeleteTicketButton } from "@/components/delete-ticket-button";
+import { isOwner } from "@/lib/owner";
 
 export default function TicketPage(props: PageProps<"/tickets/[id]">) {
   return (
@@ -41,7 +43,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
   const call = client.client_type === "contract" && !ticket.is_project;
   const label = recordLabel(client.client_type, ticket.is_project);
   const listPath = call ? "/?view=calls" : ticket.is_project ? "/projects" : "/";
-  const { supabase } = await requireUser();
+  const { supabase, user } = await requireUser();
   const { data: clientRows } = await supabase.from("clients").select("*").order("name");
   const allClients = (clientRows ?? []) as Client[];
   // Special projects can move to any client; tickets and calls stay with their client type.
@@ -311,6 +313,8 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
           <button className="btn bg-green-700 px-6">✓ Complete &amp; close {label.toLowerCase()}</button>
         </form>
       )}
+
+      {isOwner(user.email) && <DeleteTicketButton ticketId={ticket.id} label={label.toLowerCase()} />}
     </div>
   );
 }

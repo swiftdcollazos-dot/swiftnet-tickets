@@ -23,9 +23,34 @@ export function isServiceType(kind: string | null | undefined): kind is string {
   return (SERVICE_TYPES as readonly string[]).includes(kind ?? "");
 }
 
-/** The ticket's service type, or "" for none (including the old Service/Install/... values). */
+/** Types for special projects; a project can have several, stored in `kind` joined by KIND_SEPARATOR. */
+export const PROJECT_TYPES = [
+  "Structured Cabling Rollout",
+  "MDF / IDF Server Room Clean-Up",
+  "Rack-Mount Server Deployment",
+  "Legacy PBX to Cloud-Hosted VoIP Migration",
+  "Server Installation",
+  "Domain Controller and DNS setup",
+  "WIFI Access Points",
+  "Access Control Hardware",
+  "Structured Cabling Repairs",
+] as const;
+
+const KIND_SEPARATOR = "; ";
+
+export function projectKinds(kind: string | null | undefined): string[] {
+  return (kind ?? "").split(KIND_SEPARATOR).filter((k) => (PROJECT_TYPES as readonly string[]).includes(k));
+}
+
+/** Store one service type, or any number of project types; anything else is dropped. */
+export function kindValue(kinds: string[]): string {
+  if (kinds.length === 1 && isServiceType(kinds[0])) return kinds[0];
+  return projectKinds(kinds.join(KIND_SEPARATOR)).join(KIND_SEPARATOR);
+}
+
+/** The job's type(s) for display, or "" for none (including the old Service/Install/... values). */
 export function kindLabel(kind: string | null | undefined): string {
-  return isServiceType(kind) ? kind : "";
+  return isServiceType(kind) ? kind : projectKinds(kind).join(", ");
 }
 
 export const STATUS_LABELS: Record<TicketStatus, string> = {

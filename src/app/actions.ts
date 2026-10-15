@@ -6,7 +6,7 @@ import { createClient, requireUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseMoney } from "@/lib/billing";
 import { localToIso } from "@/lib/time";
-import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, isServiceType, type ClientType, type TicketStatus } from "@/lib/types";
+import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 const STATUSES: TicketStatus[] = ["open", "completed", "paid"];
@@ -59,12 +59,11 @@ async function assertOpen(supabase: Supabase, ticketId: string) {
 }
 
 function ticketFields(form: FormData) {
-  const kind = text(form, "kind");
   // Special projects leave out the item, device and issue fields; keep whatever is stored.
   const optional = (key: string) => (form.has(key) ? text(form, key) : undefined);
   return {
     ticket_date: text(form, "ticket_date") || undefined,
-    kind: isServiceType(kind) ? kind : "",
+    kind: kindValue(form.getAll("kind").map(String)),
     item_to_service: optional("item_to_service"),
     make: optional("make"),
     model: optional("model"),

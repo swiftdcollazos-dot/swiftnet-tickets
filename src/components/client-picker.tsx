@@ -18,11 +18,17 @@ export function ClientPicker({
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const guardRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   // The browser won't submit until a client from the list is picked.
   useEffect(() => {
     guardRef.current?.setCustomValidity(selected ? "" : "Select a client.");
   }, [selected]);
+
+  // Opening the list puts the cursor in the search box, so typing searches right away.
+  useEffect(() => {
+    if (open) searchRef.current?.focus();
+  }, [open]);
 
   const needle = search.trim().toLowerCase();
   const matches = clients.filter((c) => c.name.toLowerCase().includes(needle));
@@ -62,6 +68,14 @@ export function ClientPicker({
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
+        onKeyDown={(e) => {
+          // Typing a letter on the closed picker opens it and starts the search with that letter.
+          if (clients.length > 8 && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && e.key !== " ") {
+            e.preventDefault();
+            setSearch(e.key);
+            setOpen(true);
+          }
+        }}
       >
         <span className={selected ? "font-semibold" : "text-slate-400"}>{selected?.name ?? "Select a client"}</span>
         <span className="text-slate-500">{open ? "▲" : "▼"}</span>
@@ -71,12 +85,26 @@ export function ClientPicker({
           {clients.length > 8 && (
             <div className="border-b border-slate-100 p-2">
               <input
+                ref={searchRef}
                 className="input"
                 type="search"
                 placeholder="Search"
                 autoComplete="off"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    // Enter picks the first match instead of submitting the form.
+                    e.preventDefault();
+                    if (matches[0]) {
+                      setSelected(matches[0]);
+                      setSearch("");
+                      setOpen(false);
+                    }
+                  } else if (e.key === "Escape") {
+                    setOpen(false);
+                  }
+                }}
                 aria-label="Search clients"
               />
             </div>

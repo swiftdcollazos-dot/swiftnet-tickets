@@ -1,5 +1,5 @@
 import { DictationTextarea } from "@/components/dictation-textarea";
-import { SERVICE_TYPES, kindLabel, type Ticket } from "@/lib/types";
+import { PROJECT_TYPES, SERVICE_TYPES, kindLabel, projectKinds, type Ticket } from "@/lib/types";
 
 export function ContactedByField({ value }: { value?: string }) {
   return (
@@ -12,7 +12,7 @@ export function ContactedByField({ value }: { value?: string }) {
 
 /**
  * The ticket's own fields, laid out like the paper repair order.
- * Special projects get a shorter form: no type list yet, and no item, issue, make, model or machine fields.
+ * Special projects get a shorter form: several project types can be ticked, and there are no item, issue, make, model or machine fields.
  */
 export function TicketFields({ ticket, today, withContactedBy = true, project = false }: { ticket?: Partial<Ticket>; today: string; withContactedBy?: boolean; project?: boolean }) {
   return (
@@ -22,16 +22,20 @@ export function TicketFields({ ticket, today, withContactedBy = true, project = 
           <label className="label" htmlFor="ticket_date">Date</label>
           <input className="input" type="date" id="ticket_date" name="ticket_date" defaultValue={ticket?.ticket_date ?? today} />
         </div>
-        <div>
-          <label className="label" htmlFor="kind">Type</label>
-          <select className="input" id="kind" name="kind" defaultValue={project ? "" : kindLabel(ticket?.kind)}>
-            <option value="">{project ? "No types yet" : "Select a service type"}</option>
-            {!project && SERVICE_TYPES.map((type) => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
-        </div>
+        {!project && (
+          <div>
+            <label className="label" htmlFor="kind">Type</label>
+            <select className="input" id="kind" name="kind" defaultValue={kindLabel(ticket?.kind)}>
+              <option value="">Select a service type</option>
+              {SERVICE_TYPES.map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
+
+      {project && <ProjectTypes kind={ticket?.kind} />}
 
       {withContactedBy && <ContactedByField value={ticket?.contacted_by} />}
 
@@ -66,5 +70,22 @@ export function TicketFields({ ticket, today, withContactedBy = true, project = 
         <DictationTextarea rows={4} id="labor_performed" name="labor_performed" defaultValue={ticket?.labor_performed ?? ""} />
       </div>
     </div>
+  );
+}
+
+function ProjectTypes({ kind }: { kind?: string }) {
+  const selected = projectKinds(kind);
+  return (
+    <fieldset>
+      <legend className="label">Type <span className="font-normal normal-case text-slate-400">(pick all that apply)</span></legend>
+      <div className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
+        {PROJECT_TYPES.map((type) => (
+          <label key={type} className="flex items-start gap-2 text-sm">
+            <input type="checkbox" name="kind" value={type} defaultChecked={selected.includes(type)} className="mt-0.5 h-4 w-4 shrink-0" />
+            {type}
+          </label>
+        ))}
+      </div>
+    </fieldset>
   );
 }

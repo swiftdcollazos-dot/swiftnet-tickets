@@ -68,6 +68,7 @@ function ticketFields(form: FormData) {
     model: text(form, "model"),
     machine_name: text(form, "machine_name"),
     contacted_by: text(form, "contacted_by"),
+    service_request: text(form, "service_request"),
     labor_performed: text(form, "labor_performed"),
   };
 }

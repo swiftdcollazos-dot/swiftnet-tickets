@@ -67,6 +67,13 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
           </div>
         </section>
 
+        {ticket.service_request && (
+          <section className="mb-6">
+            <h2 className="mb-1 text-xs font-bold uppercase text-slate-500">Issue reported</h2>
+            <p className="whitespace-pre-line">{ticket.service_request}</p>
+          </section>
+        )}
+
         {ticket.labor_performed && (
           <section className="mb-6">
             <h2 className="mb-1 text-xs font-bold uppercase text-slate-500">Labor performed</h2>

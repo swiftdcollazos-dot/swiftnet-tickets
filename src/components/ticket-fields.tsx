@@ -51,6 +51,10 @@ export function TicketFields({ ticket, today, withContactedBy = true }: { ticket
         </div>
       </div>
       <div>
+        <label className="label" htmlFor="service_request">Issue reported</label>
+        <DictationTextarea rows={3} id="service_request" name="service_request" defaultValue={ticket?.service_request ?? ""} />
+      </div>
+      <div>
         <label className="label" htmlFor="labor_performed">Labor performed</label>
         <DictationTextarea rows={4} id="labor_performed" name="labor_performed" defaultValue={ticket?.labor_performed ?? ""} />
       </div>

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
-import { notifyAssignee } from "@/lib/push";
+import { notifyAssignee, notifyNewJob } from "@/lib/push";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseMoney } from "@/lib/billing";
@@ -112,11 +112,11 @@ export async function createTicket(form: FormData) {
       rounding_minutes: BILLING_BLOCK_MINUTES,
       minimum_minutes: BILLING_BLOCK_MINUTES,
     })
-    .select("id, technician_id")
+    .select("id")
     .single();
   if (error) fail(error.message);
 
-  after(() => notifyAssignee(ticket.id, ticket.technician_id, user.id));
+  after(() => notifyNewJob(ticket.id));
   revalidatePath("/", "layout"); // pending count in the header
   redirect(`/tickets/${ticket.id}`);
 }

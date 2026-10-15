@@ -17,6 +17,7 @@ export const SERVICE_TYPES = [
   "IT roadmapping",
   "Software installation",
   "Hardware installation",
+  "Access control",
 ] as const;
 
 export function isServiceType(kind: string | null | undefined): kind is string {

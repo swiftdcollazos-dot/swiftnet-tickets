@@ -39,7 +39,7 @@ async function NewTicketForm({ searchParams }: { searchParams: PageProps<"/ticke
           </div>
         </section>
         <section className="card">
-          <TicketFields today={todayLocal()} withContactedBy={false} />
+          <TicketFields today={todayLocal()} withContactedBy={false} project={project} />
         </section>
         <button className="btn w-full">Create {label}</button>
       </form>

@@ -60,15 +60,17 @@ async function assertOpen(supabase: Supabase, ticketId: string) {
 
 function ticketFields(form: FormData) {
   const kind = text(form, "kind");
+  // Special projects leave out the item, device and issue fields; keep whatever is stored.
+  const optional = (key: string) => (form.has(key) ? text(form, key) : undefined);
   return {
     ticket_date: text(form, "ticket_date") || undefined,
     kind: isServiceType(kind) ? kind : "",
-    item_to_service: text(form, "item_to_service"),
-    make: text(form, "make"),
-    model: text(form, "model"),
-    machine_name: text(form, "machine_name"),
+    item_to_service: optional("item_to_service"),
+    make: optional("make"),
+    model: optional("model"),
+    machine_name: optional("machine_name"),
     contacted_by: text(form, "contacted_by"),
-    service_request: text(form, "service_request"),
+    service_request: optional("service_request"),
     labor_performed: text(form, "labor_performed"),
   };
 }

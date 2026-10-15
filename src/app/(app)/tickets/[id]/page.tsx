@@ -274,7 +274,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
         <h2 className="h2">Job details</h2>
         <form action={updateTicket.bind(null, ticket.id)}>
           <fieldset disabled={closed} className="space-y-4 disabled:opacity-70">
-            <TicketFields ticket={ticket} today={todayLocal()} />
+            <TicketFields ticket={ticket} today={todayLocal()} project={ticket.is_project} />
             {!closed && <button className="btn w-full">Save details</button>}
           </fieldset>
         </form>

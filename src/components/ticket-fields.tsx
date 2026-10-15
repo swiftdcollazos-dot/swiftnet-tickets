@@ -10,8 +10,11 @@ export function ContactedByField({ value }: { value?: string }) {
   );
 }
 
-/** The ticket's own fields, laid out like the paper repair order. */
-export function TicketFields({ ticket, today, withContactedBy = true }: { ticket?: Partial<Ticket>; today: string; withContactedBy?: boolean }) {
+/**
+ * The ticket's own fields, laid out like the paper repair order.
+ * Special projects get a shorter form: no type list yet, and no item, issue, make, model or machine fields.
+ */
+export function TicketFields({ ticket, today, withContactedBy = true, project = false }: { ticket?: Partial<Ticket>; today: string; withContactedBy?: boolean; project?: boolean }) {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
@@ -21,9 +24,9 @@ export function TicketFields({ ticket, today, withContactedBy = true }: { ticket
         </div>
         <div>
           <label className="label" htmlFor="kind">Type</label>
-          <select className="input" id="kind" name="kind" defaultValue={kindLabel(ticket?.kind)}>
-            <option value="">Select a service type</option>
-            {SERVICE_TYPES.map((type) => (
+          <select className="input" id="kind" name="kind" defaultValue={project ? "" : kindLabel(ticket?.kind)}>
+            <option value="">{project ? "No types yet" : "Select a service type"}</option>
+            {!project && SERVICE_TYPES.map((type) => (
               <option key={type} value={type}>{type}</option>
             ))}
           </select>
@@ -32,28 +35,32 @@ export function TicketFields({ ticket, today, withContactedBy = true }: { ticket
 
       {withContactedBy && <ContactedByField value={ticket?.contacted_by} />}
 
-      <div>
-        <label className="label" htmlFor="item_to_service">Item to be serviced</label>
-        <input className="input" id="item_to_service" name="item_to_service" placeholder="Laptop, server, printer, network…" defaultValue={ticket?.item_to_service ?? ""} />
-      </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div>
-          <label className="label" htmlFor="make">Make</label>
-          <input className="input" id="make" name="make" defaultValue={ticket?.make ?? ""} />
-        </div>
-        <div>
-          <label className="label" htmlFor="model">Model</label>
-          <input className="input" id="model" name="model" defaultValue={ticket?.model ?? ""} />
-        </div>
-        <div className="col-span-2 sm:col-span-1">
-          <label className="label" htmlFor="machine_name">Machine name</label>
-          <input className="input" id="machine_name" name="machine_name" placeholder="e.g. FRONT-DESK-PC" defaultValue={ticket?.machine_name ?? ""} />
-        </div>
-      </div>
-      <div>
-        <label className="label" htmlFor="service_request">Issue reported</label>
-        <DictationTextarea rows={3} id="service_request" name="service_request" defaultValue={ticket?.service_request ?? ""} />
-      </div>
+      {!project && (
+        <>
+          <div>
+            <label className="label" htmlFor="item_to_service">Item to be serviced</label>
+            <input className="input" id="item_to_service" name="item_to_service" placeholder="Laptop, server, printer, network…" defaultValue={ticket?.item_to_service ?? ""} />
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div>
+              <label className="label" htmlFor="make">Make</label>
+              <input className="input" id="make" name="make" defaultValue={ticket?.make ?? ""} />
+            </div>
+            <div>
+              <label className="label" htmlFor="model">Model</label>
+              <input className="input" id="model" name="model" defaultValue={ticket?.model ?? ""} />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className="label" htmlFor="machine_name">Machine name</label>
+              <input className="input" id="machine_name" name="machine_name" placeholder="e.g. FRONT-DESK-PC" defaultValue={ticket?.machine_name ?? ""} />
+            </div>
+          </div>
+          <div>
+            <label className="label" htmlFor="service_request">Issue reported</label>
+            <DictationTextarea rows={3} id="service_request" name="service_request" defaultValue={ticket?.service_request ?? ""} />
+          </div>
+        </>
+      )}
       <div>
         <label className="label" htmlFor="labor_performed">Labor performed</label>
         <DictationTextarea rows={4} id="labor_performed" name="labor_performed" defaultValue={ticket?.labor_performed ?? ""} />

@@ -271,7 +271,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
 
       {/* Details */}
       <section className="card">
-        <h2 className="h2">Job details</h2>
+        <h2 className="h2">{ticket.is_project ? "Project details" : "Job details"}</h2>
         <form action={updateTicket.bind(null, ticket.id)}>
           <fieldset disabled={closed} className="space-y-4 disabled:opacity-70">
             <TicketFields ticket={ticket} today={todayLocal()} project={ticket.is_project} />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { deletePushSubscription, savePushSubscription } from "@/app/actions";
+import { deletePushSubscription, savePushSubscription, testPushNotification } from "@/app/actions";
 
 function base64UrlToBytes(base64: string) {
   const raw = atob((base64 + "=".repeat((4 - (base64.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/"));
@@ -39,8 +39,8 @@ export function NotificationsToggle({ publicKey }: { publicKey: string }) {
       const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToBytes(publicKey) });
       await savePushSubscription(JSON.parse(JSON.stringify(sub)));
       setState("on");
-    } catch {
-      alert("Couldn't turn on notifications on this device.");
+    } catch (e) {
+      alert(`Couldn't turn on notifications on this device: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setBusy(false);
     }
@@ -79,10 +79,28 @@ export function NotificationsToggle({ publicKey }: { publicKey: string }) {
       </p>
     );
   }
+  async function sendTest() {
+    setBusy(true);
+    try {
+      alert(await testPushNotification());
+    } catch (e) {
+      alert(`Test failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <button type="button" className={row} disabled={busy} onClick={state === "on" ? turnOff : turnOn}>
-      {bell}
-      {busy ? "Working…" : state === "on" ? "Turn off notifications" : "Turn on notifications"}
-    </button>
+    <>
+      <button type="button" className={row} disabled={busy} onClick={state === "on" ? turnOff : turnOn}>
+        {bell}
+        {busy ? "Working…" : state === "on" ? "Turn off notifications" : "Turn on notifications"}
+      </button>
+      {state === "on" && (
+        <button type="button" className={`${row} pl-10 text-slate-600`} disabled={busy} onClick={sendTest}>
+          Send test notification
+        </button>
+      )}
+    </>
   );
 }

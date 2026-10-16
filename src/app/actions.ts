@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
-import { notifyAssignee, notifyNewJob } from "@/lib/push";
+import { notifyAssignee, notifyNewJob, sendTestPush } from "@/lib/push";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseMoney } from "@/lib/billing";
@@ -390,6 +390,11 @@ export async function savePushSubscription(sub: { endpoint: string; keys: { p256
     .from("push_subscriptions")
     .upsert({ endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth, user_id: user.id }, { onConflict: "endpoint" });
   if (error) fail(error.message);
+}
+
+export async function testPushNotification(): Promise<string> {
+  const { user } = await requireUser();
+  return sendTestPush(user.id);
 }
 
 export async function deletePushSubscription(endpoint: string) {

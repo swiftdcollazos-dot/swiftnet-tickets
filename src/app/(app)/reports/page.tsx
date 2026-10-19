@@ -29,6 +29,13 @@ function monthRange(today: string, offset = 0): [string, string] {
   return [first.toISOString().slice(0, 10), last.toISOString().slice(0, 10)];
 }
 
+/** Months from "YYYY-MM" to "YYYY-MM", both included; 0 if the end is before the start. */
+function monthsBetween(start: string, end: string): number {
+  const [sy, sm] = start.split("-").map(Number);
+  const [ey, em] = end.split("-").map(Number);
+  return Math.max(0, (ey - sy) * 12 + (em - sm) + 1);
+}
+
 /** Hours with one decimal, e.g. "12.5 h". */
 const hrs = (minutes: number) => `${(Math.round((minutes / 60) * 10) / 10).toLocaleString("en-US")} h`;
 
@@ -52,7 +59,7 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
   const from = typeof params.from === "string" && DATE.test(params.from) ? params.from : monthStart;
   const to = typeof params.to === "string" && DATE.test(params.to) ? params.to : monthEnd;
 
-  const [{ data, error }, { data: settings }, { data: profiles }] = await Promise.all([
+  const [{ data, error }, { data: settings }, { data: profiles }, { data: contractClients }] = await Promise.all([
     supabase
       .from("tickets")
       .select("*, clients!inner(name, client_type), time_entries(started_at, ended_at, technician_id), ticket_parts(qty, unit_price_cents)")
@@ -61,6 +68,7 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
       .order("ticket_date"),
     supabase.from("settings").select("*").single(),
     supabase.from("profiles").select("id, full_name"),
+    supabase.from("clients").select("id, name, monthly_fee_cents, created_at").eq("client_type", "contract").gt("monthly_fee_cents", 0),
   ]);
   if (error) throw new Error(error.message);
   const currency = (settings as Settings | null)?.currency ?? "USD";
@@ -78,6 +86,17 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
     return { t, kind, totals };
   });
 
+  // Contract clients pay a monthly fee: count each month in the range up to this month,
+  // starting from the month the client was added.
+  const lastMonth = (to < today ? to : today).slice(0, 7);
+  const fees = (contractClients ?? []).map((c) => {
+    const added = String(c.created_at).slice(0, 7);
+    const first = from.slice(0, 7) > added ? from.slice(0, 7) : added;
+    const months = monthsBetween(first, lastMonth);
+    return { id: c.id as string, name: c.name as string, cents: months * (c.monthly_fee_cents as number) };
+  }).filter((f) => f.cents > 0);
+  const feesTotal = fees.reduce((t, f) => t + f.cents, 0);
+
   const sum = (list: typeof jobs, pick: (j: (typeof jobs)[number]) => number) => list.reduce((s, j) => s + pick(j), 0);
   const billed = jobs.filter((j) => j.kind !== "call");
   const workedMin = sum(jobs, (j) => j.totals.workedMinutes);
@@ -92,24 +111,24 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
       count: list.length,
       worked: sum(list, (j) => j.totals.workedMinutes),
       billed: kind === "call" ? 0 : sum(list, (j) => j.totals.billableMinutes),
-      money: kind === "call" ? 0 : sum(list, (j) => j.totals.totalCents),
+      // Service calls are paid for by the contract fees.
+      money: kind === "call" ? feesTotal : sum(list, (j) => j.totals.totalCents),
     };
   });
 
-  // Hours each technician logged on these jobs, from their own timer entries.
-  const techMinutes = new Map<string, { minutes: number; jobs: Set<string> }>();
-  for (const { t } of jobs) {
+  // Hours each technician logged on these jobs, from their own timer entries, split by job type.
+  const techMinutes = new Map<string, Record<Kind, number>>();
+  for (const { t, kind } of jobs) {
     for (const e of t.time_entries) {
       const key = e.technician_id ?? "";
-      const row = techMinutes.get(key) ?? { minutes: 0, jobs: new Set<string>() };
-      row.minutes += entryMinutes({ startedAt: e.started_at, endedAt: e.ended_at });
-      row.jobs.add(t.id);
+      const row = techMinutes.get(key) ?? { ticket: 0, call: 0, project: 0 };
+      row[kind] += entryMinutes({ startedAt: e.started_at, endedAt: e.ended_at });
       techMinutes.set(key, row);
     }
   }
   const byTech = [...techMinutes]
-    .map(([id, r]) => ({ name: names.get(id) || "Unknown", minutes: r.minutes, jobs: r.jobs.size }))
-    .sort((a, b) => b.minutes - a.minutes);
+    .map(([id, r]) => ({ name: names.get(id) || "Unknown", ...r, total: r.ticket + r.call + r.project }))
+    .sort((a, b) => b.total - a.total);
 
   const clientMap = new Map<string, { name: string; jobs: number; worked: number; money: number }>();
   for (const j of jobs) {
@@ -118,6 +137,11 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
     row.worked += j.totals.workedMinutes;
     if (j.kind !== "call") row.money += j.totals.totalCents;
     clientMap.set(j.t.client_id, row);
+  }
+  for (const f of fees) {
+    const row = clientMap.get(f.id) ?? { name: f.name, jobs: 0, worked: 0, money: 0 };
+    row.money += f.cents;
+    clientMap.set(f.id, row);
   }
   const byClient = [...clientMap.values()].sort((a, b) => b.money - a.money || b.worked - a.worked);
 
@@ -164,8 +188,8 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Stat label="Hours worked" value={hrs(workedMin)} note="all jobs" />
         <Stat label="Hours billed" value={hrs(billedMin)} note="tickets & projects" />
-        <Stat label="Money billed" value={money(earned)} note="labor + parts" />
-        <Stat label="Paid" value={money(paid)} note={`${money(earned - paid)} not paid yet`} />
+        <Stat label="Total money" value={money(earned + feesTotal)} note={`${money(earned)} jobs + ${money(feesTotal)} contracts`} />
+        <Stat label="Jobs paid" value={money(paid)} note={`${money(earned - paid)} not paid yet`} />
       </div>
 
       <Table
@@ -176,15 +200,15 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
           String(k.count),
           hrs(k.worked),
           k.kind === "call" ? "—" : hrs(k.billed),
-          k.kind === "call" ? "Contract" : money(k.money),
+          money(k.money),
         ])}
-        foot={["Total", String(jobs.length), hrs(workedMin), hrs(billedMin), money(earned)]}
+        foot={["Total", String(jobs.length), hrs(workedMin), hrs(billedMin), money(earned + feesTotal)]}
       />
 
       <Table
         title="By technician"
-        head={["Technician", "Jobs", "Worked"]}
-        rows={byTech.map((t) => [t.name, String(t.jobs), hrs(t.minutes)])}
+        head={["Technician", "Tickets", "Calls", "Projects", "Total"]}
+        rows={byTech.map((t) => [t.name, hrs(t.ticket), hrs(t.call), hrs(t.project), hrs(t.total)])}
         empty="No time logged in this period."
       />
 
@@ -196,7 +220,7 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
       />
 
       <p className="text-xs text-slate-500">
-        Service calls are covered by the client&apos;s contract, so their hours count as worked but not as money billed. Running timers count up to now.
+        Service calls are covered by the client&apos;s contract: their money is the contract clients&apos; monthly fees for each month in the range, up to this month. Running timers count up to now.
       </p>
     </div>
   );
@@ -231,7 +255,7 @@ function Table({ title, head, rows, foot, empty }: { title: string; head: string
             {rows.map((r, ri) => (
               <tr key={ri} className="border-b border-slate-100 last:border-0">
                 {r.map((cell, i) => (
-                  <td key={i} className={`py-2 pr-3 ${i > 0 ? "text-right tabular-nums" : "font-medium"}`}>{cell}</td>
+                  <td key={i} className={`py-2 pr-3 ${i > 0 ? "whitespace-nowrap text-right tabular-nums" : "font-medium"}`}>{cell}</td>
                 ))}
               </tr>
             ))}
@@ -240,7 +264,7 @@ function Table({ title, head, rows, foot, empty }: { title: string; head: string
             <tfoot>
               <tr className="border-t-2 border-slate-300 font-bold">
                 {foot.map((cell, i) => (
-                  <td key={i} className={`py-2 pr-3 ${i > 0 ? "text-right tabular-nums" : ""}`}>{cell}</td>
+                  <td key={i} className={`py-2 pr-3 ${i > 0 ? "whitespace-nowrap text-right tabular-nums" : ""}`}>{cell}</td>
                 ))}
               </tr>
             </tfoot>

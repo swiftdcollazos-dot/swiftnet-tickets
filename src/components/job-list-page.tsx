@@ -20,13 +20,23 @@ const TABS = [
   { view: "", path: "/", title: "Service Tickets", count: "tickets", newPath: "/tickets/new", frame: "border-amber-400", badge: "bg-amber-400 text-slate-900" },
   { view: "calls", path: "/?view=calls", title: "Service Calls", count: "calls", newPath: "/tickets/new?call=1", frame: "border-red-500", badge: "bg-red-500 text-white" },
   { view: "completed", path: "/?view=completed", title: "Completed", count: "", newPath: "", frame: "border-green-500", badge: "" },
+  { view: "sent", path: "/?view=sent", title: "Sent to Customer", count: "", newPath: "", frame: "border-green-500", badge: "" },
+  { view: "paid", path: "/?view=paid", title: "Paid", count: "", newPath: "", frame: "border-green-500", badge: "" },
   { view: "projects", path: "/projects", title: "Special Projects", count: "projects", newPath: "/tickets/new?project=1", frame: "border-purple-500", badge: "bg-purple-500 text-white" },
 ] as const;
 
-const PROJECTS = TABS[3];
+const PROJECTS = TABS[5];
+
+/** The finished-job tabs, each showing one status: closed, sent to the customer, paid. */
+const DONE_STATUS: Record<string, TicketStatus> = { completed: "completed", sent: "sent", paid: "paid" };
+const DONE_NOTE: Record<string, string> = {
+  completed: "Closed service tickets and service calls, not yet sent to the customer.",
+  sent: "Service tickets and service calls sent to the customer, waiting to be paid.",
+  paid: "Service tickets and service calls that are paid.",
+};
 
 /**
- * A list of jobs. Work Tickets shows the Service Tickets / Service Calls / Completed tabs;
+ * A list of jobs. Work Tickets shows the Service Tickets / Service Calls tabs and the Completed / Sent to Customer / Paid tabs;
  * Special Projects has its own page in the header.
  */
 export async function JobListPage({ searchParams, projects = false }: { searchParams: Promise<Record<string, string | string[] | undefined>>; projects?: boolean }) {
@@ -34,8 +44,9 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
   // Service calls are the jobs for contract clients; service tickets and special projects, for hourly clients.
   const tab = projects ? PROJECTS : (TABS.find((t) => t.view === view && t !== PROJECTS) ?? TABS[0]);
   const calls = tab.view === "calls";
-  // Finished service tickets and service calls together.
-  const completed = tab.view === "completed";
+  // Finished service tickets and service calls together, one status per tab.
+  const doneStatus = DONE_STATUS[tab.view];
+  const completed = Boolean(doneStatus);
   const label = completed ? "job" : tab.title.slice(0, -1).toLowerCase();
   const { supabase } = await requireUser();
 
@@ -46,9 +57,9 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
     .order("number", { ascending: false })
     .limit(completed ? 300 : 100);
   // Special projects can be for any client.
-  if (completed) query = query.in("status", ["completed", "sent", "paid"]);
+  if (completed) query = query.eq("status", doneStatus);
   else if (tab.view !== "projects") query = query.eq("clients.client_type", calls ? "contract" : "hourly");
-  if (status && status in STATUS_LABELS) query = query.eq("status", status);
+  if (!completed && status && status in STATUS_LABELS) query = query.eq("status", status);
   if (q && /^\d+$/.test(q)) query = query.eq("number", Number(q));
   const [{ data: tickets, error }, pending] = await Promise.all([query, pendingCounts(supabase)]);
   if (error) throw new Error(error.message);
@@ -68,9 +79,13 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
   return (
     <>
       {!projects && (
-        <div className="mb-4 grid grid-cols-3 gap-1 rounded-lg bg-slate-200 p-1 text-center text-sm font-semibold">
-          {TABS.slice(0, 3).map((t) => (
-            <Link key={t.view} href={t.path} className={`rounded-md py-2 ${t === tab ? "bg-white text-brand shadow" : "text-slate-600"}`}>
+        <div className="mb-4 grid grid-cols-6 gap-1 rounded-lg bg-slate-200 p-1 text-center text-sm font-semibold">
+          {TABS.slice(0, 5).map((t, i) => (
+            <Link
+              key={t.view}
+              href={t.path}
+              className={`flex items-center justify-center rounded-md px-1 py-2 leading-tight ${i < 2 ? "col-span-3" : "col-span-2"} ${t === tab ? "bg-white text-brand shadow" : "text-slate-600"}`}
+            >
               {t.title} {t.count && <CountBadge count={pending[t.count]} className={t.badge} />}
             </Link>
           ))}
@@ -81,21 +96,23 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
         {tab.newPath && <Link href={tab.newPath} className="btn w-full sm:w-auto">+ New {label}</Link>}
       </div>
       {calls && <p className="-mt-2 mb-4 text-sm text-slate-500">For contract clients. Time is tracked, not charged.</p>}
-      {completed && <p className="-mt-2 mb-4 text-sm text-slate-500">Service tickets and service calls that are closed, sent to the customer or paid.</p>}
+      {completed && <p className="-mt-2 mb-4 text-sm text-slate-500">{DONE_NOTE[tab.view]}</p>}
       <form className="mb-4 flex gap-2">
         {(calls || completed) && <input type="hidden" name="view" value={tab.view} />}
         <input className="input" name="q" placeholder={`Search client, device, ${label} #`} defaultValue={q ?? ""} />
-        <select className="input w-36" name="status" defaultValue={status ?? ""}>
-          <option value="">All</option>
-          {Object.entries(STATUS_LABELS).filter(([v]) => !completed || v !== "open").map(([v, l]) => (
-            <option key={v} value={v}>{l}</option>
-          ))}
-        </select>
+        {!completed && (
+          <select className="input w-36" name="status" defaultValue={status ?? ""}>
+            <option value="">All</option>
+            {Object.entries(STATUS_LABELS).map(([v, l]) => (
+              <option key={v} value={v}>{l}</option>
+            ))}
+          </select>
+        )}
         <button className="btn-light">Go</button>
       </form>
 
       {rows.length === 0 ? (
-        <p className="card text-center text-slate-500">{completed ? "No completed jobs yet." : <>No {label}s yet. Tap “New {label}” to create one.</>}</p>
+        <p className="card text-center text-slate-500">{completed ? "Nothing here yet." : <>No {label}s yet. Tap “New {label}” to create one.</>}</p>
       ) : (
         <ul className="space-y-2">
           {rows.map((t, i) => {

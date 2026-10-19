@@ -27,6 +27,15 @@ const TABS = [
 
 const PROJECTS = TABS[5];
 
+/** Work Tickets buttons: filled in their color when selected, outlined otherwise. */
+const BUTTON_LOOK: Record<string, { on: string; off: string }> = {
+  "": { on: "border-amber-500 bg-amber-400 text-slate-900", off: "border-amber-400 bg-white text-amber-700 hover:bg-amber-50" },
+  calls: { on: "border-red-600 bg-red-500 text-white", off: "border-red-400 bg-white text-red-700 hover:bg-red-50" },
+  completed: { on: "border-blue-700 bg-blue-600 text-white", off: "border-blue-300 bg-white text-blue-700 hover:bg-blue-50" },
+  sent: { on: "border-violet-700 bg-violet-600 text-white", off: "border-violet-300 bg-white text-violet-700 hover:bg-violet-50" },
+  paid: { on: "border-green-700 bg-green-600 text-white", off: "border-green-300 bg-white text-green-700 hover:bg-green-50" },
+};
+
 /** The finished-job tabs, each showing one status: closed, sent to the customer, paid. */
 const DONE_STATUS: Record<string, TicketStatus> = { completed: "completed", sent: "sent", paid: "paid" };
 const DONE_NOTE: Record<string, string> = {
@@ -79,16 +88,21 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
   return (
     <>
       {!projects && (
-        <div className="mb-4 grid grid-cols-6 gap-1 rounded-lg bg-slate-200 p-1 text-center text-sm font-semibold">
-          {TABS.slice(0, 5).map((t, i) => (
-            <Link
-              key={t.view}
-              href={t.path}
-              className={`flex items-center justify-center rounded-md px-1 py-2 leading-tight ${i < 2 ? "col-span-3" : "col-span-2"} ${t === tab ? "bg-white text-brand shadow" : "text-slate-600"}`}
-            >
-              {t.title} {t.count && <CountBadge count={pending[t.count]} className={t.badge} />}
-            </Link>
-          ))}
+        <div className="mb-4 grid grid-cols-6 gap-2 text-center text-sm font-bold">
+          {TABS.slice(0, 5).map((t, i) => {
+            const active = t === tab;
+            const look = BUTTON_LOOK[t.view];
+            return (
+              <Link
+                key={t.view}
+                href={t.path}
+                aria-current={active ? "page" : undefined}
+                className={`flex items-center justify-center rounded-xl border-2 px-2 leading-tight shadow-sm transition active:scale-95 ${i < 2 ? "col-span-3 py-3 text-base" : "col-span-2 py-2.5"} ${active ? `${look.on} shadow-md` : look.off}`}
+              >
+                {t.title} {t.count && <CountBadge count={pending[t.count]} className={active ? "bg-white text-slate-900" : t.badge} />}
+              </Link>
+            );
+          })}
         </div>
       )}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

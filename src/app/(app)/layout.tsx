@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import { RunningTimers } from "@/components/running-timers";
 import { PendingBadge } from "@/components/pending-badge";
 import { HeaderMenu } from "@/components/header-menu";
+import { requireUser } from "@/lib/supabase/server";
+import { isOwner } from "@/lib/owner";
 import { NotificationsToggle } from "@/components/notifications-toggle";
 import { VAPID_PUBLIC_KEY } from "@/lib/vapid";
 import { signOut } from "@/app/actions";
@@ -21,6 +23,20 @@ function GearIcon() {
   );
 }
 
+/** Reports menu item, only for the owner. */
+async function ReportsLink() {
+  const { user } = await requireUser();
+  if (!isOwner(user.email)) return null;
+  return (
+    <Link href="/reports" className="flex items-center gap-2 px-3 py-2.5 hover:bg-slate-100">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>
+        <path d="M3 3v18h18M8 17v-5M12 17V8M16 17v-8M20 17V5" />
+      </svg>
+      Reports
+    </Link>
+  );
+}
+
 export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <>
@@ -33,6 +49,9 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
           {/* ☰ menu with Settings and Sign out, top right. */}
           <div className="ml-auto sm:order-3 sm:ml-0">
             <HeaderMenu>
+              <Suspense fallback={null}>
+                <ReportsLink />
+              </Suspense>
               <Link href="/settings" className="flex items-center gap-2 px-3 py-2.5 hover:bg-slate-100">
                 <GearIcon /> Settings
               </Link>

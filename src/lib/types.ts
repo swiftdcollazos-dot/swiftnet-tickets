@@ -29,7 +29,6 @@ export const PROJECT_TYPES = [
   "Structured Cabling Rollout",
   "MDF / IDF Server Room Clean-Up",
   "Rack-Mount Server Deployment",
-  "Legacy PBX to Cloud-Hosted VoIP Migration",
   "Server Installation",
   "Domain Controller and DNS setup",
   "WIFI Access Points",

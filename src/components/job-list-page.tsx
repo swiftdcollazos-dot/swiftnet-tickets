@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import { requireUser } from "@/lib/supabase/server";
 import { computeTotals, formatMoney } from "@/lib/billing";
 import { formatDate } from "@/lib/time";
@@ -96,7 +97,7 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
         <p className="card text-center text-slate-500">{completed ? "No completed jobs yet." : <>No {label}s yet. Tap “New {label}” to create one.</>}</p>
       ) : (
         <ul className="space-y-2">
-          {rows.map((t) => {
+          {rows.map((t, i) => {
             const totals = computeTotals(
               t.time_entries.map((e: { started_at: string; ended_at: string | null }) => ({ startedAt: e.started_at, endedAt: e.ended_at })),
               t.ticket_parts.map((p: { qty: number; unit_price_cents: number }) => ({ qty: Number(p.qty), unitPriceCents: p.unit_price_cents })),
@@ -105,8 +106,14 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
             );
             const running = t.time_entries.some((e: { ended_at: string | null }) => !e.ended_at);
             const isCall = t.clients?.client_type === "contract";
+            // Completed: a heading where each group (tickets, then calls) starts.
+            const groupStart = completed && (i === 0 || isCall !== (rows[i - 1].clients?.client_type === "contract"));
             return (
-              <li key={t.id}>
+              <Fragment key={t.id}>
+              {groupStart && (
+                <li className={`h2 border-b border-slate-200 pb-1 ${i > 0 ? "pt-4" : ""}`}>{isCall ? "Service calls" : "Service tickets"}</li>
+              )}
+              <li>
                 <Link href={`/tickets/${t.id}`} className={`card flex items-center gap-3 border-2 ${t.status !== "open" ? "border-green-500" : tab.frame}`}>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -133,6 +140,7 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
                   </div>
                 </Link>
               </li>
+              </Fragment>
             );
           })}
         </ul>

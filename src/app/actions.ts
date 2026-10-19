@@ -195,6 +195,15 @@ export async function closeTicket(ticketId: string) {
 export async function startTimer(ticketId: string) {
   const { supabase, user } = await requireUser();
   await assertOpen(supabase, ticketId);
+  // One timer per technician per job; other technicians can run their own at the same time.
+  const { data: mine } = await supabase
+    .from("time_entries")
+    .select("id")
+    .eq("ticket_id", ticketId)
+    .eq("technician_id", user.id)
+    .is("ended_at", null)
+    .limit(1);
+  if (mine?.length) return;
   const { error } = await supabase.from("time_entries").insert({
     ticket_id: ticketId,
     technician_id: user.id,
@@ -227,7 +236,7 @@ export async function addTimeEntry(ticketId: string, form: FormData) {
   if (endedAt < startedAt) fail("Time out must be after time in.");
   const { error } = await supabase.from("time_entries").insert({
     ticket_id: ticketId,
-    technician_id: user.id,
+    technician_id: text(form, "technician_id") || user.id,
     started_at: startedAt,
     ended_at: endedAt,
   });

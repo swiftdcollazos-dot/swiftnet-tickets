@@ -49,7 +49,15 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
   // Special projects can move to any client; tickets and calls stay with their client type.
   const sameTypeClients = ticket.is_project ? allClients : allClients.filter((c) => c.client_type === client.client_type);
   const otherTypeClients = allClients.filter((c) => c.client_type !== client.client_type);
-  const running = entries.find((e) => !e.ended_at);
+  // Each technician runs their own timer, so several can be working on the same job.
+  const runningAll = entries.filter((e) => !e.ended_at);
+  const running = runningAll.find((e) => e.technician_id === user.id);
+  const others = runningAll.filter((e) => e !== running);
+  const perTech = new Map<string, number>();
+  for (const e of entries) {
+    const key = e.technician_id ?? "";
+    perTech.set(key, (perTech.get(key) ?? 0) + entryMinutes({ startedAt: e.started_at, endedAt: e.ended_at }));
+  }
   const closed = ticket.status !== "open";
   const money = (c: number) => formatMoney(c, settings.currency);
   // Whole hours, matching the printout.
@@ -147,6 +155,32 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
           </div>
         )}
 
+        {others.length > 0 && !closed && (
+          <ul className="mb-4 space-y-2">
+            {others.map((e) => (
+              <li key={e.id} className="flex items-center justify-between gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm">
+                <span className="font-semibold">{techName(e.technician_id) || "Unknown"} is working</span>
+                <form action={stopTimer.bind(null, ticket.id, e.id)} className="flex items-center gap-2">
+                  <span className="font-mono font-semibold text-red-700">● <LiveTimer startedAt={e.started_at} /></span>
+                  <button className="btn bg-red-600 px-2 py-1 text-xs">■ Stop</button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {perTech.size > 1 && (
+          <div className="mb-4 rounded-lg bg-slate-50 px-3 py-2 text-sm">
+            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Time per technician</div>
+            {[...perTech].map(([id, min]) => (
+              <div key={id} className="flex justify-between">
+                <span>{techName(id) || "Unknown"}</span>
+                <span className="tabular-nums">{formatMinutes(min)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {entries.length > 0 && (
           <table className="mb-4 w-full text-sm">
             <thead className="text-left text-xs uppercase text-slate-500">
@@ -179,6 +213,14 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
           <details>
             <summary className="cursor-pointer text-sm font-semibold text-brand">Add time manually</summary>
             <form action={addTimeEntry.bind(null, ticket.id)} className="mt-3 grid grid-cols-3 gap-2">
+              <div className="col-span-3">
+                <label className="label" htmlFor="entry_tech">Technician</label>
+                <select className="input" id="entry_tech" name="technician_id" defaultValue={user.id}>
+                  {technicians.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="label" htmlFor="date">Date</label>
                 <input className="input" type="date" id="date" name="date" defaultValue={todayLocal()} required />
@@ -274,7 +316,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
             <Row label="Total" value={money(totals.totalCents)} bold />
           </div>
         </dl>
-        {running && <p className="mt-2 text-xs text-amber-700">The timer is still running, so this total will keep going up.</p>}
+        {runningAll.length > 0 && <p className="mt-2 text-xs text-amber-700">The timer is still running, so this total will keep going up.</p>}
       </CollapsibleCard>
 
       {/* Details */}

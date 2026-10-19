@@ -42,7 +42,7 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
     .select("*, clients!inner(name, client_type), time_entries(started_at, ended_at), ticket_parts(qty, unit_price_cents)")
     .eq("is_project", tab.view === "projects")
     .order("number", { ascending: false })
-    .limit(100);
+    .limit(completed ? 300 : 100);
   // Special projects can be for any client.
   if (completed) query = query.in("status", ["completed", "paid"]);
   else if (tab.view !== "projects") query = query.eq("clients.client_type", calls ? "contract" : "hourly");
@@ -60,6 +60,8 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
         .toLowerCase()
         .includes(needle),
   );
+  // Completed: hourly clients' tickets first, then contract clients' calls, each newest first.
+  if (completed) rows.sort((a, b) => Number(a.clients?.client_type === "contract") - Number(b.clients?.client_type === "contract"));
 
   return (
     <>

@@ -35,6 +35,9 @@ export const PROJECT_TYPES = [
   "WIFI Access Points",
   "Access Control Hardware",
   "Structured Cabling Repairs",
+  "NVR Setup",
+  "Surveillance Cameras",
+  "VoIP Phones System",
 ] as const;
 
 const KIND_SEPARATOR = "; ";

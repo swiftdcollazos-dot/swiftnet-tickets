@@ -12,6 +12,7 @@ import {
   setStatus,
   startTimer,
   stopTimer,
+  updatePart,
   updateTicket,
 } from "@/app/actions";
 import { entryMinutes, formatHours, formatMinutes, formatMoney } from "@/lib/billing";
@@ -21,6 +22,7 @@ import { STATUS_LABELS, recordLabel, type Client } from "@/lib/types";
 import { requireUser } from "@/lib/supabase/server";
 import { ClientPicker } from "@/components/client-picker";
 import { LiveTimer } from "@/components/live-timer";
+import { PartRow } from "@/components/part-row";
 import { CollapsibleCard } from "@/components/collapsible-card";
 import { PaidStamp } from "@/components/paid-stamp";
 import { Loading } from "@/components/loading";
@@ -254,22 +256,15 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
             </thead>
             <tbody>
               {parts.map((p) => (
-                <tr key={p.id} className="border-t border-slate-100">
-                  <td className="py-2">{p.qty}</td>
-                  <td>
-                    {p.description}
-                    {p.part_number && <div className="text-xs text-slate-400">Part # {p.part_number}</div>}
-                  </td>
-                  <td className="text-right">{money(p.unit_price_cents)}</td>
-                  <td className="text-right">{money(Math.round(p.qty * p.unit_price_cents))}</td>
-                  <td className="pl-2 text-right">
-                    {!closed && (
-                      <form action={deletePart.bind(null, ticket.id, p.id)}>
-                        <button className="btn-danger">✕</button>
-                      </form>
-                    )}
-                  </td>
-                </tr>
+                <PartRow
+                  key={p.id}
+                  part={p}
+                  price={money(p.unit_price_cents)}
+                  amount={money(Math.round(p.qty * p.unit_price_cents))}
+                  closed={closed}
+                  update={updatePart.bind(null, ticket.id, p.id)}
+                  remove={deletePart.bind(null, ticket.id, p.id)}
+                />
               ))}
             </tbody>
           </table>

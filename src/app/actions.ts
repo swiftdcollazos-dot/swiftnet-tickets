@@ -255,17 +255,28 @@ export async function deleteTimeEntry(ticketId: string, entryId: string) {
 
 // ---------- Parts ----------
 
-export async function addPart(ticketId: string, form: FormData) {
-  const { supabase } = await requireUser();
-  await assertOpen(supabase, ticketId);
+function partFields(form: FormData) {
   const qty = Number(text(form, "qty") || "1");
-  const { error } = await supabase.from("ticket_parts").insert({
-    ticket_id: ticketId,
+  return {
     qty: Number.isFinite(qty) && qty > 0 ? qty : 1,
     part_number: text(form, "part_number"),
     description: text(form, "description") || fail("Enter a description."),
     unit_price_cents: parseMoney(text(form, "price")),
-  });
+  };
+}
+
+export async function addPart(ticketId: string, form: FormData) {
+  const { supabase } = await requireUser();
+  await assertOpen(supabase, ticketId);
+  const { error } = await supabase.from("ticket_parts").insert({ ticket_id: ticketId, ...partFields(form) });
+  if (error) fail(error.message);
+  revalidatePath(`/tickets/${ticketId}`);
+}
+
+export async function updatePart(ticketId: string, partId: string, form: FormData) {
+  const { supabase } = await requireUser();
+  await assertOpen(supabase, ticketId);
+  const { error } = await supabase.from("ticket_parts").update(partFields(form)).eq("id", partId);
   if (error) fail(error.message);
   revalidatePath(`/tickets/${ticketId}`);
 }

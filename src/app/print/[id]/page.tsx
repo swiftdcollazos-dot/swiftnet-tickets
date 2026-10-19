@@ -27,7 +27,7 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
       <div className="mx-auto mb-4 flex max-w-[800px] gap-2 print:hidden">
         <Link href={`/tickets/${ticket.id}`} className="btn-light">← Back</Link>
         <span className="flex-1" />
-        <PrintButton />
+        <PrintButton fileName={`Swiftnet ${recordLabel(client.client_type, ticket.is_project)} ${ticket.number}`} />
       </div>
 
       <article className="mx-auto max-w-[800px] bg-white p-8 text-sm text-slate-900 shadow print:max-w-none print:shadow-none">

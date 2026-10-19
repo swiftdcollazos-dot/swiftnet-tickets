@@ -37,6 +37,14 @@ export const PROJECT_TYPES = [
   "NVR Setup",
   "Surveillance Cameras",
   "VoIP Phones System",
+  "Router Setup",
+  "VPN Point to Point",
+  "Patch Panel Termination",
+  "Port Termination",
+  "Port Face plate",
+  "Fiber Optics Repairs",
+  "Fiber Optic runs",
+  "Fiber Optic Termination",
 ] as const;
 
 const KIND_SEPARATOR = "; ";

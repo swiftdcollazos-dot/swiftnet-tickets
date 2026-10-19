@@ -12,6 +12,7 @@ import { pendingCounts } from "@/lib/pending";
 const STATUS_STYLES: Record<TicketStatus, string> = {
   open: "bg-amber-100 text-amber-800",
   completed: "bg-blue-100 text-blue-800",
+  sent: "bg-violet-100 text-violet-800",
   paid: "bg-green-100 text-green-800",
 };
 
@@ -45,7 +46,7 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
     .order("number", { ascending: false })
     .limit(completed ? 300 : 100);
   // Special projects can be for any client.
-  if (completed) query = query.in("status", ["completed", "paid"]);
+  if (completed) query = query.in("status", ["completed", "sent", "paid"]);
   else if (tab.view !== "projects") query = query.eq("clients.client_type", calls ? "contract" : "hourly");
   if (status && status in STATUS_LABELS) query = query.eq("status", status);
   if (q && /^\d+$/.test(q)) query = query.eq("number", Number(q));
@@ -80,7 +81,7 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
         {tab.newPath && <Link href={tab.newPath} className="btn w-full sm:w-auto">+ New {label}</Link>}
       </div>
       {calls && <p className="-mt-2 mb-4 text-sm text-slate-500">For contract clients. Time is tracked, not charged.</p>}
-      {completed && <p className="-mt-2 mb-4 text-sm text-slate-500">Service tickets and service calls that are completed or paid.</p>}
+      {completed && <p className="-mt-2 mb-4 text-sm text-slate-500">Service tickets and service calls that are closed, sent to the customer or paid.</p>}
       <form className="mb-4 flex gap-2">
         {(calls || completed) && <input type="hidden" name="view" value={tab.view} />}
         <input className="input" name="q" placeholder={`Search client, device, ${label} #`} defaultValue={q ?? ""} />

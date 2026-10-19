@@ -1,4 +1,4 @@
-export type TicketStatus = "open" | "completed" | "paid";
+export type TicketStatus = "open" | "completed" | "sent" | "paid";
 
 /** The Type dropdown on service tickets and calls. The label itself is what gets saved. */
 export const SERVICE_TYPES = [
@@ -67,6 +67,7 @@ export function kindLabel(kind: string | null | undefined): string {
 export const STATUS_LABELS: Record<TicketStatus, string> = {
   open: "Open",
   completed: "Closed",
+  sent: "Sent to customer",
   paid: "Paid",
 };
 

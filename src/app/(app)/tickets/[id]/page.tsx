@@ -116,10 +116,15 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
       {closed ? (
         <div className="card flex flex-wrap items-center gap-2 border-green-300 bg-green-50">
           {ticket.status === "paid" && !call && <PaidStamp className="w-20" />}
-          <span className="flex-1 font-semibold text-green-800">
+          <span className="flex-1 basis-full font-semibold text-green-800 sm:basis-0">
             ✓ {STATUS_LABELS[ticket.status]}. This {label.toLowerCase()} can no longer be edited.
           </span>
-          {ticket.status === "completed" && (
+          {ticket.status === "completed" && !call && (
+            <form action={setStatus.bind(null, ticket.id, "sent")}>
+              <button className="btn bg-violet-600">Sent to customer</button>
+            </form>
+          )}
+          {(ticket.status === "completed" || ticket.status === "sent") && (
             <form action={setStatus.bind(null, ticket.id, "paid")}>
               <button className="btn">Mark as paid</button>
             </form>

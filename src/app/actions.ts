@@ -12,7 +12,7 @@ import { isOwner } from "@/lib/owner";
 import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
-const STATUSES: TicketStatus[] = ["open", "completed", "paid"];
+const STATUSES: TicketStatus[] = ["open", "completed", "sent", "paid"];
 
 function fail(message: string): never {
   throw new Error(message);

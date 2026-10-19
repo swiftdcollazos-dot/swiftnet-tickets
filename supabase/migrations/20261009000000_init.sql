@@ -45,6 +45,8 @@ exception when duplicate_object then null; end $$;
 do $$ begin
   create type public.ticket_status as enum ('open', 'completed', 'paid');
 exception when duplicate_object then null; end $$;
+-- Closed jobs can be marked as sent to the customer before they are paid.
+alter type public.ticket_status add value if not exists 'sent' before 'paid';
 
 create table if not exists public.tickets (
   id                uuid primary key default gen_random_uuid(),

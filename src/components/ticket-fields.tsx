@@ -12,7 +12,8 @@ export function ContactedByField({ value }: { value?: string }) {
 
 /**
  * The ticket's own fields, laid out like the paper repair order.
- * Special projects get a shorter form: several project types can be ticked, and there are no item, issue, make, model or machine fields.
+ * Special projects get a shorter form: several project types can be ticked, there are no item, make, model or machine fields,
+ * and the issue box becomes "Labor to be performed".
  */
 export function TicketFields({ ticket, today, withContactedBy = true, project = false, technicians }: { ticket?: Partial<Ticket>; today: string; withContactedBy?: boolean; project?: boolean; technicians?: { id: string; name: string }[] }) {
   return (
@@ -76,6 +77,13 @@ export function TicketFields({ ticket, today, withContactedBy = true, project = 
             <DictationTextarea rows={3} id="service_request" name="service_request" defaultValue={ticket?.service_request ?? ""} />
           </div>
         </>
+      )}
+      {project && (
+        // Projects keep their plan of work in the same column service tickets use for the issue reported.
+        <div>
+          <label className="label" htmlFor="service_request">Labor to be performed</label>
+          <DictationTextarea rows={4} id="service_request" name="service_request" defaultValue={ticket?.service_request ?? ""} />
+        </div>
       )}
       <div>
         <label className="label" htmlFor="labor_performed">Labor performed</label>

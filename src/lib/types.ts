@@ -20,6 +20,9 @@ export const SERVICE_TYPES = [
   "Access control",
   "Cybersecurity",
   "IT training",
+  "Email creation",
+  "Email password reset",
+  "User password reset",
 ] as const;
 
 export function isServiceType(kind: string | null | undefined): kind is string {

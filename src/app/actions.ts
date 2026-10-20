@@ -84,6 +84,7 @@ const NOT_ALLOWED: Record<keyof Permissions, string> = {
   createJobs: "Your account can't create service tickets or service calls.",
   timers: "Your account can't run timers or change time.",
   settings: "Your account can't change settings or users.",
+  reports: "Your account can't see reports.",
 };
 
 /** Closed and paid tickets are locked; only reopening changes them. */
@@ -501,6 +502,7 @@ function permissionFields(form: FormData) {
     can_create_jobs: form.has("can_create_jobs"),
     can_use_timers: form.has("can_use_timers"),
     can_manage_settings: form.has("can_manage_settings"),
+    can_see_reports: form.has("can_see_reports"),
   };
 }
 

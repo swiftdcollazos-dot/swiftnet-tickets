@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { requireUser } from "@/lib/supabase/server";
-import { isOwner } from "@/lib/owner";
+import { permissions } from "@/lib/owner";
 import { computeTotals, entryMinutes, formatMoney } from "@/lib/billing";
 import { formatDate, todayLocal } from "@/lib/time";
 import { billingType, rulesOf, type ClientType, type Settings, type Ticket } from "@/lib/types";
@@ -50,8 +50,8 @@ const KIND_LABEL: Record<Kind, string> = { ticket: "Service tickets", call: "Ser
 
 async function Report({ searchParams }: { searchParams: PageProps<"/reports">["searchParams"] }) {
   const { supabase, user } = await requireUser();
-  // Only the owner can see the money.
-  if (!isOwner(user.email)) notFound();
+  // Only the owner and users allowed in Settings > Users can see the money.
+  if (!permissions(user).reports) notFound();
 
   const params = await searchParams;
   const today = todayLocal();

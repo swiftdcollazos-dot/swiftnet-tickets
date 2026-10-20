@@ -44,7 +44,8 @@ function Fields({ prefix, user, newUser }: { prefix: string; user?: User; newUse
         <Check name="can_create_jobs" checked={user?.permissions.createJobs ?? true} label="Create service tickets and service calls" />
         <Check name="can_use_timers" checked={user?.permissions.timers ?? true} label="Run timers and add or remove time" />
         <Check name="can_manage_settings" checked={user?.permissions.settings ?? true} label="Open Settings and manage users" />
-        <p className="text-xs text-slate-500">Everyone can see and edit jobs and clients. Only David sees Reports.</p>
+        <Check name="can_see_reports" checked={user?.permissions.reports ?? false} label="See Reports (hours and money)" />
+        <p className="text-xs text-slate-500">Everyone can see and edit jobs and clients.</p>
       </fieldset>
     </>
   );

@@ -5,10 +5,11 @@ import { RunningTimers } from "@/components/running-timers";
 import { PendingBadge } from "@/components/pending-badge";
 import { HeaderMenu } from "@/components/header-menu";
 import { requireUser } from "@/lib/supabase/server";
-import { isOwner, permissions } from "@/lib/owner";
+import { permissions } from "@/lib/owner";
 import { NotificationsToggle } from "@/components/notifications-toggle";
 import { VAPID_PUBLIC_KEY } from "@/lib/vapid";
 import { signOut } from "@/app/actions";
+import { BackButton } from "@/components/back-button";
 
 function GearIcon() {
   return (
@@ -23,10 +24,10 @@ function GearIcon() {
   );
 }
 
-/** Reports menu item, only for the owner. */
+/** Reports menu item, for the owner and users allowed to see reports. */
 async function ReportsLink() {
   const { user } = await requireUser();
-  if (!isOwner(user.email)) return null;
+  if (!permissions(user).reports) return null;
   return (
     <Link href="/reports" className="flex items-center gap-2 px-3 py-2.5 hover:bg-slate-100">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>
@@ -98,7 +99,8 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
           <RunningTimers />
         </Suspense>
       </header>
-      <main className="mx-auto max-w-3xl p-4 pb-16">{children}</main>
+      <main className="mx-auto max-w-3xl p-4 pb-20">{children}</main>
+      <BackButton />
     </>
   );
 }

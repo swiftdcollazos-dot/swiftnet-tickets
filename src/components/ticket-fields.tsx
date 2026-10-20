@@ -12,12 +12,19 @@ export function ContactedByField({ value }: { value?: string }) {
 
 /**
  * The ticket's own fields, laid out like the paper repair order.
- * Special projects get a shorter form: several project types can be ticked, there are no item, make, model or machine fields,
- * and the issue box becomes "Labor to be performed".
+ * Special projects get a shorter form: a project title, several project types can be ticked, there are no make, model
+ * or machine fields, and the issue box becomes "Labor to be performed".
  */
 export function TicketFields({ ticket, today, withContactedBy = true, project = false, technicians }: { ticket?: Partial<Ticket>; today: string; withContactedBy?: boolean; project?: boolean; technicians?: { id: string; name: string }[] }) {
   return (
     <div className="space-y-4">
+      {project && (
+        // Projects keep their title in the column service tickets use for the item to be serviced.
+        <div>
+          <label className="label" htmlFor="item_to_service">Project title</label>
+          <input className="input" id="item_to_service" name="item_to_service" placeholder="e.g. Store camera system install" defaultValue={ticket?.item_to_service ?? ""} />
+        </div>
+      )}
       <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
         <div>
           <label className="label" htmlFor="ticket_date">Date</label>

@@ -158,9 +158,10 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
                         </span>
                       )}
                     </div>
+                    {t.is_project && t.item_to_service && <div className="truncate font-semibold text-purple-700">{t.item_to_service}</div>}
                     <div className="truncate text-sm text-slate-500">
                       {[formatDate(t.ticket_date), kindLabel(t.kind)].filter(Boolean).join(" · ")}
-                      {t.item_to_service ? ` · ${t.item_to_service}` : ""}
+                      {!t.is_project && t.item_to_service ? ` · ${t.item_to_service}` : ""}
                     </div>
                   </div>
                   {t.status === "paid" && !calls && !(completed && isCall) && <PaidStamp className="w-14" />}

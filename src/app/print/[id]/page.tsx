@@ -59,7 +59,7 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
             {ticket.contacted_by && <p>Contacted by: {ticket.contacted_by}</p>}
           </div>
           <div>
-            <h2 className="mb-1 text-xs font-bold uppercase text-slate-500">Item serviced</h2>
+            <h2 className="mb-1 text-xs font-bold uppercase text-slate-500">{ticket.is_project ? "Project" : "Item serviced"}</h2>
             <p className="font-semibold">{ticket.item_to_service || "—"}</p>
             {ticket.make && <p>Make: {ticket.make}</p>}
             {ticket.model && <p>Model: {ticket.model}</p>}

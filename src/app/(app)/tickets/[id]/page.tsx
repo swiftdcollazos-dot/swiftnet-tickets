@@ -74,6 +74,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
             {label} #{ticket.number} · {formatDate(ticket.ticket_date)}
           </p>
           <h1 className="h1">{client.name}</h1>
+          {ticket.is_project && ticket.item_to_service && <p className="text-lg font-semibold text-purple-700">{ticket.item_to_service}</p>}
           {!closed && (
             // Keyed by client, so the panels close themselves once a new client is saved.
             <div key={client.id} className="mb-1 space-y-1">

@@ -116,6 +116,9 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
     };
   });
 
+  const callKind = byKind.find((k) => k.kind === "call")!;
+  const ticketKind = byKind.find((k) => k.kind === "ticket")!;
+
   // Hours each technician logged on these jobs, from their own timer entries, split by job type.
   const techMinutes = new Map<string, Record<Kind, number>>();
   for (const { t, kind } of jobs) {
@@ -190,6 +193,12 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
         <Stat label="Hours billed" value={hrs(billedMin)} note="tickets & projects" />
         <Stat label="Total money" value={money(earned + feesTotal)} note={`${money(earned)} jobs + ${money(feesTotal)} contracts`} />
         <Stat label="Jobs paid" value={money(paid)} note={`${money(earned - paid)} not paid yet`} />
+      </div>
+
+      {/* Contract time vs. time charged on service tickets */}
+      <div className="grid grid-cols-2 gap-2">
+        <Stat label="Contract hours" value={hrs(callKind.worked)} note={`${callKind.count} service ${callKind.count === 1 ? "call" : "calls"}, covered by contracts`} />
+        <Stat label="Billable hours" value={hrs(ticketKind.billed)} note={`${ticketKind.count} service ${ticketKind.count === 1 ? "ticket" : "tickets"}, charged by the hour`} />
       </div>
 
       <Table

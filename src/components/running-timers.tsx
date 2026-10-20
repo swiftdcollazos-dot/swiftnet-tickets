@@ -22,15 +22,16 @@ export async function RunningTimers() {
 
   return (
     <div className="border-t border-white/20 bg-red-700">
-      <div className="mx-auto flex max-w-3xl gap-2 overflow-x-auto px-4 py-2 text-xs font-semibold">
+      {/* Wraps onto more lines so every running timer is visible, on phones and computers alike. */}
+      <div className="mx-auto flex max-w-3xl flex-wrap gap-2 px-4 py-2 text-xs font-semibold">
         <span className="shrink-0 self-center text-red-100">● Running:</span>
         {running.map((r) => (
           <Link
             key={r.id}
             href={`/tickets/${r.tickets!.id}`}
-            className="flex shrink-0 items-center gap-2 rounded-full bg-white/15 px-3 py-1 hover:bg-white/25"
+            className="flex max-w-full items-center gap-2 rounded-full bg-white/15 px-3 py-1 hover:bg-white/25"
           >
-            <span>
+            <span className="truncate">
               #{r.tickets!.number} {r.tickets!.clients?.name}
               {r.profiles?.full_name && <span className="font-normal text-red-100"> · {r.profiles.full_name.split(" ")[0]}</span>}
             </span>

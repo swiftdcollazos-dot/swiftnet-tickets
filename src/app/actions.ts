@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { after } from "next/server";
 import { notifyAssignee, notifyNewJob, sendTestPush } from "@/lib/push";
 import { createClient, requireUser } from "@/lib/supabase/server";
@@ -42,6 +44,23 @@ export async function signIn(_prev: SignInState, form: FormData): Promise<SignIn
   // Return the email so the form can keep it filled in after a failed attempt.
   if (error) return { error: "Wrong email or password.", email };
   redirect("/dashboard");
+}
+
+export type ResetState = { error: string } | { sent: string } | null;
+
+/** Emails a link to choose a new password. Says the same thing whether or not the email has an account. */
+export async function sendPasswordReset(_prev: ResetState, form: FormData): Promise<ResetState> {
+  const email = text(form, "email");
+  if (!email) return { error: "Enter your email." };
+  const h = await headers();
+  const origin = h.get("origin") ?? `https://${h.get("host")}`;
+  // Implicit flow, so the emailed link works on any device, not only the browser that asked for it.
+  const supabase = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    auth: { flowType: "implicit", persistSession: false, autoRefreshToken: false },
+  });
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${origin}/login/reset` });
+  if (error) return { error: `Couldn't send the email: ${error.message}` };
+  return { sent: email };
 }
 
 export async function signOut() {

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { signIn } from "@/app/actions";
 
@@ -17,6 +18,9 @@ export function LoginForm() {
       </div>
       {state && <p className="text-sm text-red-600">{state.error}</p>}
       <button className="btn w-full" disabled={pending}>{pending ? "Signing in…" : "Sign in"}</button>
+      <p className="text-center text-sm">
+        <Link href="/login/forgot" className="font-semibold text-brand">Forgot password?</Link>
+      </p>
     </form>
   );
 }

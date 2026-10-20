@@ -8,6 +8,7 @@ import { Loading } from "@/components/loading";
 import { CountBadge } from "@/components/pending-badge";
 import { PaidStamp } from "@/components/paid-stamp";
 import { pendingCounts } from "@/lib/pending";
+import { permissions } from "@/lib/owner";
 
 const STATUS_STYLES: Record<TicketStatus, string> = {
   open: "bg-amber-100 text-amber-800",
@@ -57,7 +58,9 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
   const doneStatus = DONE_STATUS[tab.view];
   const completed = Boolean(doneStatus);
   const label = completed ? "job" : tab.title.slice(0, -1).toLowerCase();
-  const { supabase } = await requireUser();
+  const { supabase, user } = await requireUser();
+  // Special projects can be created by anyone; service tickets and calls only by users allowed to.
+  const canCreate = projects || permissions(user).createJobs;
 
   let query = supabase
     .from("tickets")
@@ -107,7 +110,7 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
       )}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="h1">{tab.title}</h1>
-        {tab.newPath && <Link href={tab.newPath} className="btn w-full sm:w-auto">+ New {label}</Link>}
+        {tab.newPath && canCreate && <Link href={tab.newPath} className="btn w-full sm:w-auto">+ New {label}</Link>}
       </div>
       {calls && <p className="-mt-2 mb-4 text-sm text-slate-500">For contract clients. Time is tracked, not charged.</p>}
       {completed && <p className="-mt-2 mb-4 text-sm text-slate-500">{DONE_NOTE[tab.view]}</p>}
@@ -126,7 +129,7 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
       </form>
 
       {rows.length === 0 ? (
-        <p className="card text-center text-slate-500">{completed ? "Nothing here yet." : <>No {label}s yet. Tap “New {label}” to create one.</>}</p>
+        <p className="card text-center text-slate-500">{completed ? "Nothing here yet." : <>No {label}s yet.{canCreate && <> Tap “New {label}” to create one.</>}</>}</p>
       ) : (
         <ul className="space-y-2">
           {rows.map((t, i) => {

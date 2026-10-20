@@ -29,7 +29,7 @@ import { Loading } from "@/components/loading";
 import { SignaturePad } from "@/components/signature-pad";
 import { TicketFields } from "@/components/ticket-fields";
 import { DeleteTicketButton } from "@/components/delete-ticket-button";
-import { isOwner } from "@/lib/owner";
+import { isOwner, permissions } from "@/lib/owner";
 
 export default function TicketPage(props: PageProps<"/tickets/[id]">) {
   return (
@@ -61,6 +61,8 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
     perTech.set(key, (perTech.get(key) ?? 0) + entryMinutes({ startedAt: e.started_at, endedAt: e.ended_at }));
   }
   const closed = ticket.status !== "open";
+  // Some users can edit the job but not run timers or change its time.
+  const noTime = closed || !permissions(user).timers;
   const money = (c: number) => formatMoney(c, settings.currency);
   // Whole hours, matching the printout.
   const hours = formatHours(call ? Math.ceil(Math.round(totals.workedMinutes) / 60) * 60 : totals.billableMinutes);
@@ -142,7 +144,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
       <CollapsibleCard
         title="Time"
         action={
-          closed ? null : running ? (
+          noTime ? null : running ? (
             <form action={stopTimer.bind(null, ticket.id, running.id)} className="flex items-center gap-2">
               <span className="font-mono text-sm font-semibold text-red-700">● <LiveTimer startedAt={running.started_at} /></span>
               <button className="btn bg-red-600 py-1.5">■ Stop</button>
@@ -154,7 +156,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
           )
         }
       >
-        {running && !closed && (
+        {running && !noTime && (
           <div className="mb-4">
             <Link href={listPath} className="btn-light block w-full text-center">
               ↔ Switch to another {label.toLowerCase()}
@@ -163,7 +165,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
           </div>
         )}
 
-        {others.length > 0 && !closed && (
+        {others.length > 0 && !noTime && (
           <ul className="mb-4 space-y-2">
             {others.map((e) => (
               <li key={e.id} className="flex items-center justify-between gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm">
@@ -205,7 +207,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
                   <td>{e.ended_at ? formatTime(e.ended_at) : "…"}</td>
                   <td>{formatMinutes(entryMinutes({ startedAt: e.started_at, endedAt: e.ended_at }))}</td>
                   <td className="text-right">
-                    {!closed && (
+                    {!noTime && (
                       <form action={deleteTimeEntry.bind(null, ticket.id, e.id)}>
                         <button className="btn-danger">Remove</button>
                       </form>
@@ -217,7 +219,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
           </table>
         )}
 
-        {!closed && (
+        {!noTime && (
           <details>
             <summary className="cursor-pointer text-sm font-semibold text-brand">Add time manually</summary>
             <form action={addTimeEntry.bind(null, ticket.id)} className="mt-3 grid grid-cols-3 gap-2">

@@ -5,7 +5,7 @@ import { RunningTimers } from "@/components/running-timers";
 import { PendingBadge } from "@/components/pending-badge";
 import { HeaderMenu } from "@/components/header-menu";
 import { requireUser } from "@/lib/supabase/server";
-import { isOwner } from "@/lib/owner";
+import { isOwner, permissions } from "@/lib/owner";
 import { NotificationsToggle } from "@/components/notifications-toggle";
 import { VAPID_PUBLIC_KEY } from "@/lib/vapid";
 import { signOut } from "@/app/actions";
@@ -37,6 +37,17 @@ async function ReportsLink() {
   );
 }
 
+/** Settings menu item, hidden from users who can't change settings or users. */
+async function SettingsLink() {
+  const { user } = await requireUser();
+  if (!permissions(user).settings) return null;
+  return (
+    <Link href="/settings" className="flex items-center gap-2 px-3 py-2.5 hover:bg-slate-100">
+      <GearIcon /> Settings
+    </Link>
+  );
+}
+
 export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <>
@@ -52,9 +63,9 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
               <Suspense fallback={null}>
                 <ReportsLink />
               </Suspense>
-              <Link href="/settings" className="flex items-center gap-2 px-3 py-2.5 hover:bg-slate-100">
-                <GearIcon /> Settings
-              </Link>
+              <Suspense fallback={null}>
+                <SettingsLink />
+              </Suspense>
               <NotificationsToggle publicKey={VAPID_PUBLIC_KEY} />
               <form action={signOut} className="border-t border-slate-100">
                 <button className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-slate-100">

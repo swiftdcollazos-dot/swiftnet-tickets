@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { createTicket } from "@/app/actions";
 import { requireUser } from "@/lib/supabase/server";
+import { permissions } from "@/lib/owner";
 import { todayLocal } from "@/lib/time";
 import { ClientPicker } from "@/components/client-picker";
 import { ContactedByField, TicketFields } from "@/components/ticket-fields";
@@ -21,6 +22,9 @@ async function NewTicketForm({ searchParams }: { searchParams: PageProps<"/ticke
   const project = !serviceCall && params.project === "1";
   const label = serviceCall ? "service call" : project ? "special project" : "service ticket";
   const { supabase, user } = await requireUser();
+  if (!project && !permissions(user).createJobs) {
+    return <p className="card text-center text-slate-500">Your account can&apos;t create service tickets or service calls. Ask David to change this in Settings.</p>;
+  }
   // Service calls are for contract clients, service tickets for hourly clients, special projects for anyone.
   let clientQuery = supabase.from("clients").select("*").order("name");
   if (!project) clientQuery = clientQuery.eq("client_type", serviceCall ? "contract" : "hourly");

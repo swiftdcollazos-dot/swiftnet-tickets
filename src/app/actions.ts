@@ -8,7 +8,7 @@ import { createClient, requireUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseMoney } from "@/lib/billing";
 import { localToIso } from "@/lib/time";
-import { isOwner } from "@/lib/owner";
+import { isOwner, permissions, type Permissions } from "@/lib/owner";
 import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
@@ -54,6 +54,19 @@ export async function signOut() {
 
 type Supabase = Awaited<ReturnType<typeof requireUser>>["supabase"];
 
+/** Signs in and checks the user may do this (see Settings > Users). */
+async function requireAllowed(what: keyof Permissions) {
+  const session = await requireUser();
+  if (!permissions(session.user)[what]) fail(NOT_ALLOWED[what]);
+  return session;
+}
+
+const NOT_ALLOWED: Record<keyof Permissions, string> = {
+  createJobs: "Your account can't create service tickets or service calls.",
+  timers: "Your account can't run timers or change time.",
+  settings: "Your account can't change settings or users.",
+};
+
 /** Closed and paid tickets are locked; only reopening changes them. */
 async function assertOpen(supabase: Supabase, ticketId: string) {
   const { data, error } = await supabase.from("tickets").select("status").eq("id", ticketId).single();
@@ -84,6 +97,7 @@ export async function createTicket(form: FormData) {
   const isServiceCall = text(form, "is_service_call") === "1";
   // Special projects work like service tickets (hourly clients), listed on their own tab.
   const isProject = !isServiceCall && text(form, "is_project") === "1";
+  if (!isProject && !permissions(user).createJobs) fail(NOT_ALLOWED.createJobs);
 
   const clientId = text(form, "client_id") || fail("Select a client.");
   const { data: client, error: clientError } = await supabase.from("clients").select("client_type").eq("id", clientId).single();
@@ -193,7 +207,7 @@ export async function closeTicket(ticketId: string) {
 // ---------- Time ----------
 
 export async function startTimer(ticketId: string) {
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireAllowed("timers");
   await assertOpen(supabase, ticketId);
   // One timer per technician per job; other technicians can run their own at the same time.
   const { data: mine } = await supabase
@@ -215,7 +229,7 @@ export async function startTimer(ticketId: string) {
 }
 
 export async function stopTimer(ticketId: string, entryId: string) {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireAllowed("timers");
   const { error } = await supabase
     .from("time_entries")
     .update({ ended_at: new Date().toISOString() })
@@ -228,7 +242,7 @@ export async function stopTimer(ticketId: string, entryId: string) {
 
 /** For time that wasn't tracked with the timer: date, time in, time out. */
 export async function addTimeEntry(ticketId: string, form: FormData) {
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireAllowed("timers");
   await assertOpen(supabase, ticketId);
   const date = text(form, "date") || fail("Enter the date.");
   const startedAt = localToIso(date, text(form, "time_in") || fail("Enter the time in."));
@@ -245,7 +259,7 @@ export async function addTimeEntry(ticketId: string, form: FormData) {
 }
 
 export async function deleteTimeEntry(ticketId: string, entryId: string) {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireAllowed("timers");
   await assertOpen(supabase, ticketId);
   const { error } = await supabase.from("time_entries").delete().eq("id", entryId);
   if (error) fail(error.message);
@@ -426,7 +440,7 @@ export async function deletePushSubscription(endpoint: string) {
 // ---------- Settings ----------
 
 export async function updateSettings(form: FormData) {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireAllowed("settings");
   const { error } = await supabase
     .from("settings")
     .update({
@@ -462,9 +476,18 @@ async function userAction(work: () => Promise<void>): Promise<ClientResult> {
   return { ok: true };
 }
 
+/** The permission checkboxes on the user forms. */
+function permissionFields(form: FormData) {
+  return {
+    can_create_jobs: form.has("can_create_jobs"),
+    can_use_timers: form.has("can_use_timers"),
+    can_manage_settings: form.has("can_manage_settings"),
+  };
+}
+
 export async function createUser(_prev: ClientResult, form: FormData): Promise<ClientResult> {
   return userAction(async () => {
-    await requireUser();
+    await requireAllowed("settings");
     const admin = createAdminClient() ?? fail(NO_ADMIN_KEY);
     const fullName = text(form, "full_name") || fail("Enter the person's name.");
     const email = text(form, "email") || fail("Enter an email address.");
@@ -473,6 +496,7 @@ export async function createUser(_prev: ClientResult, form: FormData): Promise<C
       password: password(form, true),
       email_confirm: true,
       user_metadata: { full_name: fullName },
+      app_metadata: permissionFields(form),
     });
     if (error) fail(error.message);
   });
@@ -481,7 +505,7 @@ export async function createUser(_prev: ClientResult, form: FormData): Promise<C
 /** Saves the name and email, and the password when a new one was typed. */
 export async function updateUser(userId: string, _prev: ClientResult, form: FormData): Promise<ClientResult> {
   return userAction(async () => {
-    const { supabase } = await requireUser();
+    const { supabase } = await requireAllowed("settings");
     const admin = createAdminClient() ?? fail(NO_ADMIN_KEY);
     const fullName = text(form, "full_name") || fail("Enter the person's name.");
     const email = text(form, "email") || fail("Enter an email address.");
@@ -490,6 +514,7 @@ export async function updateUser(userId: string, _prev: ClientResult, form: Form
       email_confirm: true,
       password: password(form, false),
       user_metadata: { full_name: fullName },
+      app_metadata: permissionFields(form),
     });
     if (error) fail(error.message);
     const { error: profileError } = await supabase.from("profiles").update({ full_name: fullName }).eq("id", userId);

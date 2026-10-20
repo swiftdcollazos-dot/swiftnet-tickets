@@ -1,10 +1,13 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { permissions } from "@/lib/owner";
 import { updateSettings } from "@/app/actions";
 import { requireUser } from "@/lib/supabase/server";
 import { Loading } from "@/components/loading";
 import { AddUserForm, EditUserForm } from "@/components/user-forms";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Settings } from "@/lib/types";
+import type { Permissions } from "@/lib/owner";
 
 export default function SettingsPage() {
   return (
@@ -22,7 +25,8 @@ export default function SettingsPage() {
 }
 
 async function SettingsForm() {
-  const { supabase } = await requireUser();
+  const { supabase, user } = await requireUser();
+  if (!permissions(user).settings) redirect("/dashboard");
   const { data, error } = await supabase.from("settings").select("*").single();
   if (error) throw new Error(error.message);
   const s = data as Settings;
@@ -50,7 +54,7 @@ async function SettingsForm() {
 async function Users() {
   const { supabase, user: me } = await requireUser();
   const admin = createAdminClient();
-  let users: { id: string; full_name: string; email: string }[] = [];
+  let users: { id: string; full_name: string; email: string; permissions: Permissions }[] = [];
   let problem = "";
   if (!admin) {
     problem = "To add users and change passwords here, add SUPABASE_SERVICE_ROLE_KEY to the app's settings in Vercel.";
@@ -62,7 +66,12 @@ async function Users() {
     if (error) problem = error.message;
     const names = new Map((profiles ?? []).map((p) => [p.id, p.full_name as string]));
     users = (data?.users ?? [])
-      .map((u) => ({ id: u.id, email: u.email ?? "", full_name: names.get(u.id) ?? String(u.user_metadata?.full_name ?? u.email ?? "") }))
+      .map((u) => ({
+        id: u.id,
+        email: u.email ?? "",
+        full_name: names.get(u.id) ?? String(u.user_metadata?.full_name ?? u.email ?? ""),
+        permissions: permissions(u),
+      }))
       .sort((a, b) => a.full_name.localeCompare(b.full_name));
   }
 
@@ -80,6 +89,7 @@ async function Users() {
                   <summary className="cursor-pointer">
                     <span className="font-semibold">{u.full_name}</span>
                     <span className="text-sm text-slate-500"> · {u.email}{u.id === me.id ? " · you" : ""}</span>
+                    {limits(u.permissions) && <span className="text-sm text-amber-700"> · {limits(u.permissions)}</span>}
                   </summary>
                   <EditUserForm user={u} />
                 </details>
@@ -91,6 +101,11 @@ async function Users() {
       )}
     </section>
   );
+}
+
+/** Short note of what a user can't do, e.g. "no new tickets/calls, no timers". */
+function limits(p: Permissions) {
+  return [!p.createJobs && "no new tickets/calls", !p.timers && "no timers", !p.settings && "no settings"].filter(Boolean).join(", ");
 }
 
 function Field(props: { name: string; label: string; value: string; decimal?: boolean }) {

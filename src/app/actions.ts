@@ -616,7 +616,10 @@ export async function saveExpense(id: string | null, form: FormData) {
     const { error } = await supabase.from("expenses").update(keep ? rest : { ...rest, receipt }).eq("id", id);
     if (error) fail(error.message);
   } else {
-    const { error } = await supabase.from("expenses").insert(fields);
+    // The form sends a fresh id; saving the same one again does nothing, so double taps don't duplicate.
+    const newId = text(form, "new_id");
+    const row = /^[0-9a-f-]{36}$/i.test(newId) ? { id: newId, ...fields } : fields;
+    const { error } = await supabase.from("expenses").upsert(row, { onConflict: "id", ignoreDuplicates: true });
     if (error) fail(error.message);
   }
   revalidatePath("/expenses");

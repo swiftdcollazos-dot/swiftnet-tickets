@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { scanReceipt } from "@/app/actions";
 import { EXPENSE_CATEGORIES, PAYMENT_METHODS, type Expense } from "@/lib/types";
 
@@ -47,6 +48,8 @@ export function ExpenseForm({
   // "keep" leaves the saved photo alone; "" removes it; a data URL replaces it.
   const [billClient, setBillClient] = useState(expense?.bill_client_id ?? "");
   const [markup, setMarkup] = useState(expense?.markup_pct || 20);
+  // A new expense gets its id up front, so a second tap on Save can't save it twice.
+  const [newId] = useState(() => crypto.randomUUID());
   const [receipt, setReceipt] = useState(expense?.receipt ? "keep" : "");
   const [scanning, setScanning] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -190,10 +193,19 @@ export function ExpenseForm({
           </>
         )}
       </div>
-      <button className="btn w-full" disabled={scanning}>
-        Save expense
-      </button>
+      {!expense && <input type="hidden" name="new_id" value={newId} />}
+      <SaveButton disabled={scanning} />
     </form>
+  );
+}
+
+/** Greys out while saving so it can't be tapped again. */
+function SaveButton({ disabled }: { disabled: boolean }) {
+  const { pending } = useFormStatus();
+  return (
+    <button className="btn w-full" disabled={disabled || pending}>
+      {pending ? "Saving…" : "Save expense"}
+    </button>
   );
 }
 

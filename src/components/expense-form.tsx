@@ -114,6 +114,8 @@ export function ExpenseForm({
         </div>
       )}
       <input type="hidden" name="receipt" value={receipt} />
+      {/* Tax isn't shown any more, but a scanned or saved amount is kept. */}
+      <input type="hidden" name="tax" value={values.tax} />
 
       <div className="grid grid-cols-2 gap-2">
         <div>
@@ -135,10 +137,6 @@ export function ExpenseForm({
               <option key={c}>{c}</option>
             ))}
           </select>
-        </div>
-        <div>
-          <label className="label" htmlFor="tax">Tax ($)</label>
-          <input className="input" inputMode="decimal" id="tax" name="tax" value={values.tax} onChange={set("tax")} />
         </div>
         <div>
           <label className="label" htmlFor="payment_method">Paid with</label>

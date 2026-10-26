@@ -59,7 +59,6 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
   const reporter = (id: string | null) => (owner && id && id !== user.id ? names.get(id) : undefined);
 
   const total = expenses.reduce((sum, e) => sum + e.amount_cents, 0);
-  const tax = expenses.reduce((sum, e) => sum + e.tax_cents, 0);
   const byCategory = new Map<string, number>();
   for (const e of expenses) byCategory.set(e.category, (byCategory.get(e.category) ?? 0) + e.amount_cents);
   const categories = [...byCategory].sort((a, b) => b[1] - a[1]);
@@ -82,15 +81,14 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
         <Link href={`/expenses?month=${shiftMonth(month, 1)}`} className="btn-light px-3" aria-label="Next month">›</Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div className="card">
+      <div className="card flex items-end justify-between">
+        <div>
           <p className="label">{owner ? "Spent" : "You spent"}</p>
           <p className="text-2xl font-bold">{formatMoney(total)}</p>
         </div>
-        <div className="card">
-          <p className="label">Sales tax paid</p>
-          <p className="text-2xl font-bold">{formatMoney(tax)}</p>
-        </div>
+        <p className="text-sm text-slate-500">
+          {expenses.length} {expenses.length === 1 ? "expense" : "expenses"}
+        </p>
       </div>
 
 

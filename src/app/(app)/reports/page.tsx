@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { requireUser } from "@/lib/supabase/server";
-import { permissions } from "@/lib/owner";
+import { isOwner, permissions } from "@/lib/owner";
 import { computeTotals, entryMinutes, formatMoney } from "@/lib/billing";
 import { formatDate, todayLocal } from "@/lib/time";
 import { billingType, rulesOf, type ClientType, type Settings, type Ticket } from "@/lib/types";
@@ -59,7 +59,8 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
   const from = typeof params.from === "string" && DATE.test(params.from) ? params.from : monthStart;
   const to = typeof params.to === "string" && DATE.test(params.to) ? params.to : monthEnd;
 
-  const [{ data, error }, { data: settings }, { data: profiles }, { data: contractClients }] = await Promise.all([
+  const owner = isOwner(user.email);
+  const [{ data, error }, { data: settings }, { data: profiles }, { data: contractClients }, { data: expenseRows }] = await Promise.all([
     supabase
       .from("tickets")
       .select("*, clients!inner(name, client_type), time_entries(started_at, ended_at, technician_id), ticket_parts(qty, unit_price_cents)")
@@ -69,7 +70,10 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
     supabase.from("settings").select("*").single(),
     supabase.from("profiles").select("id, full_name"),
     supabase.from("clients").select("id, name, monthly_fee_cents, created_at").eq("client_type", "contract").gt("monthly_fee_cents", 0),
+    // Expenses are the owner's only.
+    owner ? supabase.from("expenses").select("amount_cents").gte("spent_on", from).lte("spent_on", to) : Promise.resolve({ data: [] }),
   ]);
+  const expenses = (expenseRows ?? []).reduce((s, e) => s + (e.amount_cents as number), 0);
   if (error) throw new Error(error.message);
   const currency = (settings as Settings | null)?.currency ?? "USD";
   const hourlyRate = (settings as Settings | null)?.hourly_rate_cents ?? 0;
@@ -197,6 +201,14 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
         <Stat label="Total money" value={money(earned + feesTotal)} note={`${money(earned)} jobs + ${money(feesTotal)} contracts`} />
         <Stat label="Jobs paid" value={money(paid)} note={`${money(earned - paid)} not paid yet`} />
       </div>
+
+      {/* Profit, for the owner: money in minus expenses in the same dates. */}
+      {owner && (
+        <div className="grid grid-cols-2 gap-2">
+          <Stat label="Expenses" value={money(expenses)} note="from Office > Expenses" />
+          <Stat label="Profit" value={money(earned + feesTotal - expenses)} note="total money minus expenses" />
+        </div>
+      )}
 
       {/* Contract time vs. time charged on service tickets */}
       <div className="grid grid-cols-2 gap-2">

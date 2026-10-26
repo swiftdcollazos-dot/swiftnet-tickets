@@ -41,16 +41,16 @@ async function ReportsLink() {
   );
 }
 
-/** Expenses menu item, for the owner only. */
-async function ExpensesLink() {
+/** Office menu item (money owed, expenses), for the owner only. */
+async function OfficeLink() {
   const { user } = await requireUser();
   if (!isOwner(user.email)) return null;
   return (
-    <Link href="/expenses" className="flex items-center gap-2 px-3 py-2.5 hover:bg-slate-100">
+    <Link href="/office" className="flex items-center gap-2 px-3 py-2.5 hover:bg-slate-100">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>
-        <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3ZM9 8h6M9 12h6M9 16h3" />
+        <path d="M3 7h18v13H3zM8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18" />
       </svg>
-      Expenses
+      Office
     </Link>
   );
 }
@@ -89,7 +89,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
                 <ReportsLink />
               </Suspense>
               <Suspense fallback={null}>
-                <ExpensesLink />
+                <OfficeLink />
               </Suspense>
               <Suspense fallback={null}>
                 <SettingsLink />

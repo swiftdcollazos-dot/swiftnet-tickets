@@ -122,7 +122,7 @@ export function ExpenseForm({
           <input className="input" inputMode="decimal" id="amount" name="amount" value={values.amount} onChange={set("amount")} required />
         </div>
         <div className="col-span-2">
-          <label className="label" htmlFor="vendor">Paid to</label>
+          <label className="label" htmlFor="vendor">Purchased from</label>
           <input className="input" id="vendor" name="vendor" value={values.vendor} onChange={set("vendor")} placeholder="Store or company" required />
         </div>
         <div>

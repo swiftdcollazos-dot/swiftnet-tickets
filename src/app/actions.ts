@@ -608,7 +608,7 @@ function resaleFields(form: FormData) {
 export async function saveExpense(id: string | null, form: FormData) {
   const { supabase } = await requireAllowed("expenses");
   const fields = expenseFields(form);
-  if (!fields.vendor) fail("Please enter who was paid.");
+  if (!fields.vendor) fail("Please enter where it was purchased from.");
   if (id) {
     // Keep the saved receipt unless a new photo was taken or it was removed.
     const { receipt, ...rest } = fields;

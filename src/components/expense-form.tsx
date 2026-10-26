@@ -200,7 +200,7 @@ export function ExpenseForm({
               <option value="" disabled>
                 Charge all items to…
               </option>
-              <option value="none">Not charged (ours)</option>
+              <option value="none">Swiftnet IT</option>
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
@@ -233,7 +233,7 @@ export function ExpenseForm({
               <div className="flex gap-2">
                 <input className="input w-24 shrink-0" aria-label="Item amount" inputMode="decimal" placeholder="$" value={it.amount} onChange={(e) => setItem(i, { amount: e.target.value })} />
                 <select className="input min-w-0 flex-1" aria-label="Charge to" value={it.bill_client_id} onChange={(e) => setItem(i, { bill_client_id: e.target.value })}>
-                  <option value="">Not charged (ours)</option>
+                  <option value="">Swiftnet IT</option>
                   {clients.map((c) => (
                     <option key={c.id} value={c.id}>Charge to {c.name}</option>
                   ))}

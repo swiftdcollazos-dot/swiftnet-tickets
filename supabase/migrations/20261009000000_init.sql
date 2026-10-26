@@ -250,3 +250,17 @@ drop policy if exists "own or owner" on public.expenses;
 create policy "own or owner" on public.expenses for all to authenticated
   using (created_by = auth.uid() or lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com' or auth.jwt() -> 'app_metadata' ->> 'can_see_office' = 'true')
   with check (created_by = auth.uid() or lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com' or auth.jwt() -> 'app_metadata' ->> 'can_see_office' = 'true');
+
+-- Contract clients' monthly fees marked as paid, one row per client per month ("YYYY-MM").
+create table if not exists public.contract_payments (
+  client_id    uuid not null references public.clients (id) on delete cascade,
+  month        text not null,
+  amount_cents integer not null default 0,
+  paid_on      date not null default current_date,
+  primary key (client_id, month)
+);
+alter table public.contract_payments enable row level security;
+drop policy if exists "owner or office" on public.contract_payments;
+create policy "owner or office" on public.contract_payments for all to authenticated
+  using (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com' or auth.jwt() -> 'app_metadata' ->> 'can_see_office' = 'true')
+  with check (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com' or auth.jwt() -> 'app_metadata' ->> 'can_see_office' = 'true');

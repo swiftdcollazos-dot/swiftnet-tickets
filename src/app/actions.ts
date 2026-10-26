@@ -735,3 +735,15 @@ export async function deleteRenewal(id: string) {
   if (error) fail(error.message);
   revalidatePath("/office/renewals");
 }
+
+/** Office > Contract payments: marks a contract client's fee for a month as paid, or not paid. */
+export async function setContractPaid(clientId: string, month: string, amountCents: number, paid: boolean) {
+  const { supabase } = await requireOffice();
+  if (!/^\d{4}-\d{2}$/.test(month)) fail("Invalid month.");
+  const { error } = paid
+    ? await supabase.from("contract_payments").upsert({ client_id: clientId, month, amount_cents: amountCents, paid_on: todayLocal() })
+    : await supabase.from("contract_payments").delete().eq("client_id", clientId).eq("month", month);
+  if (error) fail(error.message);
+  revalidatePath("/office/contracts");
+  revalidatePath("/office");
+}

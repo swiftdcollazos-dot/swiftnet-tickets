@@ -31,12 +31,18 @@ async function Office() {
   const today = todayLocal();
   const month = today.slice(0, 7);
   const in30 = new Date(Date.parse(`${today}T00:00:00Z`) + 30 * 86_400_000).toISOString().slice(0, 10);
-  const [owed, { data: spent }, { data: due }, { data: toCharge }] = await Promise.all([
+  const [owed, { data: spent }, { data: due }, { data: toCharge }, { data: contracts }, { data: contractPaid }] = await Promise.all([
     moneyOwed(supabase, today),
     supabase.from("expenses").select("amount_cents").gte("spent_on", `${month}-01`).lt("spent_on", `${nextMonth(month)}-01`),
     supabase.from("renewals").select("due_on").lte("due_on", in30),
     supabase.from("expense_items").select("amount_cents, markup_pct").not("bill_client_id", "is", null).eq("charged", false),
+    supabase.from("clients").select("id, monthly_fee_cents, created_at").eq("client_type", "contract").gt("monthly_fee_cents", 0),
+    supabase.from("contract_payments").select("client_id").eq("month", month),
   ]);
+  // Contract fees for this month that haven't been marked paid.
+  const paidIds = new Set((contractPaid ?? []).map((p) => p.client_id as string));
+  const unpaidContracts = (contracts ?? []).filter((c) => String(c.created_at).slice(0, 7) <= month && !paidIds.has(c.id as string));
+  const unpaidFees = unpaidContracts.reduce((s, c) => s + (c.monthly_fee_cents as number), 0);
   const chargeTotal = (toCharge ?? []).reduce((s, e) => s + resaleCents(e.amount_cents as number, e.markup_pct as number), 0);
   const overdue = (due ?? []).filter((r) => (r.due_on as string) < today).length;
   const owedTotal = owed.reduce((s, j) => s + j.cents, 0);
@@ -57,6 +63,13 @@ async function Office() {
         <p className="label">🧾 Expenses</p>
         <p className="text-3xl font-bold">{formatMoney(spentTotal)}</p>
         <p className="text-sm text-slate-500">spent this month · scan a receipt</p>
+      </Link>
+      <Link href="/office/contracts" className="card block border-l-4 border-l-red-500 hover:bg-slate-50">
+        <p className="label">📄 Contract payments</p>
+        <p className="text-3xl font-bold">{formatMoney(unpaidFees)}</p>
+        <p className="text-sm text-slate-500">
+          {unpaidContracts.length} {unpaidContracts.length === 1 ? "contract" : "contracts"} not paid this month
+        </p>
       </Link>
       <Link href="/office/charges" className="card block border-l-4 border-l-green-600 hover:bg-slate-50">
         <p className="label">🛒 Charge customers</p>

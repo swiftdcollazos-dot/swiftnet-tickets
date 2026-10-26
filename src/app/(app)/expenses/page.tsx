@@ -44,13 +44,14 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
   const month = typeof params.month === "string" && /^\d{4}-\d{2}$/.test(params.month) ? params.month : today.slice(0, 7);
   const { data, error } = await supabase
     .from("expenses")
-    .select("id, spent_on, vendor, category, description, amount_cents, tax_cents, payment_method, created_by, bill_client_id, markup_pct, charged, clients(name)")
+    .select("id, spent_on, vendor, category, description, amount_cents, tax_cents, payment_method, created_by, expense_items(amount_cents, markup_pct, charged, bill_client_id, clients(name))")
     .gte("spent_on", `${month}-01`)
     .lt("spent_on", `${shiftMonth(month, 1)}-01`)
     .order("spent_on", { ascending: false })
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
-  type Row = Omit<Expense, "receipt" | "created_at"> & { created_by: string | null; clients: { name: string } | null };
+  type Charge = { amount_cents: number; markup_pct: number; charged: boolean; bill_client_id: string | null; clients: { name: string } | null };
+  type Row = Omit<Expense, "receipt" | "created_at"> & { created_by: string | null; expense_items: Charge[] };
   const expenses = (data ?? []) as unknown as Row[];
   const { data: clientRows } = await supabase.from("clients").select("id, name").order("name");
   const { data: profiles } = owner ? await supabase.from("profiles").select("id, full_name") : { data: [] };
@@ -120,11 +121,11 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
                     {formatDate(e.spent_on)} · {e.category}
                     {e.description ? ` · ${e.description}` : ""}
                   </span>
-                  {e.clients && (
-                    <span className={`block truncate text-sm font-semibold ${e.charged ? "text-slate-500" : "text-green-700"}`}>
-                      {e.charged ? "Sent to" : "Charge"} {e.clients.name} {formatMoney(resaleCents(e.amount_cents, e.markup_pct))} (+{e.markup_pct}%)
+                  {chargesByClient(e.expense_items).map((c) => (
+                    <span key={c.name} className={`block truncate text-sm font-semibold ${c.allSent ? "text-slate-500" : "text-green-700"}`}>
+                      {c.allSent ? "Sent to" : "Charge"} {c.name} {formatMoney(c.cents)}
                     </span>
-                  )}
+                  ))}
                 </span>
                 <span className="shrink-0 font-bold">{formatMoney(e.amount_cents)}</span>
               </Link>
@@ -134,4 +135,17 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
       )}
     </div>
   );
+}
+
+/** The items charged to customers on one expense, added up per customer. */
+function chargesByClient(items: { amount_cents: number; markup_pct: number; charged: boolean; bill_client_id: string | null; clients: { name: string } | null }[]) {
+  const map = new Map<string, { name: string; cents: number; allSent: boolean }>();
+  for (const it of items) {
+    if (!it.bill_client_id) continue;
+    const row = map.get(it.bill_client_id) ?? { name: it.clients?.name ?? "Customer", cents: 0, allSent: true };
+    row.cents += resaleCents(it.amount_cents, it.markup_pct);
+    row.allSent &&= it.charged;
+    map.set(it.bill_client_id, row);
+  }
+  return [...map.values()];
 }

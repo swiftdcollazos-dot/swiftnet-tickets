@@ -6,7 +6,7 @@ import { todayLocal } from "@/lib/time";
 import { deleteExpense, saveExpense } from "@/app/actions";
 import { DeleteExpenseButton, ExpenseForm } from "@/components/expense-form";
 import { Loading } from "@/components/loading";
-import type { Expense } from "@/lib/types";
+import type { Expense, ExpenseItem } from "@/lib/types";
 
 // Reading a receipt can take a little while.
 export const maxDuration = 60;
@@ -27,8 +27,9 @@ async function EditExpense({ params }: { params: PageProps<"/expenses/[id]">["pa
   const { supabase, user } = await requireUser();
   if (!permissions(user).expenses) redirect("/dashboard");
   const { id } = await params;
-  const [{ data }, { data: clients }] = await Promise.all([
+  const [{ data }, { data: items }, { data: clients }] = await Promise.all([
     supabase.from("expenses").select("*").eq("id", id).maybeSingle(),
+    supabase.from("expense_items").select("*").eq("expense_id", id).order("position"),
     supabase.from("clients").select("id, name").order("name"),
   ]);
   if (!data) redirect("/expenses");
@@ -43,7 +44,7 @@ async function EditExpense({ params }: { params: PageProps<"/expenses/[id]">["pa
         </div>
       )}
       <div className="card">
-        <ExpenseForm expense={expense} today={todayLocal()} clients={clients ?? []} save={saveExpense.bind(null, expense.id)} />
+        <ExpenseForm expense={expense} items={(items ?? []) as ExpenseItem[]} today={todayLocal()} clients={clients ?? []} save={saveExpense.bind(null, expense.id)} />
       </div>
       <DeleteExpenseButton remove={deleteExpense.bind(null, expense.id)} />
     </div>

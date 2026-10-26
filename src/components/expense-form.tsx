@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { scanReceipt } from "@/app/actions";
-import { EXPENSE_CATEGORIES, PAYMENT_METHODS, type Expense } from "@/lib/types";
+import { EXPENSE_CATEGORIES, PAYMENT_METHODS, type Expense, type ExpenseItem } from "@/lib/types";
 
 /** Shrinks a photo to at most 1600 px on its long side and returns it as a JPEG data URL. */
 async function compress(file: File): Promise<string> {
@@ -24,14 +24,27 @@ type Values = { spent_on: string; vendor: string; category: string; description:
 /** Markups offered when an item is bought to resell to a customer. */
 const MARKUPS = [10, 15, 20, 25];
 
+type Item = { key: string; description: string; amount: string; bill_client_id: string; markup_pct: number; charged: boolean };
+
+const blankItem = (description = "", amount = ""): Item => ({
+  key: crypto.randomUUID(),
+  description,
+  amount,
+  bill_client_id: "",
+  markup_pct: 20,
+  charged: false,
+});
+
 /** Add or edit an expense. "Scan receipt" takes a photo and fills in the fields for you to check. */
 export function ExpenseForm({
   expense,
+  items: savedItems = [],
   today,
   clients,
   save,
 }: {
   expense?: Expense;
+  items?: ExpenseItem[];
   today: string;
   clients: { id: string; name: string }[];
   save: (form: FormData) => Promise<void>;
@@ -46,8 +59,17 @@ export function ExpenseForm({
     payment_method: expense?.payment_method ?? "",
   });
   // "keep" leaves the saved photo alone; "" removes it; a data URL replaces it.
-  const [billClient, setBillClient] = useState(expense?.bill_client_id ?? "");
-  const [markup, setMarkup] = useState(expense?.markup_pct || 20);
+  const [items, setItems] = useState<Item[]>(() =>
+    savedItems.map((it) => ({
+      key: it.id,
+      description: it.description,
+      amount: dollars(it.amount_cents),
+      bill_client_id: it.bill_client_id ?? "",
+      markup_pct: it.markup_pct || 20,
+      charged: it.charged,
+    })),
+  );
+  const setItem = (i: number, change: Partial<Item>) => setItems((list) => list.map((it, j) => (j === i ? { ...it, ...change } : it)));
   // A new expense gets its id up front, so a second tap on Save can't save it twice.
   const [newId] = useState(() => crypto.randomUUID());
   const [receipt, setReceipt] = useState(expense?.receipt ? "keep" : "");
@@ -59,7 +81,7 @@ export function ExpenseForm({
   const set = (key: keyof Values) => (e: { target: { value: string } }) => setValues((v) => ({ ...v, [key]: e.target.value }));
   const preview = receipt === "keep" ? expense?.receipt : receipt;
   const cost = Number(values.amount.replace(/[$,\s]/g, "")) || 0;
-  const charge = Math.round(cost * (100 + markup)) / 100;
+  const itemsTotal = items.reduce((sum, it) => sum + (Number(it.amount.replace(/[$,\s]/g, "")) || 0), 0);
 
   async function onPhoto(file: File | undefined) {
     if (!file) return;
@@ -81,6 +103,7 @@ export function ExpenseForm({
           tax: result.tax ? result.tax.toFixed(2) : v.tax,
           payment_method: result.payment_method || v.payment_method,
         }));
+        if (result.items.length > 0) setItems(result.items.map((it) => blankItem(it.description, it.amount.toFixed(2))));
         setMessage({ ok: true, text: "Filled in from the receipt. Please check it, then Save." });
       }
     } catch {
@@ -153,43 +176,101 @@ export function ExpenseForm({
         </div>
       </div>
 
-      {/* Bought to resell: who pays for it, and the markup on top of what we paid. */}
+      {/* Each item on the invoice can be charged to its own customer, with its own markup. */}
       <div className="space-y-2 rounded-lg bg-slate-50 p-3">
-        <div>
-          <label className="label" htmlFor="bill_client_id">Charge to customer</label>
-          <select className="input" id="bill_client_id" name="bill_client_id" value={billClient} onChange={(e) => setBillClient(e.target.value)}>
-            <option value="">No, it&apos;s ours</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
-        {billClient && (
-          <>
-            <p className="label">Markup</p>
-            <div className="grid grid-cols-4 gap-2">
-              {MARKUPS.map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setMarkup(m)}
-                  className={`rounded-lg border py-2 font-bold ${markup === m ? "border-brand bg-brand text-white" : "border-slate-300 bg-white text-slate-700"}`}
-                >
-                  {m}%
-                </button>
-              ))}
-            </div>
-            <input type="hidden" name="markup_pct" value={markup} />
-            <p className="text-sm">
-              Charge the customer <span className="text-lg font-bold">${charge.toFixed(2)}</span>
-              <span className="text-slate-500"> (${cost.toFixed(2)} + {markup}%)</span>
+        <div className="flex items-center justify-between">
+          <p className="label mb-0">Items · charge to customers</p>
+          {items.length > 0 && (
+            <p className={`text-xs ${Math.abs(itemsTotal - cost) < 0.005 ? "text-slate-500" : "font-semibold text-amber-700"}`}>
+              ${itemsTotal.toFixed(2)} of ${cost.toFixed(2)}
             </p>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="charged" defaultChecked={expense?.charged ?? false} className="h-5 w-5" />
-              Sent to the customer
-            </label>
-          </>
+          )}
+        </div>
+        {items.length > 1 && (
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            <select
+              className="input"
+              aria-label="Charge all items to"
+              value=""
+              onChange={(e) => {
+                const client = e.target.value === "none" ? "" : e.target.value;
+                setItems((list) => list.map((it) => ({ ...it, bill_client_id: client })));
+              }}
+            >
+              <option value="" disabled>
+                Charge all items to…
+              </option>
+              <option value="none">Not charged (ours)</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            <select
+              className="input"
+              aria-label="Markup for all items"
+              value=""
+              onChange={(e) => setItems((list) => list.map((it) => ({ ...it, markup_pct: Number(e.target.value) })))}
+            >
+              <option value="" disabled>
+                All %
+              </option>
+              {MARKUPS.map((m) => (
+                <option key={m} value={m}>{m}%</option>
+              ))}
+            </select>
+          </div>
         )}
+        {items.map((it, i) => {
+          const amount = Number(it.amount.replace(/[$,\s]/g, "")) || 0;
+          return (
+            <div key={it.key} className="space-y-2 rounded-lg border border-slate-200 bg-white p-2">
+              <div className="flex gap-2">
+                <input className="input flex-1" aria-label="Item" placeholder="Item" value={it.description} onChange={(e) => setItem(i, { description: e.target.value })} />
+                <button type="button" aria-label="Remove item" className="px-1 text-slate-400 hover:text-red-600" onClick={() => setItems((list) => list.filter((_, j) => j !== i))}>
+                  ✕
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <input className="input w-24 shrink-0" aria-label="Item amount" inputMode="decimal" placeholder="$" value={it.amount} onChange={(e) => setItem(i, { amount: e.target.value })} />
+                <select className="input min-w-0 flex-1" aria-label="Charge to" value={it.bill_client_id} onChange={(e) => setItem(i, { bill_client_id: e.target.value })}>
+                  <option value="">Not charged (ours)</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>Charge to {c.name}</option>
+                  ))}
+                </select>
+              </div>
+              {it.bill_client_id && (
+                <>
+                  <div className="grid grid-cols-4 gap-1">
+                    {MARKUPS.map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setItem(i, { markup_pct: m })}
+                        className={`rounded-lg border py-1.5 text-sm font-bold ${it.markup_pct === m ? "border-brand bg-brand text-white" : "border-slate-300 bg-white text-slate-700"}`}
+                      >
+                        {m}%
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span>
+                      Charge <span className="font-bold">${(Math.round(amount * (100 + it.markup_pct)) / 100).toFixed(2)}</span>
+                    </span>
+                    <label className="flex items-center gap-1.5">
+                      <input type="checkbox" className="h-4 w-4" checked={it.charged} onChange={(e) => setItem(i, { charged: e.target.checked })} />
+                      Sent to customer
+                    </label>
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
+        <button type="button" className="btn-light w-full" onClick={() => setItems((list) => [...list, blankItem(list.length ? "" : values.description, list.length ? "" : values.amount)])}>
+          + Add item
+        </button>
+        <input type="hidden" name="items" value={JSON.stringify(items.map((it) => ({ description: it.description, amount: it.amount, bill_client_id: it.bill_client_id, markup_pct: it.markup_pct, charged: it.charged })))} />
       </div>
       {!expense && <input type="hidden" name="new_id" value={newId} />}
       <SaveButton disabled={scanning} />

@@ -590,25 +590,40 @@ function expenseFields(form: FormData) {
     tax_cents: parseMoney(text(form, "tax")),
     payment_method: (PAYMENT_METHODS as readonly string[]).includes(method) ? method : "",
     receipt: receipt.startsWith(RECEIPT_PREFIX) && receipt.length <= RECEIPT_MAX ? receipt : null,
-    ...resaleFields(form),
   };
 }
 
-/** Bought to resell: the customer to charge and the markup (10–25%). */
-function resaleFields(form: FormData) {
-  const client = text(form, "bill_client_id");
-  const markup = Number(text(form, "markup_pct"));
-  return {
-    bill_client_id: client || null,
-    markup_pct: client && [10, 15, 20, 25].includes(markup) ? markup : 0,
-    charged: !!client && form.has("charged"),
-  };
+/** The invoice items from the expense form; each can be charged to a customer with a 10–25% markup. */
+function expenseItems(form: FormData) {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text(form, "items") || "[]");
+  } catch {
+    fail("The items couldn't be read. Please try again.");
+  }
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((it, position) => {
+      const client = typeof it?.bill_client_id === "string" ? it.bill_client_id : "";
+      const markup = Number(it?.markup_pct);
+      return {
+        position,
+        description: String(it?.description ?? "").trim(),
+        amount_cents: parseMoney(String(it?.amount ?? "")),
+        bill_client_id: client || null,
+        markup_pct: client && [10, 15, 20, 25].includes(markup) ? markup : 0,
+        charged: !!client && it?.charged === true,
+      };
+    })
+    .filter((it) => it.description || it.amount_cents);
 }
 
 export async function saveExpense(id: string | null, form: FormData) {
   const { supabase } = await requireAllowed("expenses");
   const fields = expenseFields(form);
+  const items = expenseItems(form);
   if (!fields.vendor) fail("Please enter where it was purchased from.");
+  let expenseId = id;
   if (id) {
     // Keep the saved receipt unless a new photo was taken or it was removed.
     const { receipt, ...rest } = fields;
@@ -619,17 +634,28 @@ export async function saveExpense(id: string | null, form: FormData) {
     // The form sends a fresh id; saving the same one again does nothing, so double taps don't duplicate.
     const newId = text(form, "new_id");
     const row = /^[0-9a-f-]{36}$/i.test(newId) ? { id: newId, ...fields } : fields;
-    const { error } = await supabase.from("expenses").upsert(row, { onConflict: "id", ignoreDuplicates: true });
+    const { data, error } = await supabase.from("expenses").upsert(row, { onConflict: "id", ignoreDuplicates: true }).select("id");
     if (error) fail(error.message);
+    expenseId = data?.[0]?.id ?? null; // null when this was a repeated tap that saved nothing
+  }
+  if (expenseId) {
+    // The form always sends the whole list, so replace what was saved.
+    const { error: delError } = await supabase.from("expense_items").delete().eq("expense_id", expenseId);
+    if (delError) fail(delError.message);
+    if (items.length) {
+      const { error: itemsError } = await supabase.from("expense_items").insert(items.map((it) => ({ ...it, expense_id: expenseId })));
+      if (itemsError) fail(itemsError.message);
+    }
   }
   revalidatePath("/expenses");
+  revalidatePath("/office/charges");
   redirect(`/expenses?month=${fields.spent_on.slice(0, 7)}`);
 }
 
-/** Office > Charge customers: marks an item bought for a customer as sent to them (or undoes it). */
+/** Office > Charge customers: marks an invoice item as sent to its customer (or undoes it). */
 export async function markChargeSent(id: string, sent: boolean) {
   const { supabase } = await requireOwner();
-  const { error } = await supabase.from("expenses").update({ charged: sent }).eq("id", id);
+  const { error } = await supabase.from("expense_items").update({ charged: sent }).eq("id", id);
   if (error) fail(error.message);
   revalidatePath("/office/charges");
   revalidatePath("/expenses");

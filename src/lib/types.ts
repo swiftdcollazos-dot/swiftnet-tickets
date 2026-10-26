@@ -228,6 +228,17 @@ export type Expense = {
   created_at: string;
 };
 
+/** One item on an expense's invoice, which can be charged to a customer with a markup. */
+export type ExpenseItem = {
+  id: string;
+  expense_id: string;
+  description: string;
+  amount_cents: number;
+  bill_client_id: string | null;
+  markup_pct: number;
+  charged: boolean;
+};
+
 /** What the customer pays for an item bought to resell: the cost plus the markup. */
 export function resaleCents(amountCents: number, markupPct: number): number {
   return Math.round((amountCents * (100 + markupPct)) / 100);

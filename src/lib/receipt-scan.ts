@@ -10,6 +10,7 @@ export type ScannedReceipt = {
   category: string;
   payment_method: string;
   description: string;
+  items: { description: string; amount: number }[];
 };
 
 const SCHEMA = {
@@ -23,8 +24,21 @@ const SCHEMA = {
     category: { type: "string", enum: [...EXPENSE_CATEGORIES] },
     payment_method: { type: "string", enum: [...PAYMENT_METHODS, ""] },
     description: { type: "string", description: "Short summary of what was bought, e.g. '2x Cat6 cable 50ft, RJ45 connectors'." },
+    items: {
+      type: "array",
+      description: "Each line on the receipt, in order. Leave out tax, subtotal, total and payment lines.",
+      items: {
+        type: "object",
+        properties: {
+          description: { type: "string", description: "The item with its quantity, e.g. '2x APC BVX 900VA Back-UPS'." },
+          amount: { type: "number", description: "The line's total in dollars (quantity times unit price, after any line discount)." },
+        },
+        required: ["description", "amount"],
+        additionalProperties: false,
+      },
+    },
   },
-  required: ["is_receipt", "vendor", "date", "total", "tax", "category", "payment_method", "description"],
+  required: ["is_receipt", "vendor", "date", "total", "tax", "category", "payment_method", "description", "items"],
   additionalProperties: false,
 };
 
@@ -72,5 +86,6 @@ export async function scanReceiptImage(dataUrl: string, today: string): Promise<
     category: data.category,
     payment_method: data.payment_method,
     description: data.description,
+    items: (data.items ?? []).filter((it) => it.description && it.amount > 0),
   };
 }

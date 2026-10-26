@@ -35,7 +35,7 @@ async function Office() {
     moneyOwed(supabase, today),
     supabase.from("expenses").select("amount_cents").gte("spent_on", `${month}-01`).lt("spent_on", `${nextMonth(month)}-01`),
     supabase.from("renewals").select("due_on").lte("due_on", in30),
-    supabase.from("expenses").select("amount_cents, markup_pct").not("bill_client_id", "is", null).eq("charged", false),
+    supabase.from("expense_items").select("amount_cents, markup_pct").not("bill_client_id", "is", null).eq("charged", false),
   ]);
   const chargeTotal = (toCharge ?? []).reduce((s, e) => s + resaleCents(e.amount_cents as number, e.markup_pct as number), 0);
   const overdue = (due ?? []).filter((r) => (r.due_on as string) < today).length;

@@ -212,3 +212,27 @@ create policy "owner only" on public.renewals for all to authenticated
 alter table public.expenses add column if not exists bill_client_id uuid references public.clients (id) on delete set null;
 alter table public.expenses add column if not exists markup_pct integer not null default 0;
 alter table public.expenses add column if not exists charged boolean not null default false;
+
+-- Each item on an expense's invoice, so items can be charged to different customers.
+create table if not exists public.expense_items (
+  id             uuid primary key default gen_random_uuid(),
+  expense_id     uuid not null references public.expenses (id) on delete cascade,
+  position       integer not null default 0,
+  description    text not null default '',
+  amount_cents   integer not null default 0,
+  bill_client_id uuid references public.clients (id) on delete set null,
+  markup_pct     integer not null default 0,
+  charged        boolean not null default false
+);
+create index if not exists expense_items_expense_id_idx on public.expense_items (expense_id);
+alter table public.expense_items enable row level security;
+drop policy if exists "same as its expense" on public.expense_items;
+create policy "same as its expense" on public.expense_items for all to authenticated
+  using (exists (select 1 from public.expenses e where e.id = expense_id))
+  with check (exists (select 1 from public.expenses e where e.id = expense_id));
+-- Expenses already charged to a customer as a whole become one item each.
+insert into public.expense_items (expense_id, description, amount_cents, bill_client_id, markup_pct, charged)
+select e.id, coalesce(nullif(e.description, ''), e.vendor), e.amount_cents, e.bill_client_id, e.markup_pct, e.charged
+from public.expenses e
+where e.bill_client_id is not null
+  and not exists (select 1 from public.expense_items i where i.expense_id = e.id);

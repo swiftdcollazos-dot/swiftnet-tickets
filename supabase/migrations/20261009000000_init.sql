@@ -165,3 +165,24 @@ alter table public.push_subscriptions enable row level security;
 drop policy if exists "own devices" on public.push_subscriptions;
 create policy "own devices" on public.push_subscriptions for all to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- Owner-only expenses, with an optional photo of the receipt.
+create table if not exists public.expenses (
+  id             uuid primary key default gen_random_uuid(),
+  spent_on       date not null default current_date,
+  vendor         text not null default '',
+  category       text not null default 'Other',
+  description    text not null default '',
+  amount_cents   integer not null default 0,
+  tax_cents      integer not null default 0,
+  payment_method text not null default '',
+  receipt        text,
+  created_by     uuid references auth.users (id) on delete set null default auth.uid(),
+  created_at     timestamptz not null default now()
+);
+create index if not exists expenses_spent_on_idx on public.expenses (spent_on);
+alter table public.expenses enable row level security;
+drop policy if exists "owner only" on public.expenses;
+create policy "owner only" on public.expenses for all to authenticated
+  using (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com')
+  with check (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com');

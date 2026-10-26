@@ -5,7 +5,7 @@ import { RunningTimers } from "@/components/running-timers";
 import { PendingBadge } from "@/components/pending-badge";
 import { HeaderMenu } from "@/components/header-menu";
 import { requireUser } from "@/lib/supabase/server";
-import { permissions } from "@/lib/owner";
+import { isOwner, permissions } from "@/lib/owner";
 import { NotificationsToggle } from "@/components/notifications-toggle";
 import { VAPID_PUBLIC_KEY } from "@/lib/vapid";
 import { signOut } from "@/app/actions";
@@ -37,6 +37,20 @@ async function ReportsLink() {
         <path d="M3 3v18h18M8 17v-5M12 17V8M16 17v-8M20 17V5" />
       </svg>
       Reports
+    </Link>
+  );
+}
+
+/** Expenses menu item, for the owner only. */
+async function ExpensesLink() {
+  const { user } = await requireUser();
+  if (!isOwner(user.email)) return null;
+  return (
+    <Link href="/expenses" className="flex items-center gap-2 px-3 py-2.5 hover:bg-slate-100">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>
+        <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3ZM9 8h6M9 12h6M9 16h3" />
+      </svg>
+      Expenses
     </Link>
   );
 }
@@ -73,6 +87,9 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
             <HeaderMenu>
               <Suspense fallback={null}>
                 <ReportsLink />
+              </Suspense>
+              <Suspense fallback={null}>
+                <ExpensesLink />
               </Suspense>
               <Suspense fallback={null}>
                 <SettingsLink />

@@ -187,3 +187,32 @@ export function rulesOf(
     minimumMinutes: contract ? 0 : BILLING_BLOCK_MINUTES,
   };
 }
+
+/** Expense categories for the owner's Expenses page. The label itself is what gets saved. */
+export const EXPENSE_CATEGORIES = [
+  "Parts and hardware",
+  "Software and subscriptions",
+  "Tools and equipment",
+  "Fuel and vehicle",
+  "Office supplies",
+  "Phone and internet",
+  "Meals",
+  "Travel",
+  "Training",
+  "Other",
+] as const;
+
+export const PAYMENT_METHODS = ["Card", "Cash", "Check", "Bank transfer", "Other"] as const;
+
+export type Expense = {
+  id: string;
+  spent_on: string;
+  vendor: string;
+  category: string;
+  description: string;
+  amount_cents: number;
+  tax_cents: number;
+  payment_method: string;
+  receipt: string | null;
+  created_at: string;
+};

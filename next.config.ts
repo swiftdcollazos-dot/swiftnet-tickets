@@ -17,6 +17,8 @@ const nextConfig: NextConfig = {
     ];
   },
   cacheComponents: true,
+  // Receipt photos are sent to server actions (they're shrunk to well under this first).
+  experimental: { serverActions: { bodySizeLimit: "4mb" } },
   partialPrefetching: true,
   turbopack: {
     rules: {

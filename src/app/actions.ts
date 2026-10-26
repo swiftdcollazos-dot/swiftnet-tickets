@@ -9,9 +9,10 @@ import { notifyAssignee, notifyNewJob, sendTestPush } from "@/lib/push";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseMoney } from "@/lib/billing";
-import { localToIso } from "@/lib/time";
+import { localToIso, todayLocal } from "@/lib/time";
 import { isOwner, permissions, type Permissions } from "@/lib/owner";
-import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
+import { scanReceiptImage, type ScannedReceipt } from "@/lib/receipt-scan";
+import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, EXPENSE_CATEGORIES, PAYMENT_METHODS, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 const STATUSES: TicketStatus[] = ["open", "completed", "sent", "paid"];
@@ -548,4 +549,70 @@ export async function updateUser(userId: string, _prev: ClientResult, form: Form
     const { error: profileError } = await supabase.from("profiles").update({ full_name: fullName }).eq("id", userId);
     if (profileError) fail(profileError.message);
   });
+}
+
+// ---------- Expenses (owner only) ----------
+
+async function requireOwner() {
+  const session = await requireUser();
+  if (!isOwner(session.user.email)) fail("Only the owner can manage expenses.");
+  return session;
+}
+
+const RECEIPT_PREFIX = "data:image/jpeg;base64,";
+const RECEIPT_MAX = 3_000_000;
+
+/** Reads a receipt photo and returns the fields to fill in, or an error to show. Nothing is saved. */
+export async function scanReceipt(dataUrl: string): Promise<ScannedReceipt | { error: string }> {
+  await requireOwner();
+  if (!dataUrl.startsWith(RECEIPT_PREFIX) || dataUrl.length > RECEIPT_MAX) return { error: "That photo couldn't be used. Please try another." };
+  try {
+    return await scanReceiptImage(dataUrl, todayLocal());
+  } catch (e) {
+    console.error("scanReceipt", e);
+    return { error: "The scan didn't work this time. Please try again or fill it in by hand." };
+  }
+}
+
+function expenseFields(form: FormData) {
+  const category = text(form, "category");
+  const method = text(form, "payment_method");
+  const receipt = text(form, "receipt");
+  const spentOn = text(form, "spent_on");
+  return {
+    spent_on: /^\d{4}-\d{2}-\d{2}$/.test(spentOn) ? spentOn : todayLocal(),
+    vendor: text(form, "vendor"),
+    category: (EXPENSE_CATEGORIES as readonly string[]).includes(category) ? category : "Other",
+    description: text(form, "description"),
+    amount_cents: parseMoney(text(form, "amount")),
+    tax_cents: parseMoney(text(form, "tax")),
+    payment_method: (PAYMENT_METHODS as readonly string[]).includes(method) ? method : "",
+    receipt: receipt.startsWith(RECEIPT_PREFIX) && receipt.length <= RECEIPT_MAX ? receipt : null,
+  };
+}
+
+export async function saveExpense(id: string | null, form: FormData) {
+  const { supabase } = await requireOwner();
+  const fields = expenseFields(form);
+  if (!fields.vendor) fail("Please enter who was paid.");
+  if (id) {
+    // Keep the saved receipt unless a new photo was taken or it was removed.
+    const { receipt, ...rest } = fields;
+    const keep = text(form, "receipt") === "keep";
+    const { error } = await supabase.from("expenses").update(keep ? rest : { ...rest, receipt }).eq("id", id);
+    if (error) fail(error.message);
+  } else {
+    const { error } = await supabase.from("expenses").insert(fields);
+    if (error) fail(error.message);
+  }
+  revalidatePath("/expenses");
+  redirect(`/expenses?month=${fields.spent_on.slice(0, 7)}`);
+}
+
+export async function deleteExpense(id: string) {
+  const { supabase } = await requireOwner();
+  const { error } = await supabase.from("expenses").delete().eq("id", id);
+  if (error) fail(error.message);
+  revalidatePath("/expenses");
+  redirect("/expenses");
 }

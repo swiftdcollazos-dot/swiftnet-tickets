@@ -202,7 +202,15 @@ export const EXPENSE_CATEGORIES = [
   "Other",
 ] as const;
 
-export const PAYMENT_METHODS = ["Swiftnet IT account", "Card", "Cash", "Bank transfer"] as const;
+export const PAYMENT_METHODS = [
+  "Swiftnet IT account",
+  "Credit Card Swiftnet",
+  "Debit Card David US",
+  "Debit Card David SXM",
+  "Debit Card Daniel SXM",
+  "Cash",
+  "Bank transfer",
+] as const;
 
 export type Expense = {
   id: string;

@@ -30,7 +30,7 @@ const SCHEMA = {
 
 const PROMPT = `This is a photo of a receipt for Swiftnet I.T., a small IT services company. Read it and fill in the expense fields.
 Pick the category that fits best for an IT company (cables, switches, computers and spare parts are "Parts and hardware"; gas, tolls and car repairs are "Fuel and vehicle").
-Use payment_method "Card" when a card number or card type is printed, "Cash" when cash or change is shown, otherwise leave it empty.
+Use payment_method "Cash" when cash or change is shown; otherwise leave it empty, since the person picks which card or account was used.
 If a year is missing or unclear, assume the most recent date that is not after today.`;
 
 /** Reads a receipt photo (a JPEG data URL) with Claude and returns the expense fields, or an error to show. */

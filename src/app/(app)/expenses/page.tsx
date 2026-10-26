@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { requireUser } from "@/lib/supabase/server";
-import { isOwner } from "@/lib/owner";
+import { isOwner, permissions } from "@/lib/owner";
+import { redirect } from "next/navigation";
 import { formatMoney } from "@/lib/billing";
 import { formatDate, todayLocal } from "@/lib/time";
 import { saveExpense } from "@/app/actions";
@@ -35,6 +36,7 @@ const monthName = (month: string) =>
 async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">["searchParams"] }) {
   const { supabase, user } = await requireUser();
   // Techs see the expenses they reported; the owner sees everyone's (the database enforces this too).
+  if (!permissions(user).expenses) redirect("/dashboard");
   const owner = isOwner(user.email);
 
   const params = await searchParams;

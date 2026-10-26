@@ -86,6 +86,7 @@ const NOT_ALLOWED: Record<keyof Permissions, string> = {
   timers: "Your account can't run timers or change time.",
   settings: "Your account can't change settings or users.",
   reports: "Your account can't see reports.",
+  expenses: "Your account can't use Expenses.",
 };
 
 /** Closed and paid tickets are locked; only reopening changes them. */
@@ -511,6 +512,7 @@ function permissionFields(form: FormData) {
     can_use_timers: form.has("can_use_timers"),
     can_manage_settings: form.has("can_manage_settings"),
     can_see_reports: form.has("can_see_reports"),
+    can_use_expenses: form.has("can_use_expenses"),
   };
 }
 
@@ -564,7 +566,7 @@ const RECEIPT_MAX = 3_000_000;
 
 /** Reads a receipt photo and returns the fields to fill in, or an error to show. Nothing is saved. */
 export async function scanReceipt(dataUrl: string): Promise<ScannedReceipt | { error: string }> {
-  await requireUser();
+  await requireAllowed("expenses");
   if (!dataUrl.startsWith(RECEIPT_PREFIX) || dataUrl.length > RECEIPT_MAX) return { error: "That photo couldn't be used. Please try another." };
   try {
     return await scanReceiptImage(dataUrl, todayLocal());
@@ -592,7 +594,7 @@ function expenseFields(form: FormData) {
 }
 
 export async function saveExpense(id: string | null, form: FormData) {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireAllowed("expenses");
   const fields = expenseFields(form);
   if (!fields.vendor) fail("Please enter who was paid.");
   if (id) {
@@ -610,7 +612,7 @@ export async function saveExpense(id: string | null, form: FormData) {
 }
 
 export async function deleteExpense(id: string) {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireAllowed("expenses");
   const { error } = await supabase.from("expenses").delete().eq("id", id);
   if (error) fail(error.message);
   revalidatePath("/expenses");

@@ -55,6 +55,20 @@ async function OfficeLink() {
   );
 }
 
+/** Expenses menu item, for users allowed to report expenses. */
+async function ExpensesLink() {
+  const { user } = await requireUser();
+  if (!permissions(user).expenses) return null;
+  return (
+    <Link href="/expenses" className="flex items-center gap-2 px-3 py-2.5 hover:bg-slate-100">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>
+        <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3ZM9 8h6M9 12h6M9 16h3" />
+      </svg>
+      Expenses
+    </Link>
+  );
+}
+
 /** Settings menu item, hidden from users who can't change settings or users. */
 async function SettingsLink() {
   const { user } = await requireUser();
@@ -91,12 +105,9 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
               <Suspense fallback={null}>
                 <OfficeLink />
               </Suspense>
-              <Link href="/expenses" className="flex items-center gap-2 px-3 py-2.5 hover:bg-slate-100">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>
-                  <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3ZM9 8h6M9 12h6M9 16h3" />
-                </svg>
-                Expenses
-              </Link>
+              <Suspense fallback={null}>
+                <ExpensesLink />
+              </Suspense>
               <Suspense fallback={null}>
                 <SettingsLink />
               </Suspense>

@@ -105,7 +105,7 @@ async function Users() {
 
 /** Short note of a user's limits, e.g. "no new tickets/calls, no timers", and whether they see reports. */
 function limits(p: Permissions) {
-  return [!p.createJobs && "no new tickets/calls", !p.timers && "no timers", !p.settings && "no settings", p.reports && "sees reports"].filter(Boolean).join(", ");
+  return [!p.createJobs && "no new tickets/calls", !p.timers && "no timers", !p.settings && "no settings", !p.expenses && "no expenses", p.reports && "sees reports"].filter(Boolean).join(", ");
 }
 
 function Field(props: { name: string; label: string; value: string; decimal?: boolean }) {

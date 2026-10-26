@@ -261,6 +261,13 @@ export async function stopTimer(ticketId: string, entryId: string) {
 }
 
 /** For time that wasn't tracked with the timer: date, time in, time out. */
+/** Which timers are running right now, as a short string that changes whenever one starts or stops. */
+export async function runningTimersKey(): Promise<string> {
+  const { supabase } = await requireUser();
+  const { data } = await supabase.from("time_entries").select("id").is("ended_at", null).order("id");
+  return (data ?? []).map((e) => e.id).join(",");
+}
+
 export async function addTimeEntry(ticketId: string, form: FormData) {
   const { supabase, user } = await requireAllowed("timers");
   await assertOpen(supabase, ticketId);

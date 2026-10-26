@@ -11,6 +11,7 @@ import { VAPID_PUBLIC_KEY } from "@/lib/vapid";
 import { signOut } from "@/app/actions";
 import { BackButton } from "@/components/back-button";
 import { BottomNav } from "@/components/bottom-nav";
+import { TimerSync } from "@/components/timer-sync";
 import { pendingCounts } from "@/lib/pending";
 
 function GearIcon() {
@@ -111,6 +112,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
       </header>
       <main className="mx-auto max-w-3xl p-4 pb-32 sm:pb-20">{children}</main>
       <BackButton />
+      <TimerSync />
       <Suspense fallback={null}>
         <MobileMenu />
       </Suspense>

@@ -10,6 +10,8 @@ import { NotificationsToggle } from "@/components/notifications-toggle";
 import { VAPID_PUBLIC_KEY } from "@/lib/vapid";
 import { signOut } from "@/app/actions";
 import { BackButton } from "@/components/back-button";
+import { BottomNav } from "@/components/bottom-nav";
+import { pendingCounts } from "@/lib/pending";
 
 function GearIcon() {
   return (
@@ -49,6 +51,13 @@ async function SettingsLink() {
   );
 }
 
+/** Bottom menu for phones, with the open-job counts and what this user may create. */
+async function MobileMenu() {
+  const { supabase, user } = await requireUser();
+  const counts = await pendingCounts(supabase);
+  return <BottomNav counts={counts} canCreateJobs={permissions(user).createJobs} />;
+}
+
 export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <>
@@ -78,7 +87,8 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
               </form>
             </HeaderMenu>
           </div>
-          <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 sm:order-2 sm:flex-nowrap sm:w-auto sm:justify-end sm:gap-4">
+          {/* On phones these links move to the bottom menu. */}
+          <div className="hidden items-center sm:order-2 sm:flex sm:w-auto sm:justify-end sm:gap-4">
             <Link href="/dashboard">Dashboard</Link>
             <Link href="/" className="inline-flex items-center">
               Work Tickets
@@ -99,8 +109,11 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
           <RunningTimers />
         </Suspense>
       </header>
-      <main className="mx-auto max-w-3xl p-4 pb-20">{children}</main>
+      <main className="mx-auto max-w-3xl p-4 pb-32 sm:pb-20">{children}</main>
       <BackButton />
+      <Suspense fallback={null}>
+        <MobileMenu />
+      </Suspense>
     </>
   );
 }

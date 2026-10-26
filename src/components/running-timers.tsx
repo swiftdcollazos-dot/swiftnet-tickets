@@ -9,6 +9,11 @@ type Running = {
   tickets: { id: string; number: number; clients: { name: string } | null } | null;
 };
 
+/** "Golf Hourly Co" → "GHC": the first letter or digit of each word, to keep the bar short. */
+function initials(name: string) {
+  return (name.match(/[\p{L}\p{N}]+/gu) ?? []).map((w) => w[0].toUpperCase()).join("");
+}
+
 /** Every timer that is still running, so you can jump between jobs while their clocks keep going. */
 export async function RunningTimers() {
   const { supabase } = await requireUser();
@@ -29,10 +34,11 @@ export async function RunningTimers() {
           <Link
             key={r.id}
             href={`/tickets/${r.tickets!.id}`}
+            title={r.tickets!.clients?.name}
             className="flex max-w-full items-center gap-2 rounded-full bg-white/15 px-3 py-1 hover:bg-white/25"
           >
             <span className="truncate">
-              #{r.tickets!.number} {r.tickets!.clients?.name}
+              #{r.tickets!.number} {initials(r.tickets!.clients?.name ?? "")}
               {r.profiles?.full_name && <span className="font-normal text-red-100"> · {r.profiles.full_name.split(" ")[0]}</span>}
             </span>
             <LiveTimer startedAt={r.started_at} />

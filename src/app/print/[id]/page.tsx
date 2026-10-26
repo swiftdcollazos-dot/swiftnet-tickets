@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { formatHours, formatMoney } from "@/lib/billing";
 import { loadTicket } from "@/lib/ticket-data";
 import { formatDate, formatTime } from "@/lib/time";
-import { kindLabel, recordLabel } from "@/lib/types";
+import { kindLabel, recordLabel, SERVICE_LOCATIONS, type ServiceLocation } from "@/lib/types";
 import { Loading } from "@/components/loading";
 import { PrintButton } from "@/components/print-button";
 import { PaidStamp } from "@/components/paid-stamp";
@@ -131,6 +131,11 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
             </div>
           </div>
           <div className="text-xs text-slate-600">
+            {ticket.service_location in SERVICE_LOCATIONS && (
+              <p className="mb-1 text-sm font-bold text-slate-800">
+                Service: {SERVICE_LOCATIONS[ticket.service_location as ServiceLocation]}
+              </p>
+            )}
             <p>Technician: {techName(ticket.technician_id)}</p>
           </div>
         </section>

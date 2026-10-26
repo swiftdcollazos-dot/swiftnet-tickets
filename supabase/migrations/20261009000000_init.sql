@@ -236,3 +236,17 @@ select e.id, coalesce(nullif(e.description, ''), e.vendor), e.amount_cents, e.bi
 from public.expenses e
 where e.bill_client_id is not null
   and not exists (select 1 from public.expense_items i where i.expense_id = e.id);
+
+-- Remote or on-site service, chosen next to the client signature ('' = not chosen).
+alter table public.tickets add column if not exists service_location text not null default '';
+
+-- Users given "See Office" in Settings > Users can use the Office section like the owner.
+drop policy if exists "owner only" on public.renewals;
+drop policy if exists "owner or office" on public.renewals;
+create policy "owner or office" on public.renewals for all to authenticated
+  using (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com' or auth.jwt() -> 'app_metadata' ->> 'can_see_office' = 'true')
+  with check (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com' or auth.jwt() -> 'app_metadata' ->> 'can_see_office' = 'true');
+drop policy if exists "own or owner" on public.expenses;
+create policy "own or owner" on public.expenses for all to authenticated
+  using (created_by = auth.uid() or lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com' or auth.jwt() -> 'app_metadata' ->> 'can_see_office' = 'true')
+  with check (created_by = auth.uid() or lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com' or auth.jwt() -> 'app_metadata' ->> 'can_see_office' = 'true');

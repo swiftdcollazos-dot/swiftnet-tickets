@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { requireUser } from "@/lib/supabase/server";
-import { isOwner } from "@/lib/owner";
+import { permissions } from "@/lib/owner";
 import { formatMoney } from "@/lib/billing";
 import { formatDate } from "@/lib/time";
 import { markChargeSent } from "@/app/actions";
@@ -36,7 +36,7 @@ type Row = {
 
 async function Charges() {
   const { supabase, user } = await requireUser();
-  if (!isOwner(user.email)) redirect("/dashboard");
+  if (!permissions(user).office) redirect("/dashboard");
   // Each invoice item charged to a customer, with the expense it came from.
   const select = "id, expense_id, description, amount_cents, markup_pct, charged, bill_client_id, clients(name), expenses(spent_on, vendor, created_by)";
   const [{ data: toSend, error }, { data: sent }, { data: profiles }] = await Promise.all([

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { requireUser } from "@/lib/supabase/server";
-import { isOwner, permissions } from "@/lib/owner";
+import { permissions } from "@/lib/owner";
 import { redirect } from "next/navigation";
 import { formatMoney } from "@/lib/billing";
 import { formatDate, todayLocal } from "@/lib/time";
@@ -37,7 +37,8 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
   const { supabase, user } = await requireUser();
   // Techs see the expenses they reported; the owner sees everyone's (the database enforces this too).
   if (!permissions(user).expenses) redirect("/dashboard");
-  const owner = isOwner(user.email);
+  // The owner and Office users see everyone's expenses, with who reported each.
+  const owner = permissions(user).office;
 
   const params = await searchParams;
   const today = todayLocal();

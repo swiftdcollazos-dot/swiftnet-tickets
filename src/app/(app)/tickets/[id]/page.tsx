@@ -7,6 +7,7 @@ import {
   addTimeEntry,
   changeTicketClient,
   clearSignature,
+  setServiceLocation,
   deletePart,
   deleteTimeEntry,
   setStatus,
@@ -18,7 +19,7 @@ import {
 import { entryMinutes, formatHours, formatMinutes, formatMoney } from "@/lib/billing";
 import { loadTicket } from "@/lib/ticket-data";
 import { formatDate, formatTime, todayLocal } from "@/lib/time";
-import { STATUS_LABELS, recordLabel, type Client } from "@/lib/types";
+import { SERVICE_LOCATIONS, STATUS_LABELS, recordLabel, type Client, type ServiceLocation } from "@/lib/types";
 import { requireUser } from "@/lib/supabase/server";
 import { ClientPicker } from "@/components/client-picker";
 import { LiveTimer } from "@/components/live-timer";
@@ -335,6 +336,24 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
 
       {/* Signature */}
       <section className="card">
+        <h2 className="h2">Service</h2>
+        <div className="mb-4 grid grid-cols-2 gap-2">
+          {(Object.keys(SERVICE_LOCATIONS) as ServiceLocation[]).map((loc) => {
+            const chosen = ticket.service_location === loc;
+            const look = chosen ? "border-brand bg-brand text-white" : "border-slate-300 bg-white text-slate-700";
+            return closed ? (
+              <div key={loc} className={`rounded-lg border py-3 text-center font-bold ${chosen ? look : "border-slate-200 text-slate-300"}`}>
+                {loc === "remote" ? "🖥️" : "🚗"} {SERVICE_LOCATIONS[loc]}
+              </div>
+            ) : (
+              <form key={loc} action={setServiceLocation.bind(null, ticket.id, chosen ? "" : loc)}>
+                <button className={`w-full rounded-lg border py-3 font-bold ${look}`}>
+                  {loc === "remote" ? "🖥️" : "🚗"} {SERVICE_LOCATIONS[loc]}
+                </button>
+              </form>
+            );
+          })}
+        </div>
         <h2 className="h2">Client signature</h2>
         {ticket.signature ? (
           <div className="space-y-2">

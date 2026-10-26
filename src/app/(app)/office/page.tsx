@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { requireUser } from "@/lib/supabase/server";
-import { isOwner } from "@/lib/owner";
+import { permissions } from "@/lib/owner";
 import { formatMoney } from "@/lib/billing";
 import { todayLocal } from "@/lib/time";
 import { moneyOwed } from "@/lib/owed";
@@ -27,7 +27,7 @@ function nextMonth(month: string) {
 
 async function Office() {
   const { supabase, user } = await requireUser();
-  if (!isOwner(user.email)) redirect("/dashboard");
+  if (!permissions(user).office) redirect("/dashboard");
   const today = todayLocal();
   const month = today.slice(0, 7);
   const in30 = new Date(Date.parse(`${today}T00:00:00Z`) + 30 * 86_400_000).toISOString().slice(0, 10);

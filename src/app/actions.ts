@@ -87,6 +87,7 @@ const NOT_ALLOWED: Record<keyof Permissions, string> = {
   settings: "Your account can't change settings or users.",
   reports: "Your account can't see reports.",
   expenses: "Your account can't use Expenses.",
+  office: "Your account can't use the Office section.",
 };
 
 /** Closed and paid tickets are locked; only reopening changes them. */
@@ -350,6 +351,16 @@ export async function saveSignature(ticketId: string, signedName: string, dataUr
   revalidatePath(`/tickets/${ticketId}`);
 }
 
+/** Remote or on-site, chosen next to the signature; choosing the same one again clears it. */
+export async function setServiceLocation(ticketId: string, location: string) {
+  const { supabase } = await requireUser();
+  await assertOpen(supabase, ticketId);
+  const value = location === "remote" || location === "onsite" ? location : "";
+  const { error } = await supabase.from("tickets").update({ service_location: value }).eq("id", ticketId);
+  if (error) fail(error.message);
+  revalidatePath(`/tickets/${ticketId}`);
+}
+
 export async function clearSignature(ticketId: string) {
   const { supabase } = await requireUser();
   await assertOpen(supabase, ticketId);
@@ -513,6 +524,7 @@ function permissionFields(form: FormData) {
     can_manage_settings: form.has("can_manage_settings"),
     can_see_reports: form.has("can_see_reports"),
     can_use_expenses: form.has("can_use_expenses"),
+    can_see_office: form.has("can_see_office"),
   };
 }
 
@@ -555,10 +567,9 @@ export async function updateUser(userId: string, _prev: ClientResult, form: Form
 
 // ---------- Expenses (owner only) ----------
 
-async function requireOwner() {
-  const session = await requireUser();
-  if (!isOwner(session.user.email)) fail("Only the owner can use the Office section.");
-  return session;
+/** The Office section: the owner, and users given "See Office" in Settings > Users. */
+function requireOffice() {
+  return requireAllowed("office");
 }
 
 const RECEIPT_PREFIX = "data:image/jpeg;base64,";
@@ -654,7 +665,7 @@ export async function saveExpense(id: string | null, form: FormData) {
 
 /** Office > Charge customers: marks an invoice item as sent to its customer (or undoes it). */
 export async function markChargeSent(id: string, sent: boolean) {
-  const { supabase } = await requireOwner();
+  const { supabase } = await requireOffice();
   const { error } = await supabase.from("expense_items").update({ charged: sent }).eq("id", id);
   if (error) fail(error.message);
   revalidatePath("/office/charges");
@@ -688,7 +699,7 @@ function renewalFields(form: FormData) {
 }
 
 export async function saveRenewal(id: string | null, form: FormData) {
-  const { supabase } = await requireOwner();
+  const { supabase } = await requireOffice();
   const fields = renewalFields(form);
   if (!fields.name) fail("Please say what renews, e.g. the domain name or the license.");
   const { error } = id
@@ -700,7 +711,7 @@ export async function saveRenewal(id: string | null, form: FormData) {
 
 /** Marks it renewed: moves the date forward by its repeat, or removes a one-time item. */
 export async function markRenewed(id: string) {
-  const { supabase } = await requireOwner();
+  const { supabase } = await requireOffice();
   const { data, error } = await supabase.from("renewals").select("due_on, repeat_months").eq("id", id).single();
   if (error) fail(error.message);
   if (data.repeat_months > 0) {
@@ -719,7 +730,7 @@ export async function markRenewed(id: string) {
 }
 
 export async function deleteRenewal(id: string) {
-  const { supabase } = await requireOwner();
+  const { supabase } = await requireOffice();
   const { error } = await supabase.from("renewals").delete().eq("id", id);
   if (error) fail(error.message);
   revalidatePath("/office/renewals");

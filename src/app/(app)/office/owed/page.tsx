@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { requireUser } from "@/lib/supabase/server";
-import { isOwner } from "@/lib/owner";
+import { permissions } from "@/lib/owner";
 import { formatMoney } from "@/lib/billing";
 import { formatDate, todayLocal } from "@/lib/time";
 import { moneyOwed, type OwedJob } from "@/lib/owed";
@@ -28,7 +28,7 @@ function ageColor(days: number) {
 
 async function Owed() {
   const { supabase, user } = await requireUser();
-  if (!isOwner(user.email)) redirect("/dashboard");
+  if (!permissions(user).office) redirect("/dashboard");
   const jobs = await moneyOwed(supabase, todayLocal());
   const total = jobs.reduce((s, j) => s + j.cents, 0);
   const sent = jobs.filter((j) => j.status === "sent");

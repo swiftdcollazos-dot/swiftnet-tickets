@@ -140,7 +140,12 @@ export type Ticket = {
   signature: string | null;
   signed_name: string | null;
   signed_at: string | null;
+  service_location: string;
 };
+
+/** Where the work was done, chosen next to the signature. "" means not chosen yet. */
+export const SERVICE_LOCATIONS = { remote: "Remote", onsite: "On-site" } as const;
+export type ServiceLocation = keyof typeof SERVICE_LOCATIONS;
 
 /** Every job for a contract client is a service call; for an hourly client, a service ticket. */
 /** How a job is billed: special projects are always by the hour, whatever the client type. */

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { requireUser } from "@/lib/supabase/server";
-import { isOwner } from "@/lib/owner";
+import { permissions } from "@/lib/owner";
 import { formatMoney } from "@/lib/billing";
 import { formatDate, todayLocal } from "@/lib/time";
 import { deleteRenewal, markRenewed, saveRenewal } from "@/app/actions";
@@ -91,7 +91,7 @@ function Fields({ id, clients, r }: { id: string; clients: Client[]; r?: Renewal
 
 async function Renewals() {
   const { supabase, user } = await requireUser();
-  if (!isOwner(user.email)) redirect("/dashboard");
+  if (!permissions(user).office) redirect("/dashboard");
   const today = todayLocal();
   const [{ data, error }, { data: clientRows }] = await Promise.all([
     supabase.from("renewals").select("*, clients(name)").order("due_on"),

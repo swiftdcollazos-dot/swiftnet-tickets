@@ -186,3 +186,22 @@ drop policy if exists "owner only" on public.expenses;
 create policy "owner only" on public.expenses for all to authenticated
   using (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com')
   with check (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com');
+
+-- Owner-only renewal dates: licenses, domains, SSL certificates, warranties, contracts.
+create table if not exists public.renewals (
+  id            uuid primary key default gen_random_uuid(),
+  client_id     uuid references public.clients (id) on delete cascade,
+  kind          text not null default 'Other',
+  name          text not null default '',
+  due_on        date not null,
+  repeat_months integer not null default 12,  -- 0 = only once
+  cost_cents    integer not null default 0,
+  notes         text not null default '',
+  created_at    timestamptz not null default now()
+);
+create index if not exists renewals_due_on_idx on public.renewals (due_on);
+alter table public.renewals enable row level security;
+drop policy if exists "owner only" on public.renewals;
+create policy "owner only" on public.renewals for all to authenticated
+  using (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com')
+  with check (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com');

@@ -216,3 +216,26 @@ export type Expense = {
   receipt: string | null;
   created_at: string;
 };
+
+export const RENEWAL_KINDS = ["Software license", "Domain", "SSL certificate", "Warranty", "Contract", "Other"] as const;
+
+/** How often a renewal comes back, in months; 0 is only once. */
+export const RENEWAL_REPEATS: [number, string][] = [
+  [12, "Every year"],
+  [1, "Every month"],
+  [3, "Every 3 months"],
+  [24, "Every 2 years"],
+  [36, "Every 3 years"],
+  [0, "Only once"],
+];
+
+export type Renewal = {
+  id: string;
+  client_id: string | null;
+  kind: string;
+  name: string;
+  due_on: string;
+  repeat_months: number;
+  cost_cents: number;
+  notes: string;
+};

@@ -12,7 +12,7 @@ import { parseMoney } from "@/lib/billing";
 import { localToIso, todayLocal } from "@/lib/time";
 import { isOwner, permissions, type Permissions } from "@/lib/owner";
 import { scanReceiptImage, type ScannedReceipt } from "@/lib/receipt-scan";
-import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, EXPENSE_CATEGORIES, PAYMENT_METHODS, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
+import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENEWAL_KINDS, RENEWAL_REPEATS, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 const STATUSES: TicketStatus[] = ["open", "completed", "sent", "paid"];
@@ -555,7 +555,7 @@ export async function updateUser(userId: string, _prev: ClientResult, form: Form
 
 async function requireOwner() {
   const session = await requireUser();
-  if (!isOwner(session.user.email)) fail("Only the owner can manage expenses.");
+  if (!isOwner(session.user.email)) fail("Only the owner can use the Office section.");
   return session;
 }
 
@@ -615,4 +615,60 @@ export async function deleteExpense(id: string) {
   if (error) fail(error.message);
   revalidatePath("/expenses");
   redirect("/expenses");
+}
+
+// ---------- Renewals (owner only) ----------
+
+function renewalFields(form: FormData) {
+  const kind = text(form, "kind");
+  const repeat = Number(text(form, "repeat_months"));
+  const due = text(form, "due_on");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) fail("Please pick the date it's due.");
+  return {
+    client_id: text(form, "client_id") || null,
+    kind: (RENEWAL_KINDS as readonly string[]).includes(kind) ? kind : "Other",
+    name: text(form, "name"),
+    due_on: due,
+    repeat_months: RENEWAL_REPEATS.some(([m]) => m === repeat) ? repeat : 12,
+    cost_cents: parseMoney(text(form, "cost")),
+    notes: text(form, "notes"),
+  };
+}
+
+export async function saveRenewal(id: string | null, form: FormData) {
+  const { supabase } = await requireOwner();
+  const fields = renewalFields(form);
+  if (!fields.name) fail("Please say what renews, e.g. the domain name or the license.");
+  const { error } = id
+    ? await supabase.from("renewals").update(fields).eq("id", id)
+    : await supabase.from("renewals").insert(fields);
+  if (error) fail(error.message);
+  revalidatePath("/office/renewals");
+}
+
+/** Marks it renewed: moves the date forward by its repeat, or removes a one-time item. */
+export async function markRenewed(id: string) {
+  const { supabase } = await requireOwner();
+  const { data, error } = await supabase.from("renewals").select("due_on, repeat_months").eq("id", id).single();
+  if (error) fail(error.message);
+  if (data.repeat_months > 0) {
+    const [y, m, d] = (data.due_on as string).split("-").map(Number);
+    // Keep the day, but not past the end of a shorter month (Jan 31 + 1 month = Feb 28).
+    const target = new Date(Date.UTC(y, m - 1 + data.repeat_months, 1));
+    const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+    target.setUTCDate(Math.min(d, lastDay));
+    const { error: e } = await supabase.from("renewals").update({ due_on: target.toISOString().slice(0, 10) }).eq("id", id);
+    if (e) fail(e.message);
+  } else {
+    const { error: e } = await supabase.from("renewals").delete().eq("id", id);
+    if (e) fail(e.message);
+  }
+  revalidatePath("/office/renewals");
+}
+
+export async function deleteRenewal(id: string) {
+  const { supabase } = await requireOwner();
+  const { error } = await supabase.from("renewals").delete().eq("id", id);
+  if (error) fail(error.message);
+  revalidatePath("/office/renewals");
 }

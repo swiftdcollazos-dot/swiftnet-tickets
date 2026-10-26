@@ -29,10 +29,13 @@ async function Office() {
   if (!isOwner(user.email)) redirect("/dashboard");
   const today = todayLocal();
   const month = today.slice(0, 7);
-  const [owed, { data: spent }] = await Promise.all([
+  const in30 = new Date(Date.parse(`${today}T00:00:00Z`) + 30 * 86_400_000).toISOString().slice(0, 10);
+  const [owed, { data: spent }, { data: due }] = await Promise.all([
     moneyOwed(supabase, today),
     supabase.from("expenses").select("amount_cents").gte("spent_on", `${month}-01`).lt("spent_on", `${nextMonth(month)}-01`),
+    supabase.from("renewals").select("due_on").lte("due_on", in30),
   ]);
+  const overdue = (due ?? []).filter((r) => (r.due_on as string) < today).length;
   const owedTotal = owed.reduce((s, j) => s + j.cents, 0);
   const oldest = owed[0]?.days ?? 0;
   const spentTotal = (spent ?? []).reduce((s, e) => s + (e.amount_cents as number), 0);
@@ -51,6 +54,13 @@ async function Office() {
         <p className="label">🧾 Expenses</p>
         <p className="text-3xl font-bold">{formatMoney(spentTotal)}</p>
         <p className="text-sm text-slate-500">spent this month · scan a receipt</p>
+      </Link>
+      <Link href="/office/renewals" className="card block border-l-4 border-l-blue-500 hover:bg-slate-50">
+        <p className="label">🔔 Renewals</p>
+        <p className="text-3xl font-bold">{(due ?? []).length}</p>
+        <p className={`text-sm ${overdue ? "font-semibold text-red-600" : "text-slate-500"}`}>
+          due in the next 30 days{overdue ? ` · ${overdue} overdue` : ""}
+        </p>
       </Link>
     </div>
   );

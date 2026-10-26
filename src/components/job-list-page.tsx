@@ -66,6 +66,8 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
     .from("tickets")
     .select("*, clients!inner(name, client_type), time_entries(started_at, ended_at), ticket_parts(qty, unit_price_cents)")
     .eq("is_project", tab.view === "projects")
+    // Open jobs first (status order: open, closed, sent, paid), newest first within each.
+    .order("status")
     .order("number", { ascending: false })
     .limit(completed ? 300 : 100);
   // Special projects can be for any client.
@@ -87,6 +89,11 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
   );
   // Completed: hourly clients' tickets first, then contract clients' calls, each newest first.
   if (completed) rows.sort((a, b) => Number(a.clients?.client_type === "contract") - Number(b.clients?.client_type === "contract"));
+  // Jobs being worked on right now (a timer running) go to the very top.
+  else {
+    const isRunning = (t: (typeof rows)[number]) => t.time_entries.some((e: { ended_at: string | null }) => !e.ended_at);
+    rows.sort((a, b) => Number(isRunning(b)) - Number(isRunning(a)));
+  }
 
   return (
     <>

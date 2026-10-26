@@ -207,3 +207,8 @@ drop policy if exists "owner only" on public.renewals;
 create policy "owner only" on public.renewals for all to authenticated
   using (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com')
   with check (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com');
+
+-- Items bought to resell: the customer to charge, the markup, and whether it's been charged.
+alter table public.expenses add column if not exists bill_client_id uuid references public.clients (id) on delete set null;
+alter table public.expenses add column if not exists markup_pct integer not null default 0;
+alter table public.expenses add column if not exists charged boolean not null default false;

@@ -27,7 +27,10 @@ async function EditExpense({ params }: { params: PageProps<"/expenses/[id]">["pa
   const { supabase, user } = await requireUser();
   if (!permissions(user).expenses) redirect("/dashboard");
   const { id } = await params;
-  const { data } = await supabase.from("expenses").select("*").eq("id", id).maybeSingle();
+  const [{ data }, { data: clients }] = await Promise.all([
+    supabase.from("expenses").select("*").eq("id", id).maybeSingle(),
+    supabase.from("clients").select("id, name").order("name"),
+  ]);
   if (!data) redirect("/expenses");
   const expense = data as Expense;
 
@@ -40,7 +43,7 @@ async function EditExpense({ params }: { params: PageProps<"/expenses/[id]">["pa
         </div>
       )}
       <div className="card">
-        <ExpenseForm expense={expense} today={todayLocal()} save={saveExpense.bind(null, expense.id)} />
+        <ExpenseForm expense={expense} today={todayLocal()} clients={clients ?? []} save={saveExpense.bind(null, expense.id)} />
       </div>
       <DeleteExpenseButton remove={deleteExpense.bind(null, expense.id)} />
     </div>

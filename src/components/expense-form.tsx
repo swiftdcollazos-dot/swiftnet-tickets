@@ -20,14 +20,19 @@ const dollars = (cents: number) => (cents ? (cents / 100).toFixed(2) : "");
 
 type Values = { spent_on: string; vendor: string; category: string; description: string; amount: string; tax: string; payment_method: string };
 
+/** Markups offered when an item is bought to resell to a customer. */
+const MARKUPS = [10, 15, 20, 25];
+
 /** Add or edit an expense. "Scan receipt" takes a photo and fills in the fields for you to check. */
 export function ExpenseForm({
   expense,
   today,
+  clients,
   save,
 }: {
   expense?: Expense;
   today: string;
+  clients: { id: string; name: string }[];
   save: (form: FormData) => Promise<void>;
 }) {
   const [values, setValues] = useState<Values>({
@@ -40,6 +45,8 @@ export function ExpenseForm({
     payment_method: expense?.payment_method ?? "",
   });
   // "keep" leaves the saved photo alone; "" removes it; a data URL replaces it.
+  const [billClient, setBillClient] = useState(expense?.bill_client_id ?? "");
+  const [markup, setMarkup] = useState(expense?.markup_pct || 20);
   const [receipt, setReceipt] = useState(expense?.receipt ? "keep" : "");
   const [scanning, setScanning] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -48,6 +55,8 @@ export function ExpenseForm({
 
   const set = (key: keyof Values) => (e: { target: { value: string } }) => setValues((v) => ({ ...v, [key]: e.target.value }));
   const preview = receipt === "keep" ? expense?.receipt : receipt;
+  const cost = Number(values.amount.replace(/[$,\s]/g, "")) || 0;
+  const charge = Math.round(cost * (100 + markup)) / 100;
 
   async function onPhoto(file: File | undefined) {
     if (!file) return;
@@ -141,6 +150,45 @@ export function ExpenseForm({
           <label className="label" htmlFor="description">What was bought</label>
           <textarea className="input" id="description" name="description" rows={2} value={values.description} onChange={set("description")} />
         </div>
+      </div>
+
+      {/* Bought to resell: who pays for it, and the markup on top of what we paid. */}
+      <div className="space-y-2 rounded-lg bg-slate-50 p-3">
+        <div>
+          <label className="label" htmlFor="bill_client_id">Charge to customer</label>
+          <select className="input" id="bill_client_id" name="bill_client_id" value={billClient} onChange={(e) => setBillClient(e.target.value)}>
+            <option value="">No, it&apos;s ours</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+        {billClient && (
+          <>
+            <p className="label">Markup</p>
+            <div className="grid grid-cols-4 gap-2">
+              {MARKUPS.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMarkup(m)}
+                  className={`rounded-lg border py-2 font-bold ${markup === m ? "border-brand bg-brand text-white" : "border-slate-300 bg-white text-slate-700"}`}
+                >
+                  {m}%
+                </button>
+              ))}
+            </div>
+            <input type="hidden" name="markup_pct" value={markup} />
+            <p className="text-sm">
+              Charge the customer <span className="text-lg font-bold">${charge.toFixed(2)}</span>
+              <span className="text-slate-500"> (${cost.toFixed(2)} + {markup}%)</span>
+            </p>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" name="charged" defaultChecked={expense?.charged ?? false} className="h-5 w-5" />
+              Sent to the customer
+            </label>
+          </>
+        )}
       </div>
       <button className="btn w-full" disabled={scanning}>
         Save expense

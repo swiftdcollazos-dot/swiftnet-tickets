@@ -214,8 +214,16 @@ export type Expense = {
   tax_cents: number;
   payment_method: string;
   receipt: string | null;
+  bill_client_id: string | null;
+  markup_pct: number;
+  charged: boolean;
   created_at: string;
 };
+
+/** What the customer pays for an item bought to resell: the cost plus the markup. */
+export function resaleCents(amountCents: number, markupPct: number): number {
+  return Math.round((amountCents * (100 + markupPct)) / 100);
+}
 
 export const RENEWAL_KINDS = [
   "Microsoft 365 / Office 365",

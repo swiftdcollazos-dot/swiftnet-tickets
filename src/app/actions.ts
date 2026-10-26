@@ -590,6 +590,18 @@ function expenseFields(form: FormData) {
     tax_cents: parseMoney(text(form, "tax")),
     payment_method: (PAYMENT_METHODS as readonly string[]).includes(method) ? method : "",
     receipt: receipt.startsWith(RECEIPT_PREFIX) && receipt.length <= RECEIPT_MAX ? receipt : null,
+    ...resaleFields(form),
+  };
+}
+
+/** Bought to resell: the customer to charge and the markup (10–25%). */
+function resaleFields(form: FormData) {
+  const client = text(form, "bill_client_id");
+  const markup = Number(text(form, "markup_pct"));
+  return {
+    bill_client_id: client || null,
+    markup_pct: client && [10, 15, 20, 25].includes(markup) ? markup : 0,
+    charged: !!client && form.has("charged"),
   };
 }
 
@@ -609,6 +621,15 @@ export async function saveExpense(id: string | null, form: FormData) {
   }
   revalidatePath("/expenses");
   redirect(`/expenses?month=${fields.spent_on.slice(0, 7)}`);
+}
+
+/** Office > Charge customers: marks an item bought for a customer as sent to them (or undoes it). */
+export async function markChargeSent(id: string, sent: boolean) {
+  const { supabase } = await requireOwner();
+  const { error } = await supabase.from("expenses").update({ charged: sent }).eq("id", id);
+  if (error) fail(error.message);
+  revalidatePath("/office/charges");
+  revalidatePath("/expenses");
 }
 
 export async function deleteExpense(id: string) {

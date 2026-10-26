@@ -8,7 +8,7 @@ import { formatDate, todayLocal } from "@/lib/time";
 import { saveExpense } from "@/app/actions";
 import { ExpenseForm } from "@/components/expense-form";
 import { Loading } from "@/components/loading";
-import type { Expense } from "@/lib/types";
+import { resaleCents, type Expense } from "@/lib/types";
 
 // Reading a receipt can take a little while.
 export const maxDuration = 60;
@@ -44,13 +44,15 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
   const month = typeof params.month === "string" && /^\d{4}-\d{2}$/.test(params.month) ? params.month : today.slice(0, 7);
   const { data, error } = await supabase
     .from("expenses")
-    .select("id, spent_on, vendor, category, description, amount_cents, tax_cents, payment_method, created_by")
+    .select("id, spent_on, vendor, category, description, amount_cents, tax_cents, payment_method, created_by, bill_client_id, markup_pct, charged, clients(name)")
     .gte("spent_on", `${month}-01`)
     .lt("spent_on", `${shiftMonth(month, 1)}-01`)
     .order("spent_on", { ascending: false })
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
-  const expenses = (data ?? []) as (Omit<Expense, "receipt" | "created_at"> & { created_by: string | null })[];
+  type Row = Omit<Expense, "receipt" | "created_at"> & { created_by: string | null; clients: { name: string } | null };
+  const expenses = (data ?? []) as unknown as Row[];
+  const { data: clientRows } = await supabase.from("clients").select("id, name").order("name");
   const { data: profiles } = owner ? await supabase.from("profiles").select("id, full_name") : { data: [] };
   const names = new Map((profiles ?? []).map((p) => [p.id as string, p.full_name as string]));
   // Others' expenses get the reporter's name; the owner's own don't.
@@ -72,7 +74,7 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
           <span className="text-sm text-slate-500 transition-transform group-open:rotate-180">▼</span>
         </summary>
         <div className="mt-3">
-          <ExpenseForm today={today} save={saveExpense.bind(null, null)} />
+          <ExpenseForm today={today} clients={clientRows ?? []} save={saveExpense.bind(null, null)} />
         </div>
       </details>
 
@@ -128,6 +130,11 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
                     {formatDate(e.spent_on)} · {e.category}
                     {e.description ? ` · ${e.description}` : ""}
                   </span>
+                  {e.clients && (
+                    <span className={`block truncate text-sm font-semibold ${e.charged ? "text-slate-500" : "text-green-700"}`}>
+                      {e.charged ? "Sent to" : "Charge"} {e.clients.name} {formatMoney(resaleCents(e.amount_cents, e.markup_pct))} (+{e.markup_pct}%)
+                    </span>
+                  )}
                 </span>
                 <span className="shrink-0 font-bold">{formatMoney(e.amount_cents)}</span>
               </Link>

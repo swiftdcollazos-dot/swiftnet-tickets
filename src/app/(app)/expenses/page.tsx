@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { requireUser } from "@/lib/supabase/server";
 import { isOwner } from "@/lib/owner";
@@ -35,20 +34,27 @@ const monthName = (month: string) =>
 
 async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">["searchParams"] }) {
   const { supabase, user } = await requireUser();
-  if (!isOwner(user.email)) redirect("/dashboard");
+  // Techs see the expenses they reported; the owner sees everyone's (the database enforces this too).
+  const owner = isOwner(user.email);
 
   const params = await searchParams;
   const today = todayLocal();
   const month = typeof params.month === "string" && /^\d{4}-\d{2}$/.test(params.month) ? params.month : today.slice(0, 7);
   const { data, error } = await supabase
     .from("expenses")
-    .select("id, spent_on, vendor, category, description, amount_cents, tax_cents, payment_method")
+    .select("id, spent_on, vendor, category, description, amount_cents, tax_cents, payment_method, created_by")
     .gte("spent_on", `${month}-01`)
     .lt("spent_on", `${shiftMonth(month, 1)}-01`)
     .order("spent_on", { ascending: false })
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
-  const expenses = (data ?? []) as Omit<Expense, "receipt" | "created_at">[];
+  const expenses = (data ?? []) as (Omit<Expense, "receipt" | "created_at"> & { created_by: string | null })[];
+  const { data: profiles } = owner ? await supabase.from("profiles").select("id, full_name") : { data: [] };
+  const names = new Map((profiles ?? []).map((p) => [p.id as string, p.full_name as string]));
+  // Others' expenses get the reporter's name; the owner's own don't.
+  const reporter = (id: string | null) => (owner && id && id !== user.id ? names.get(id) : undefined);
+  const payBack = expenses.filter((e) => e.payment_method.startsWith("Own money"));
+  const payBackTotal = payBack.reduce((sum, e) => sum + e.amount_cents, 0);
 
   const total = expenses.reduce((sum, e) => sum + e.amount_cents, 0);
   const tax = expenses.reduce((sum, e) => sum + e.tax_cents, 0);
@@ -76,7 +82,7 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
 
       <div className="grid grid-cols-2 gap-2">
         <div className="card">
-          <p className="label">Spent</p>
+          <p className="label">{owner ? "Spent" : "You spent"}</p>
           <p className="text-2xl font-bold">{formatMoney(total)}</p>
         </div>
         <div className="card">
@@ -84,6 +90,13 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
           <p className="text-2xl font-bold">{formatMoney(tax)}</p>
         </div>
       </div>
+
+      {payBackTotal > 0 && (
+        <p className="card border-l-4 border-l-amber-500 text-sm">
+          <span className="font-semibold">{formatMoney(payBackTotal)}</span> paid with own money to pay back ({payBack.length}{" "}
+          {payBack.length === 1 ? "expense" : "expenses"})
+        </p>
+      )}
 
       {categories.length > 0 && (
         <div className="card">
@@ -109,6 +122,7 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
                 <span className="min-w-0">
                   <span className="block truncate font-semibold">{e.vendor}</span>
                   <span className="block truncate text-sm text-slate-500">
+                    {reporter(e.created_by) && <span className="font-semibold text-brand">{reporter(e.created_by)} · </span>}
                     {formatDate(e.spent_on)} · {e.category}
                     {e.description ? ` · ${e.description}` : ""}
                   </span>

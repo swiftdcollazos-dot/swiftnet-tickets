@@ -166,7 +166,7 @@ drop policy if exists "own devices" on public.push_subscriptions;
 create policy "own devices" on public.push_subscriptions for all to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 
--- Owner-only expenses, with an optional photo of the receipt.
+-- Expenses, with an optional photo of the receipt.
 create table if not exists public.expenses (
   id             uuid primary key default gen_random_uuid(),
   spent_on       date not null default current_date,
@@ -182,10 +182,12 @@ create table if not exists public.expenses (
 );
 create index if not exists expenses_spent_on_idx on public.expenses (spent_on);
 alter table public.expenses enable row level security;
+-- Everyone can report expenses and see their own; the owner sees them all.
 drop policy if exists "owner only" on public.expenses;
-create policy "owner only" on public.expenses for all to authenticated
-  using (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com')
-  with check (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com');
+drop policy if exists "own or owner" on public.expenses;
+create policy "own or owner" on public.expenses for all to authenticated
+  using (created_by = auth.uid() or lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com')
+  with check (created_by = auth.uid() or lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com');
 
 -- Owner-only renewal dates: licenses, domains, SSL certificates, warranties, contracts.
 create table if not exists public.renewals (

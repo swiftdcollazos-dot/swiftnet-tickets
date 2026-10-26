@@ -202,7 +202,7 @@ export const EXPENSE_CATEGORIES = [
   "Other",
 ] as const;
 
-export const PAYMENT_METHODS = ["Card", "Cash", "Check", "Bank transfer", "Other"] as const;
+export const PAYMENT_METHODS = ["Card", "Cash", "Check", "Bank transfer", "Own money (pay me back)", "Other"] as const;
 
 export type Expense = {
   id: string;
@@ -217,7 +217,20 @@ export type Expense = {
   created_at: string;
 };
 
-export const RENEWAL_KINDS = ["Software license", "Domain", "SSL certificate", "Warranty", "Contract", "Other"] as const;
+export const RENEWAL_KINDS = [
+  "Microsoft 365 / Office 365",
+  "Antivirus",
+  "Cybersecurity software",
+  "Backup service",
+  "Firewall subscription",
+  "Software license",
+  "Domain",
+  "Website hosting",
+  "SSL certificate",
+  "Warranty",
+  "Contract",
+  "Other",
+] as const;
 
 /** How often a renewal comes back, in months; 0 is only once. */
 export const RENEWAL_REPEATS: [number, string][] = [

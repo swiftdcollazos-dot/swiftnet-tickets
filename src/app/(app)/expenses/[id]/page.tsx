@@ -1,7 +1,6 @@
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { requireUser } from "@/lib/supabase/server";
-import { isOwner } from "@/lib/owner";
 import { todayLocal } from "@/lib/time";
 import { deleteExpense, saveExpense } from "@/app/actions";
 import { DeleteExpenseButton, ExpenseForm } from "@/components/expense-form";
@@ -23,11 +22,11 @@ export default function ExpensePage(props: PageProps<"/expenses/[id]">) {
 }
 
 async function EditExpense({ params }: { params: PageProps<"/expenses/[id]">["params"] }) {
-  const { supabase, user } = await requireUser();
-  if (!isOwner(user.email)) redirect("/dashboard");
+  // Techs can only open their own expenses; the database returns nothing for anyone else's.
+  const { supabase } = await requireUser();
   const { id } = await params;
   const { data } = await supabase.from("expenses").select("*").eq("id", id).maybeSingle();
-  if (!data) notFound();
+  if (!data) redirect("/expenses");
   const expense = data as Expense;
 
   return (

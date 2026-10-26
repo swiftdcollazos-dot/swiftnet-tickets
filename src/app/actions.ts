@@ -564,7 +564,7 @@ const RECEIPT_MAX = 3_000_000;
 
 /** Reads a receipt photo and returns the fields to fill in, or an error to show. Nothing is saved. */
 export async function scanReceipt(dataUrl: string): Promise<ScannedReceipt | { error: string }> {
-  await requireOwner();
+  await requireUser();
   if (!dataUrl.startsWith(RECEIPT_PREFIX) || dataUrl.length > RECEIPT_MAX) return { error: "That photo couldn't be used. Please try another." };
   try {
     return await scanReceiptImage(dataUrl, todayLocal());
@@ -592,7 +592,7 @@ function expenseFields(form: FormData) {
 }
 
 export async function saveExpense(id: string | null, form: FormData) {
-  const { supabase } = await requireOwner();
+  const { supabase } = await requireUser();
   const fields = expenseFields(form);
   if (!fields.vendor) fail("Please enter who was paid.");
   if (id) {
@@ -610,7 +610,7 @@ export async function saveExpense(id: string | null, form: FormData) {
 }
 
 export async function deleteExpense(id: string) {
-  const { supabase } = await requireOwner();
+  const { supabase } = await requireUser();
   const { error } = await supabase.from("expenses").delete().eq("id", id);
   if (error) fail(error.message);
   revalidatePath("/expenses");

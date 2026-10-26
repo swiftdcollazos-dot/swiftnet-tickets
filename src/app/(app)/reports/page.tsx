@@ -72,18 +72,20 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
   ]);
   if (error) throw new Error(error.message);
   const currency = (settings as Settings | null)?.currency ?? "USD";
+  const hourlyRate = (settings as Settings | null)?.hourly_rate_cents ?? 0;
   const money = (c: number) => formatMoney(c, currency);
   const names = new Map((profiles ?? []).map((p) => [p.id as string, p.full_name as string]));
 
   const jobs = ((data ?? []) as unknown as Row[]).map((t) => {
     const clientType = t.clients.client_type;
     const kind: Kind = t.is_project ? "project" : clientType === "contract" ? "call" : "ticket";
-    const totals = computeTotals(
-      t.time_entries.map((e) => ({ startedAt: e.started_at, endedAt: e.ended_at })),
-      t.ticket_parts.map((p) => ({ qty: Number(p.qty), unitPriceCents: p.unit_price_cents })),
-      rulesOf(t, billingType(clientType, t.is_project)),
-    );
-    return { t, kind, totals };
+    const entries = t.time_entries.map((e) => ({ startedAt: e.started_at, endedAt: e.ended_at }));
+    const parts = t.ticket_parts.map((p) => ({ qty: Number(p.qty), unitPriceCents: p.unit_price_cents }));
+    const totals = computeTotals(entries, parts, rulesOf(t, billingType(clientType, t.is_project)));
+    // What the job would cost billed by the hour at today's rate; service calls are otherwise covered by the contract.
+    const hourlyCents =
+      kind === "call" ? computeTotals(entries, parts, { ...rulesOf(t, "hourly"), hourlyRateCents: hourlyRate }).totalCents : totals.totalCents;
+    return { t, kind, totals, hourlyCents };
   });
 
   // Contract clients pay a monthly fee: count each month in the range up to this month,
@@ -133,16 +135,17 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
     .map(([id, r]) => ({ name: names.get(id) || "Unknown", ...r, total: r.ticket + r.call + r.project }))
     .sort((a, b) => b.total - a.total);
 
-  const clientMap = new Map<string, { name: string; jobs: number; worked: number; money: number }>();
+  const clientMap = new Map<string, { name: string; jobs: number; worked: number; money: number; hourly: number }>();
   for (const j of jobs) {
-    const row = clientMap.get(j.t.client_id) ?? { name: j.t.clients.name, jobs: 0, worked: 0, money: 0 };
+    const row = clientMap.get(j.t.client_id) ?? { name: j.t.clients.name, jobs: 0, worked: 0, money: 0, hourly: 0 };
     row.jobs += 1;
     row.worked += j.totals.workedMinutes;
+    row.hourly += j.hourlyCents;
     if (j.kind !== "call") row.money += j.totals.totalCents;
     clientMap.set(j.t.client_id, row);
   }
   for (const f of fees) {
-    const row = clientMap.get(f.id) ?? { name: f.name, jobs: 0, worked: 0, money: 0 };
+    const row = clientMap.get(f.id) ?? { name: f.name, jobs: 0, worked: 0, money: 0, hourly: 0 };
     row.money += f.cents;
     clientMap.set(f.id, row);
   }
@@ -223,13 +226,13 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
 
       <Table
         title="By client"
-        head={["Client", "Jobs", "Worked", "Money"]}
-        rows={byClient.map((c) => [c.name, String(c.jobs), hrs(c.worked), c.money ? money(c.money) : "—"])}
+        head={["Client", "Jobs", "Worked", "Money", `At ${money(hourlyRate)}/h`]}
+        rows={byClient.map((c) => [c.name, String(c.jobs), hrs(c.worked), c.money ? money(c.money) : "—", c.hourly ? money(c.hourly) : "—"])}
         empty="No jobs in this period."
       />
 
       <p className="text-xs text-slate-500">
-        Service calls are covered by the client&apos;s contract: their money is the contract clients&apos; monthly fees for each month in the range, up to this month. Running timers count up to now.
+        Service calls are covered by the client&apos;s contract: their money is the contract clients&apos; monthly fees for each month in the range, up to this month. The last By client column is what each client&apos;s jobs would cost billed by the hour at {money(hourlyRate)}/h, so you can compare a contract&apos;s monthly fee with the time spent. Two technicians working at the same time are billed once. Running timers count up to now.
       </p>
     </div>
   );

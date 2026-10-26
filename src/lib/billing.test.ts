@@ -34,6 +34,22 @@ describe("computeTotals", () => {
     expect(t.totalCents).toBe(13500);
   });
 
+  it("bills two technicians working at the same time once, but records both", () => {
+    const t = computeTotals(
+      [
+        { startedAt: at("09:00"), endedAt: at("10:00") }, // David
+        { startedAt: at("09:30"), endedAt: at("10:30") }, // Daniel, overlapping half an hour
+        { startedAt: at("13:00"), endedAt: at("13:30") }, // David again, later
+      ],
+      [],
+      rules,
+    );
+    expect(t.workedMinutes).toBe(150);
+    expect(t.jobMinutes).toBe(120);
+    expect(t.billableMinutes).toBe(120);
+    expect(t.laborCents).toBe(18000);
+  });
+
   it("adds up several visits and parts, then subtracts the deposit", () => {
     const t = computeTotals(
       [

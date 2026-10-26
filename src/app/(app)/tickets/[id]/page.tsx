@@ -65,7 +65,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
   const noTime = closed || !permissions(user).timers;
   const money = (c: number) => formatMoney(c, settings.currency);
   // Whole hours, matching the printout.
-  const hours = formatHours(call ? Math.ceil(Math.round(totals.workedMinutes) / 60) * 60 : totals.billableMinutes);
+  const hours = formatHours(call ? Math.ceil(Math.round(totals.jobMinutes) / 60) * 60 : totals.billableMinutes);
 
   return (
     <div className="space-y-4">
@@ -310,7 +310,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
       >
         <dl className="space-y-1 text-sm">
           {call ? (
-            <Row label={`Time spent: ${formatMinutes(totals.workedMinutes)}`} value="Not charged" />
+            <Row label={`Time spent: ${formatMinutes(totals.jobMinutes)}`} value="Not charged" />
           ) : (
             <Row label={`Labor: ${formatMinutes(totals.billableMinutes)} × ${money(ticket.hourly_rate_cents)}/h`} value={money(totals.laborCents)} />
           )}

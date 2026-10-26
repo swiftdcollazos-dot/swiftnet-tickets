@@ -107,7 +107,7 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
           <table className="w-72">
             <tbody>
               {call ? (
-                <Total label={`Time spent (${formatHours(Math.ceil(Math.round(totals.workedMinutes) / 60) * 60)})`} value="Not charged" />
+                <Total label={`Time spent (${formatHours(Math.ceil(Math.round(totals.jobMinutes) / 60) * 60)})`} value="Not charged" />
               ) : (
                 <Total label={`Total labor (${formatHours(totals.billableMinutes)})`} value={money(totals.laborCents)} />
               )}

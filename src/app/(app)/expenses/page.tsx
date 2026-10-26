@@ -57,8 +57,6 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
   const names = new Map((profiles ?? []).map((p) => [p.id as string, p.full_name as string]));
   // Others' expenses get the reporter's name; the owner's own don't.
   const reporter = (id: string | null) => (owner && id && id !== user.id ? names.get(id) : undefined);
-  const payBack = expenses.filter((e) => e.payment_method.startsWith("Own money"));
-  const payBackTotal = payBack.reduce((sum, e) => sum + e.amount_cents, 0);
 
   const total = expenses.reduce((sum, e) => sum + e.amount_cents, 0);
   const tax = expenses.reduce((sum, e) => sum + e.tax_cents, 0);
@@ -95,12 +93,6 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
         </div>
       </div>
 
-      {payBackTotal > 0 && (
-        <p className="card border-l-4 border-l-amber-500 text-sm">
-          <span className="font-semibold">{formatMoney(payBackTotal)}</span> paid with own money to pay back ({payBack.length}{" "}
-          {payBack.length === 1 ? "expense" : "expenses"})
-        </p>
-      )}
 
       {categories.length > 0 && (
         <div className="card">

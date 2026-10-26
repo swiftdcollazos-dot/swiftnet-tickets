@@ -132,9 +132,10 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
           </div>
           <div className="text-xs text-slate-600">
             {ticket.service_location in SERVICE_LOCATIONS && (
-              <p className="mb-1 text-sm font-bold text-slate-800">
-                Service: {SERVICE_LOCATIONS[ticket.service_location as ServiceLocation]}
-              </p>
+              <div className="mb-2 inline-flex items-center gap-2 rounded-lg border-2 border-slate-800 px-3 py-1.5 text-base font-bold text-slate-900">
+                <span className="text-4xl leading-none">{ticket.service_location === "remote" ? "🖥️" : "🚗"}</span>
+                {SERVICE_LOCATIONS[ticket.service_location as ServiceLocation]} service
+              </div>
             )}
             <p>Technician: {techName(ticket.technician_id)}</p>
           </div>

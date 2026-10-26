@@ -14,13 +14,14 @@ const icon = (d: string, color: string) => (
 const HOME = "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z";
 const TICKET = "M4 6h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4zM10 6v12";
 const PROJECT = "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z";
+const RECEIPT = "M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h3";
 const CLIENTS = "M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM22 19v-1a4 4 0 0 0-3-3.9M16 4.1a3 3 0 0 1 0 5.8";
 
 /**
  * Phone-only menu along the bottom of the screen, like a native app: Home, Tickets, a big New button,
- * Projects and Clients. New opens a short list of what you're allowed to create.
+ * Projects, Clients and Expenses (when allowed). New opens a short list of what you're allowed to create.
  */
-export function BottomNav({ counts, canCreateJobs }: { counts: Counts; canCreateJobs: boolean }) {
+export function BottomNav({ counts, canCreateJobs, canExpenses }: { counts: Counts; canCreateJobs: boolean; canExpenses: boolean }) {
   const path = usePathname();
   const view = useSearchParams().get("view");
   const [sheet, setSheet] = useState(false);
@@ -33,6 +34,7 @@ export function BottomNav({ counts, canCreateJobs }: { counts: Counts; canCreate
     { href: "/", label: "Tickets", d: TICKET, color: "text-amber-500", active: tickets, badge: counts.tickets + counts.calls, badgeClass: "bg-red-500 text-white" },
     { href: "/projects", label: "Projects", d: PROJECT, color: "text-purple-600", active: path.startsWith("/projects"), badge: counts.projects, badgeClass: "bg-red-500 text-white" },
     { href: "/clients", label: "Clients", d: CLIENTS, color: "text-teal-600", active: path.startsWith("/clients") },
+    ...(canExpenses ? [{ href: "/expenses", label: "Expenses", d: RECEIPT, color: "text-green-600", active: path.startsWith("/expenses") }] : []),
   ];
   const tab = (t: (typeof tabs)[number]) => (
     <Link

@@ -42,14 +42,16 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
 
   const params = await searchParams;
   const today = todayLocal();
+  // ?month=all lists every expense ever added, split by month.
+  const all = params.month === "all";
   const month = typeof params.month === "string" && /^\d{4}-\d{2}$/.test(params.month) ? params.month : today.slice(0, 7);
-  const { data, error } = await supabase
+  let query = supabase
     .from("expenses")
     .select("id, spent_on, vendor, category, description, amount_cents, tax_cents, payment_method, vehicle, created_by, expense_items(amount_cents, markup_pct, charged, bill_client_id, clients(name))")
-    .gte("spent_on", `${month}-01`)
-    .lt("spent_on", `${shiftMonth(month, 1)}-01`)
     .order("spent_on", { ascending: false })
     .order("created_at", { ascending: false });
+  if (!all) query = query.gte("spent_on", `${month}-01`).lt("spent_on", `${shiftMonth(month, 1)}-01`);
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
   type Charge = { amount_cents: number; markup_pct: number; charged: boolean; bill_client_id: string | null; clients: { name: string } | null };
   type Row = Omit<Expense, "receipt" | "created_at"> & { created_by: string | null; expense_items: Charge[] };
@@ -64,6 +66,11 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
   const byCategory = new Map<string, number>();
   for (const e of expenses) byCategory.set(e.category, (byCategory.get(e.category) ?? 0) + e.amount_cents);
   const categories = [...byCategory].sort((a, b) => b[1] - a[1]);
+  // The list is split by month, each with its own heading and total.
+  const byMonth = new Map<string, Row[]>();
+  for (const e of expenses) byMonth.set(e.spent_on.slice(0, 7), [...(byMonth.get(e.spent_on.slice(0, 7)) ?? []), e]);
+  const yearTotals = new Map<string, number>();
+  for (const e of expenses) yearTotals.set(e.spent_on.slice(0, 4), (yearTotals.get(e.spent_on.slice(0, 4)) ?? 0) + e.amount_cents);
 
   return (
     <div className="space-y-4">
@@ -77,11 +84,23 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
         </div>
       </details>
 
-      <div className="flex items-center justify-between">
-        <Link href={`/expenses?month=${shiftMonth(month, -1)}`} className="btn-light px-3" aria-label="Previous month">‹</Link>
-        <h2 className="h2 mb-0">{monthName(month)}</h2>
-        <Link href={`/expenses?month=${shiftMonth(month, 1)}`} className="btn-light px-3" aria-label="Next month">›</Link>
-      </div>
+      {all ? (
+        <div className="flex items-center justify-between">
+          <h2 className="h2 mb-0">All expenses</h2>
+          <Link href="/expenses" className="btn-light">By month</Link>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Link href={`/expenses?month=${shiftMonth(month, -1)}`} className="btn-light px-3" aria-label="Previous month">‹</Link>
+            <h2 className="h2 mb-0">{monthName(month)}</h2>
+            <Link href={`/expenses?month=${shiftMonth(month, 1)}`} className="btn-light px-3" aria-label="Next month">›</Link>
+          </div>
+          <Link href="/expenses?month=all" className="block text-center text-sm font-semibold text-brand underline">
+            Show all years
+          </Link>
+        </div>
+      )}
 
       <div className="card flex items-end justify-between">
         <div>
@@ -109,31 +128,47 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
       )}
 
       {expenses.length === 0 ? (
-        <p className="card text-center text-slate-500">No expenses in {monthName(month)}.</p>
+        <p className="card text-center text-slate-500">{all ? "No expenses yet." : `No expenses in ${monthName(month)}.`}</p>
       ) : (
-        <ul className="space-y-2">
-          {expenses.map((e) => (
-            <li key={e.id}>
-              <Link href={`/expenses/${e.id}`} className="card flex items-center justify-between gap-3 hover:bg-slate-50">
-                <span className="min-w-0">
-                  <span className="block truncate font-semibold">{e.vendor}</span>
-                  <span className="block truncate text-sm text-slate-500">
-                    {reporter(e.created_by) && <span className="font-semibold text-brand">{reporter(e.created_by)} · </span>}
-                    {formatDate(e.spent_on)} · {e.category}
-                    {e.vehicle ? ` (${e.vehicle})` : ""}
-                    {e.description ? ` · ${e.description}` : ""}
-                  </span>
-                  {chargesByClient(e.expense_items).map((c) => (
-                    <span key={c.name} className={`block truncate text-sm font-semibold ${c.allSent ? "text-slate-500" : "text-green-700"}`}>
-                      {c.allSent ? "Sent to" : "Charge"} {c.name} {formatMoney(c.cents)}
+        [...byMonth].map(([m, rows], i, months) => (
+          <section key={m} className="space-y-2">
+            {all && m.slice(0, 4) !== months[i - 1]?.[0].slice(0, 4) && (
+              <div className="mt-4 flex items-baseline justify-between rounded-lg bg-slate-800 px-3 py-2 text-white">
+                <h3 className="text-lg font-bold">{m.slice(0, 4)}</h3>
+                <span className="font-bold">{formatMoney(yearTotals.get(m.slice(0, 4)) ?? 0)}</span>
+              </div>
+            )}
+            {all && (
+              <div className="flex items-baseline justify-between border-b-2 border-slate-300 pb-1 pt-2">
+                <h4 className="font-bold text-slate-700">{monthName(m)}</h4>
+                <span className="text-sm font-semibold text-slate-600">{formatMoney(rows.reduce((sum, e) => sum + e.amount_cents, 0))}</span>
+              </div>
+            )}
+            <ul className="space-y-2">
+              {rows.map((e) => (
+                <li key={e.id}>
+                  <Link href={`/expenses/${e.id}`} className="card flex items-center justify-between gap-3 hover:bg-slate-50">
+                    <span className="min-w-0">
+                      <span className="block truncate font-semibold">{e.vendor}</span>
+                      <span className="block truncate text-sm text-slate-500">
+                        {reporter(e.created_by) && <span className="font-semibold text-brand">{reporter(e.created_by)} · </span>}
+                        {formatDate(e.spent_on)} · {e.category}
+                        {e.vehicle ? ` (${e.vehicle})` : ""}
+                        {e.description ? ` · ${e.description}` : ""}
+                      </span>
+                      {chargesByClient(e.expense_items).map((c) => (
+                        <span key={c.name} className={`block truncate text-sm font-semibold ${c.allSent ? "text-slate-500" : "text-green-700"}`}>
+                          {c.allSent ? "Sent to" : "Charge"} {c.name} {formatMoney(c.cents)}
+                        </span>
+                      ))}
                     </span>
-                  ))}
-                </span>
-                <span className="shrink-0 font-bold">{formatMoney(e.amount_cents)}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+                    <span className="shrink-0 font-bold">{formatMoney(e.amount_cents)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
       )}
     </div>
   );

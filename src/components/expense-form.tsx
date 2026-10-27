@@ -209,7 +209,7 @@ export function ExpenseForm({
             <select
               className="input"
               aria-label="Charge all items to"
-              value=""
+              value={items.every((it) => it.bill_client_id === items[0].bill_client_id) ? items[0].bill_client_id || "none" : ""}
               onChange={(e) => {
                 const client = e.target.value === "none" ? "" : e.target.value;
                 setItems((list) => list.map((it) => ({ ...it, bill_client_id: client })));
@@ -226,7 +226,7 @@ export function ExpenseForm({
             <select
               className="input"
               aria-label="Markup for all items"
-              value=""
+              value={items.every((it) => it.markup_pct === items[0].markup_pct) ? items[0].markup_pct : ""}
               onChange={(e) => setItems((list) => list.map((it) => ({ ...it, markup_pct: Number(e.target.value) })))}
             >
               <option value="" disabled>

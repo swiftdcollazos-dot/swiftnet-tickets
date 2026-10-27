@@ -184,8 +184,8 @@ export function ExpenseForm({
         </div>
         <div>
           <label className="label" htmlFor="payment_method">Paid with</label>
-          <select className="input" id="payment_method" name="payment_method" value={values.payment_method} onChange={set("payment_method")}>
-            <option value="">—</option>
+          <select className="input" id="payment_method" name="payment_method" value={values.payment_method} onChange={set("payment_method")} required>
+            <option value="" disabled>Pick one…</option>
             {PAYMENT_METHODS.map((m) => (
               <option key={m}>{m}</option>
             ))}

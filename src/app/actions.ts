@@ -637,6 +637,7 @@ export async function saveExpense(id: string | null, form: FormData) {
   const fields = expenseFields(form);
   const items = expenseItems(form);
   if (!fields.vendor) fail("Please enter where it was purchased from.");
+  if (!fields.payment_method) fail("Please pick what it was paid with.");
   let expenseId = id;
   if (id) {
     // Keep the saved receipt unless a new photo was taken or it was removed.

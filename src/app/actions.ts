@@ -572,13 +572,14 @@ function requireOffice() {
   return requireAllowed("office");
 }
 
-const RECEIPT_PREFIX = "data:image/jpeg;base64,";
-const RECEIPT_MAX = 3_000_000;
+/** A receipt is a compressed JPEG photo or a PDF, as a data URL. */
+const isReceipt = (dataUrl: string) =>
+  (dataUrl.startsWith("data:image/jpeg;base64,") || dataUrl.startsWith("data:application/pdf;base64,")) && dataUrl.length <= 3_000_000;
 
 /** Reads a receipt photo and returns the fields to fill in, or an error to show. Nothing is saved. */
 export async function scanReceipt(dataUrl: string): Promise<ScannedReceipt | { error: string }> {
   await requireAllowed("expenses");
-  if (!dataUrl.startsWith(RECEIPT_PREFIX) || dataUrl.length > RECEIPT_MAX) return { error: "That photo couldn't be used. Please try another." };
+  if (!isReceipt(dataUrl)) return { error: "That file couldn't be used. Please try another." };
   try {
     return await scanReceiptImage(dataUrl, todayLocal());
   } catch (e) {
@@ -600,7 +601,7 @@ function expenseFields(form: FormData) {
     amount_cents: parseMoney(text(form, "amount")),
     tax_cents: parseMoney(text(form, "tax")),
     payment_method: (PAYMENT_METHODS as readonly string[]).includes(method) ? method : "",
-    receipt: receipt.startsWith(RECEIPT_PREFIX) && receipt.length <= RECEIPT_MAX ? receipt : null,
+    receipt: isReceipt(receipt) ? receipt : null,
   };
 }
 

@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { scanReceipt } from "@/app/actions";
+import { ReceiptView } from "@/components/receipt-view";
 import { EXPENSE_CATEGORIES, PAYMENT_METHODS, type Expense, type ExpenseItem } from "@/lib/types";
 
 /** Shrinks a photo to at most 1600 px on its long side and returns it as a JPEG data URL. */
@@ -16,6 +17,19 @@ async function compress(file: File): Promise<string> {
   bitmap.close();
   return canvas.toDataURL("image/jpeg", 0.75);
 }
+
+/** Reads a file (a PDF) as a data URL, unchanged. */
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+/** PDFs larger than this can't be sent for scanning or saved. */
+const PDF_MAX_BYTES = 2_000_000;
 
 const dollars = (cents: number) => (cents ? (cents / 100).toFixed(2) : "");
 
@@ -86,9 +100,14 @@ export function ExpenseForm({
   async function onPhoto(file: File | undefined) {
     if (!file) return;
     setMessage(null);
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    if (isPdf && file.size > PDF_MAX_BYTES) {
+      setMessage({ ok: false, text: "That PDF is too big (over 2 MB). Try a smaller file or a photo of the receipt." });
+      return;
+    }
     setScanning(true);
     try {
-      const dataUrl = await compress(file);
+      const dataUrl = isPdf ? (await readAsDataUrl(file)).replace(/^data:[^;]*;/, "data:application/pdf;") : await compress(file);
       setReceipt(dataUrl);
       const result = await scanReceipt(dataUrl);
       if ("error" in result) {
@@ -107,7 +126,7 @@ export function ExpenseForm({
         setMessage({ ok: true, text: "Filled in from the receipt. Please check it, then Save." });
       }
     } catch {
-      setMessage({ ok: false, text: "That photo couldn't be read. Please try another." });
+      setMessage({ ok: false, text: "That file couldn't be read. Please try another." });
     } finally {
       setScanning(false);
     }
@@ -120,19 +139,18 @@ export function ExpenseForm({
           📷 {scanning ? "Reading receipt…" : "Scan receipt"}
         </button>
         <button type="button" className="btn-light" disabled={scanning} onClick={() => library.current?.click()}>
-          Choose a photo
+          📎 Choose file
         </button>
       </div>
       <input ref={camera} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onPhoto(e.target.files?.[0])} />
-      <input ref={library} type="file" accept="image/*" className="hidden" onChange={(e) => onPhoto(e.target.files?.[0])} />
+      <input ref={library} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => { onPhoto(e.target.files?.[0]); e.target.value = ""; }} />
       {message && <p className={`rounded-lg p-2 text-sm ${message.ok ? "bg-green-50 text-green-800" : "bg-red-50 text-red-700"}`}>{message.text}</p>}
 
       {preview && (
         <div className="flex items-start gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element -- a data URL, nothing for next/image to optimize */}
-          <img src={preview} alt="Receipt" className="max-h-40 rounded border border-slate-200" />
+          <ReceiptView receipt={preview} />
           <button type="button" className="text-sm text-red-600 underline" onClick={() => setReceipt("")}>
-            Remove photo
+            Remove receipt
           </button>
         </div>
       )}

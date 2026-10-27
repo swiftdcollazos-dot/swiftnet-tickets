@@ -16,7 +16,7 @@ export type ScannedReceipt = {
 const SCHEMA = {
   type: "object",
   properties: {
-    is_receipt: { type: "boolean", description: "False if the photo is not a receipt or invoice, or is unreadable." },
+    is_receipt: { type: "boolean", description: "False if the photo or file is not a receipt or invoice, or is unreadable." },
     vendor: { type: "string", description: "Store or company that was paid." },
     date: { type: "string", description: "Purchase date as YYYY-MM-DD, or empty if not shown." },
     total: { type: "number", description: "Grand total paid, in dollars, including tax." },
@@ -42,17 +42,18 @@ const SCHEMA = {
   additionalProperties: false,
 };
 
-const PROMPT = `This is a photo of a receipt for Swiftnet I.T., a small IT services company. Read it and fill in the expense fields.
+const PROMPT = `This is a photo or PDF of a receipt or invoice for Swiftnet I.T., a small IT services company. Read it and fill in the expense fields.
 Pick the category that fits best for an IT company (cables, switches, computers and spare parts are "Parts and hardware"; gas, tolls and car repairs are "Fuel and vehicle").
 Use payment_method "Cash" when cash or change is shown; otherwise leave it empty, since the person picks which card or account was used.
 If a year is missing or unclear, assume the most recent date that is not after today.`;
 
-/** Reads a receipt photo (a JPEG data URL) with Claude and returns the expense fields, or an error to show. */
+/** Reads a receipt photo or PDF (a JPEG or PDF data URL) with Claude and returns the expense fields, or an error to show. */
 export async function scanReceiptImage(dataUrl: string, today: string): Promise<ScannedReceipt | { error: string }> {
   if (!process.env.ANTHROPIC_API_KEY) {
     return { error: "Receipt scanning isn't set up yet: ANTHROPIC_API_KEY is missing in Vercel." };
   }
   const client = new Anthropic();
+  const data = dataUrl.slice(dataUrl.indexOf(",") + 1);
   const response = await client.beta.messages.create({
     model: "claude-opus-5-5",
     max_tokens: 4096,
@@ -64,7 +65,9 @@ export async function scanReceiptImage(dataUrl: string, today: string): Promise<
       {
         role: "user",
         content: [
-          { type: "image", source: { type: "base64", media_type: "image/jpeg", data: dataUrl.slice(dataUrl.indexOf(",") + 1) } },
+          dataUrl.startsWith("data:application/pdf")
+            ? { type: "document", source: { type: "base64", media_type: "application/pdf", data } }
+            : { type: "image", source: { type: "base64", media_type: "image/jpeg", data } },
           { type: "text", text: `${PROMPT}\nToday is ${today}.` },
         ],
       },
@@ -76,16 +79,16 @@ export async function scanReceiptImage(dataUrl: string, today: string): Promise<
   const text = response.content.find((b) => b.type === "text")?.text;
   if (!text) return { error: "The receipt couldn't be read. Please fill it in by hand." };
 
-  const data = JSON.parse(text) as ScannedReceipt & { is_receipt: boolean };
-  if (!data.is_receipt) return { error: "That doesn't look like a receipt. Try another photo with the whole receipt in view." };
+  const scanned = JSON.parse(text) as ScannedReceipt & { is_receipt: boolean };
+  if (!scanned.is_receipt) return { error: "That doesn't look like a receipt. Try another photo or file with the whole receipt in view." };
   return {
-    vendor: data.vendor,
-    date: /^\d{4}-\d{2}-\d{2}$/.test(data.date) ? data.date : "",
-    total: data.total,
-    tax: data.tax,
-    category: data.category,
-    payment_method: data.payment_method,
-    description: data.description,
-    items: (data.items ?? []).filter((it) => it.description && it.amount > 0),
+    vendor: scanned.vendor,
+    date: /^\d{4}-\d{2}-\d{2}$/.test(scanned.date) ? scanned.date : "",
+    total: scanned.total,
+    tax: scanned.tax,
+    category: scanned.category,
+    payment_method: scanned.payment_method,
+    description: scanned.description,
+    items: (scanned.items ?? []).filter((it) => it.description && it.amount > 0),
   };
 }

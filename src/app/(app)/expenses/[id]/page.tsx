@@ -1,3 +1,4 @@
+import { ReceiptView } from "@/components/receipt-view";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { requireUser } from "@/lib/supabase/server";
@@ -39,8 +40,7 @@ async function EditExpense({ params }: { params: PageProps<"/expenses/[id]">["pa
     <div className="space-y-4">
       {expense.receipt && (
         <div className="card">
-          {/* eslint-disable-next-line @next/next/no-img-element -- a data URL, nothing for next/image to optimize */}
-          <img src={expense.receipt} alt="Receipt" className="mx-auto max-h-[70vh] rounded" />
+          <ReceiptView receipt={expense.receipt} large />
         </div>
       )}
       <div className="card">

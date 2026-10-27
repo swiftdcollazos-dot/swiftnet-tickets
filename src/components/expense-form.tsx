@@ -125,7 +125,8 @@ export function ExpenseForm({
           vehicle: v.vehicle,
         }));
         if (result.items.length > 0) setItems(result.items.map((it) => blankItem(it.description, it.amount.toFixed(2))));
-        setMessage({ ok: true, text: "Filled in from the receipt. Please check it, then Save." });
+        const converted = result.guilders_total ? ` Converted NAf ${result.guilders_total.toFixed(2)} to $${result.total.toFixed(2)} (1.8 guilders per dollar).` : "";
+        setMessage({ ok: true, text: `Filled in from the receipt.${converted} Please check it, then Save.` });
       }
     } catch {
       setMessage({ ok: false, text: "That file couldn't be read. Please try another." });

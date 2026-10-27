@@ -11,12 +11,23 @@ export type ScannedReceipt = {
   payment_method: string;
   description: string;
   items: { description: string; amount: number }[];
+  /** Set when the receipt was in guilders: the original total, before converting to dollars. */
+  guilders_total?: number;
 };
+
+/** Guilders (NAf / ANG / XCG) per US dollar. */
+const GUILDERS_PER_DOLLAR = 1.8;
+const toDollars = (guilders: number) => Math.round((guilders / GUILDERS_PER_DOLLAR) * 100) / 100;
 
 const SCHEMA = {
   type: "object",
   properties: {
     is_receipt: { type: "boolean", description: "False if the photo or file is not a receipt or invoice, or is unreadable." },
+    currency: {
+      type: "string",
+      enum: ["USD", "NAF"],
+      description: "NAF if the amounts are in Netherlands Antillean or Caribbean guilders (NAf, ANG, XCG, Cg, \"guilders\", \"florin\"); otherwise USD.",
+    },
     vendor: { type: "string", description: "Store or company that was paid." },
     date: { type: "string", description: "Purchase date as YYYY-MM-DD, or empty if not shown." },
     total: { type: "number", description: "Grand total paid, in dollars, including tax." },
@@ -38,11 +49,11 @@ const SCHEMA = {
       },
     },
   },
-  required: ["is_receipt", "vendor", "date", "total", "tax", "category", "payment_method", "description", "items"],
+  required: ["is_receipt", "currency", "vendor", "date", "total", "tax", "category", "payment_method", "description", "items"],
   additionalProperties: false,
 };
 
-const PROMPT = `This is a photo or PDF of a receipt or invoice for Swiftnet I.T., a small IT services company. Read it and fill in the expense fields.
+const PROMPT = `This is a photo or PDF of a receipt or invoice for Swiftnet I.T., a small IT services company. Read it and fill in the expense fields. Copy amounts exactly as printed, in the receipt's own currency.
 Pick the category that fits best for an IT company (cables, switches, computers and spare parts are "Parts and hardware"; gas, tolls and car repairs are "Fuel and vehicle"; postage, courier and freight charges are "Shipping"; cell phone plans, phones and phone accessories are "Mobile phone").
 Use payment_method "Cash" when cash or change is shown; otherwise leave it empty, since the person picks which card or account was used.
 If a year is missing or unclear, assume the most recent date that is not after today.`;
@@ -79,16 +90,20 @@ export async function scanReceiptImage(dataUrl: string, today: string): Promise<
   const text = response.content.find((b) => b.type === "text")?.text;
   if (!text) return { error: "The receipt couldn't be read. Please fill it in by hand." };
 
-  const scanned = JSON.parse(text) as ScannedReceipt & { is_receipt: boolean };
+  const scanned = JSON.parse(text) as ScannedReceipt & { is_receipt: boolean; currency: "USD" | "NAF" };
   if (!scanned.is_receipt) return { error: "That doesn't look like a receipt. Try another photo or file with the whole receipt in view." };
+  // Guilder receipts are converted here, not by the model, so the rate is always exact.
+  const guilders = scanned.currency === "NAF";
+  const money = (n: number) => (guilders ? toDollars(n) : n);
   return {
+    ...(guilders ? { guilders_total: scanned.total } : {}),
     vendor: scanned.vendor,
     date: /^\d{4}-\d{2}-\d{2}$/.test(scanned.date) ? scanned.date : "",
-    total: scanned.total,
-    tax: scanned.tax,
+    total: money(scanned.total),
+    tax: money(scanned.tax),
     category: scanned.category,
     payment_method: scanned.payment_method,
-    description: scanned.description,
-    items: (scanned.items ?? []).filter((it) => it.description && it.amount > 0),
+    description: guilders ? `${scanned.description} (NAf ${scanned.total.toFixed(2)} at ${GUILDERS_PER_DOLLAR} per $1)`.trim() : scanned.description,
+    items: (scanned.items ?? []).filter((it) => it.description && it.amount > 0).map((it) => ({ ...it, amount: money(it.amount) })),
   };
 }

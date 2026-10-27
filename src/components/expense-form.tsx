@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { scanReceipt } from "@/app/actions";
+import { findDuplicateExpense, scanReceipt } from "@/app/actions";
 import { ReceiptView } from "@/components/receipt-view";
 import { EXPENSE_CATEGORIES, PAYMENT_METHODS, VEHICLE_CATEGORY, VEHICLES, type Expense, type ExpenseItem } from "@/lib/types";
 
@@ -92,6 +92,21 @@ export function ExpenseForm({
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const camera = useRef<HTMLInputElement>(null);
   const library = useRef<HTMLInputElement>(null);
+
+  // Warn when an expense with the same date and total is already entered.
+  const [duplicate, setDuplicate] = useState<string | null>(null);
+  useEffect(() => {
+    let current = true;
+    const timer = setTimeout(() => {
+      findDuplicateExpense(values.spent_on, values.amount, expense?.id ?? null)
+        .then((found) => current && setDuplicate(found))
+        .catch(() => {});
+    }, 500);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  }, [values.spent_on, values.amount, expense?.id]);
 
   const set = (key: keyof Values) => (e: { target: { value: string } }) => setValues((v) => ({ ...v, [key]: e.target.value }));
   const preview = receipt === "keep" ? expense?.receipt : receipt;
@@ -305,6 +320,15 @@ export function ExpenseForm({
         <input type="hidden" name="items" value={JSON.stringify(items.map((it) => ({ description: it.description, amount: it.amount, bill_client_id: it.bill_client_id, markup_pct: it.markup_pct, charged: it.charged })))} />
       </div>
       {!expense && <input type="hidden" name="new_id" value={newId} />}
+      {duplicate && (
+        <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="font-semibold">⚠️ This may be a duplicate. {duplicate}</p>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" required className="h-4 w-4" />
+            It&apos;s a different purchase, save it anyway
+          </label>
+        </div>
+      )}
       <SaveButton disabled={scanning} />
     </form>
   );

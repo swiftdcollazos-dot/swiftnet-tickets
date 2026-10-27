@@ -8,8 +8,8 @@ import { after } from "next/server";
 import { notifyAssignee, notifyNewJob, sendTestPush } from "@/lib/push";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { parseMoney } from "@/lib/billing";
-import { localToIso, todayLocal } from "@/lib/time";
+import { formatMoney, parseMoney } from "@/lib/billing";
+import { formatDate, localToIso, todayLocal } from "@/lib/time";
 import { isOwner, permissions, type Permissions } from "@/lib/owner";
 import { scanReceiptImage, type ScannedReceipt } from "@/lib/receipt-scan";
 import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENEWAL_KINDS, VEHICLE_CATEGORY, VEHICLES, RENEWAL_REPEATS, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
@@ -630,6 +630,24 @@ function expenseItems(form: FormData) {
       };
     })
     .filter((it) => it.description || it.amount_cents);
+}
+
+/**
+ * Looks for an expense already entered with the same date and total, so the same invoice isn't added twice.
+ * Checks everyone's expenses (two people can turn in the same receipt), but only says what it matched.
+ */
+export async function findDuplicateExpense(spentOn: string, amount: string, excludeId: string | null): Promise<string | null> {
+  const { supabase } = await requireAllowed("expenses");
+  const cents = parseMoney(amount);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(spentOn) || cents <= 0) return null;
+  const db = createAdminClient() ?? supabase;
+  let query = db.from("expenses").select("id, vendor, created_by").eq("spent_on", spentOn).eq("amount_cents", cents).limit(1);
+  if (excludeId) query = query.neq("id", excludeId);
+  const { data } = await query;
+  const match = data?.[0];
+  if (!match) return null;
+  const { data: who } = match.created_by ? await db.from("profiles").select("full_name").eq("id", match.created_by).maybeSingle() : { data: null };
+  return `${match.vendor || "An expense"} on ${formatDate(spentOn)} for ${formatMoney(cents)} is already entered${who?.full_name ? ` by ${who.full_name}` : ""}.`;
 }
 
 export async function saveExpense(id: string | null, form: FormData) {

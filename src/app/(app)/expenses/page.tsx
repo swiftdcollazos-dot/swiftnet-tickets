@@ -57,8 +57,8 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
   const { data: clientRows } = await supabase.from("clients").select("id, name").order("name");
   const { data: profiles } = owner ? await supabase.from("profiles").select("id, full_name") : { data: [] };
   const names = new Map((profiles ?? []).map((p) => [p.id as string, p.full_name as string]));
-  // Others' expenses get the reporter's name; the owner's own don't.
-  const reporter = (id: string | null) => (owner && id && id !== user.id ? names.get(id) : undefined);
+  // Whoever sees everyone's expenses gets the name of the person who added each one.
+  const reporter = (id: string | null) => (owner && id ? names.get(id) : undefined);
 
   const total = expenses.reduce((sum, e) => sum + e.amount_cents, 0);
   const byCategory = new Map<string, number>();

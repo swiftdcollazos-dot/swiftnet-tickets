@@ -34,10 +34,18 @@ async function EditExpense({ params }: { params: PageProps<"/expenses/[id]">["pa
     supabase.from("clients").select("id, name").order("name"),
   ]);
   if (!data) redirect("/expenses");
-  const expense = data as Expense;
+  const expense = data as Expense & { created_by: string | null };
+  const { data: addedBy } = expense.created_by
+    ? await supabase.from("profiles").select("full_name").eq("id", expense.created_by).maybeSingle()
+    : { data: null };
 
   return (
     <div className="space-y-4">
+      {addedBy?.full_name && (
+        <p className="text-sm text-slate-500">
+          Added by <span className="font-semibold text-slate-700">{addedBy.full_name}</span>
+        </p>
+      )}
       {expense.receipt && (
         <div className="card">
           <ReceiptView receipt={expense.receipt} large />

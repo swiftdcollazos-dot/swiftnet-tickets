@@ -12,7 +12,7 @@ import { parseMoney } from "@/lib/billing";
 import { localToIso, todayLocal } from "@/lib/time";
 import { isOwner, permissions, type Permissions } from "@/lib/owner";
 import { scanReceiptImage, type ScannedReceipt } from "@/lib/receipt-scan";
-import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENEWAL_KINDS, RENEWAL_REPEATS, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
+import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENEWAL_KINDS, VEHICLE_CATEGORY, VEHICLES, RENEWAL_REPEATS, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 const STATUSES: TicketStatus[] = ["open", "completed", "sent", "paid"];
@@ -591,6 +591,7 @@ export async function scanReceipt(dataUrl: string): Promise<ScannedReceipt | { e
 function expenseFields(form: FormData) {
   const category = text(form, "category");
   const method = text(form, "payment_method");
+  const vehicle = text(form, "vehicle");
   const receipt = text(form, "receipt");
   const spentOn = text(form, "spent_on");
   return {
@@ -601,6 +602,7 @@ function expenseFields(form: FormData) {
     amount_cents: parseMoney(text(form, "amount")),
     tax_cents: parseMoney(text(form, "tax")),
     payment_method: (PAYMENT_METHODS as readonly string[]).includes(method) ? method : "",
+    vehicle: category === VEHICLE_CATEGORY && (VEHICLES as readonly string[]).includes(vehicle) ? vehicle : "",
     receipt: isReceipt(receipt) ? receipt : null,
   };
 }

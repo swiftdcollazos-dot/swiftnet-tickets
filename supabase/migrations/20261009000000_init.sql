@@ -212,6 +212,8 @@ create policy "owner only" on public.renewals for all to authenticated
 alter table public.expenses add column if not exists bill_client_id uuid references public.clients (id) on delete set null;
 alter table public.expenses add column if not exists markup_pct integer not null default 0;
 alter table public.expenses add column if not exists charged boolean not null default false;
+-- Which company vehicle a "Fuel and vehicle" expense was for.
+alter table public.expenses add column if not exists vehicle text not null default '';
 
 -- Each item on an expense's invoice, so items can be charged to different customers.
 create table if not exists public.expense_items (

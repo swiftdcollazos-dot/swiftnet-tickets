@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { scanReceipt } from "@/app/actions";
 import { ReceiptView } from "@/components/receipt-view";
-import { EXPENSE_CATEGORIES, PAYMENT_METHODS, type Expense, type ExpenseItem } from "@/lib/types";
+import { EXPENSE_CATEGORIES, PAYMENT_METHODS, VEHICLE_CATEGORY, VEHICLES, type Expense, type ExpenseItem } from "@/lib/types";
 
 /** Shrinks a photo to at most 1600 px on its long side and returns it as a JPEG data URL. */
 async function compress(file: File): Promise<string> {
@@ -33,7 +33,7 @@ const PDF_MAX_BYTES = 2_000_000;
 
 const dollars = (cents: number) => (cents ? (cents / 100).toFixed(2) : "");
 
-type Values = { spent_on: string; vendor: string; category: string; description: string; amount: string; tax: string; payment_method: string };
+type Values = { spent_on: string; vendor: string; category: string; description: string; amount: string; tax: string; payment_method: string; vehicle: string };
 
 /** Markups offered when an item is bought to resell to a customer. */
 const MARKUPS = [10, 15, 20, 25];
@@ -71,6 +71,7 @@ export function ExpenseForm({
     amount: dollars(expense?.amount_cents ?? 0),
     tax: dollars(expense?.tax_cents ?? 0),
     payment_method: expense?.payment_method ?? "",
+    vehicle: expense?.vehicle ?? "",
   });
   // "keep" leaves the saved photo alone; "" removes it; a data URL replaces it.
   const [items, setItems] = useState<Item[]>(() =>
@@ -121,6 +122,7 @@ export function ExpenseForm({
           amount: result.total ? result.total.toFixed(2) : v.amount,
           tax: result.tax ? result.tax.toFixed(2) : v.tax,
           payment_method: result.payment_method || v.payment_method,
+          vehicle: v.vehicle,
         }));
         if (result.items.length > 0) setItems(result.items.map((it) => blankItem(it.description, it.amount.toFixed(2))));
         setMessage({ ok: true, text: "Filled in from the receipt. Please check it, then Save." });
@@ -188,6 +190,17 @@ export function ExpenseForm({
             ))}
           </select>
         </div>
+        {values.category === VEHICLE_CATEGORY && (
+          <div className="col-span-2">
+            <label className="label" htmlFor="vehicle">Vehicle</label>
+            <select className="input" id="vehicle" name="vehicle" value={values.vehicle} onChange={set("vehicle")}>
+              <option value="">—</option>
+              {VEHICLES.map((v) => (
+                <option key={v}>{v}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="col-span-2">
           <label className="label" htmlFor="description">What was bought</label>
           <textarea className="input" id="description" name="description" rows={2} value={values.description} onChange={set("description")} />

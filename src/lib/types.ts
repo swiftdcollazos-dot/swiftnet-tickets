@@ -219,6 +219,10 @@ export const PAYMENT_METHODS = [
   "Bank transfer",
 ] as const;
 
+/** Company vehicles, picked on "Fuel and vehicle" expenses. */
+export const VEHICLES = ["Jeepo", "Gladiator", "Swift"] as const;
+export const VEHICLE_CATEGORY = "Fuel and vehicle";
+
 export type Expense = {
   id: string;
   spent_on: string;
@@ -228,6 +232,7 @@ export type Expense = {
   amount_cents: number;
   tax_cents: number;
   payment_method: string;
+  vehicle: string;
   receipt: string | null;
   bill_client_id: string | null;
   markup_pct: number;

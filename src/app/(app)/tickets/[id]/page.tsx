@@ -176,9 +176,10 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
             {others.map((e) => (
               <li key={e.id} className="flex items-center justify-between gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm">
                 <span className="font-semibold">{techName(e.technician_id) || "Unknown"} is working</span>
+                {/* Only the technician running a timer stops it; the owner can stop one left running. */}
                 <form action={stopTimer.bind(null, ticket.id, e.id)} className="flex items-center gap-2">
                   <span className="font-mono font-semibold text-red-700">● <LiveTimer startedAt={e.started_at} /></span>
-                  <button className="btn bg-red-600 px-2 py-1 text-xs">■ Stop</button>
+                  {isOwner(user.email) && <button className="btn bg-red-600 px-2 py-1 text-xs">■ Stop</button>}
                 </form>
               </li>
             ))}
@@ -213,7 +214,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
                   <td>{e.ended_at ? formatTime(e.ended_at) : "…"}</td>
                   <td>{formatMinutes(entryMinutes({ startedAt: e.started_at, endedAt: e.ended_at }))}</td>
                   <td className="text-right">
-                    {!noTime && (
+                    {!noTime && (e.ended_at || e.technician_id === user.id || isOwner(user.email)) && (
                       <form action={deleteTimeEntry.bind(null, ticket.id, e.id)}>
                         <button className="btn-danger">Remove</button>
                       </form>
@@ -409,7 +410,12 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
         )}
       </section>
 
-      {!closed && !ticket.repeats && (
+      {!closed && !ticket.repeats && others.length > 0 && !isOwner(user.email) && (
+        <p className="pt-2 text-center text-sm text-slate-500">
+          {others.map((e) => techName(e.technician_id) || "Another technician").join(" and ")} still {others.length === 1 ? "has a timer" : "have timers"} running. They need to stop it before this can be closed.
+        </p>
+      )}
+      {!closed && !ticket.repeats && (others.length === 0 || isOwner(user.email)) && (
         <form action={closeTicket.bind(null, ticket.id)} className="flex justify-center pt-2">
           <button className="btn bg-green-700 px-6">✓ Complete &amp; close {label.toLowerCase()}</button>
         </form>

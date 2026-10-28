@@ -215,9 +215,14 @@ export async function setStatus(ticketId: string, status: TicketStatus) {
 
 /** Stops any running timer and marks the ticket closed, so it can no longer be edited. */
 export async function closeTicket(ticketId: string) {
-  const { supabase } = await requireUser();
+  const { supabase, user } = await requireUser();
   const { data: job } = await supabase.from("tickets").select("repeats").eq("id", ticketId).single();
   if (job?.repeats) fail("This job repeats, so it stays open. Set Repeats to No first to close it.");
+  // Closing stops the timers, so another technician's running timer has to be stopped by them first.
+  if (!isOwner(user.email)) {
+    const { data: others } = await supabase.from("time_entries").select("id").eq("ticket_id", ticketId).is("ended_at", null).neq("technician_id", user.id).limit(1);
+    if (others?.length) fail("Another technician's timer is still running on this job. They need to stop it before it can be closed.");
+  }
   const { error: timerError } = await supabase
     .from("time_entries")
     .update({ ended_at: new Date().toISOString() })
@@ -255,8 +260,16 @@ export async function startTimer(ticketId: string) {
   revalidatePath("/", "layout"); // running-timers bar
 }
 
+/** Only the technician who started a timer can stop it (the owner can stop any, e.g. one left running). */
+async function assertOwnTimer(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], user: { id: string; email?: string }, entryId: string) {
+  if (isOwner(user.email)) return;
+  const { data } = await supabase.from("time_entries").select("technician_id, ended_at").eq("id", entryId).maybeSingle();
+  if (data && !data.ended_at && data.technician_id !== user.id) fail("Only the technician running this timer can stop it.");
+}
+
 export async function stopTimer(ticketId: string, entryId: string) {
-  const { supabase } = await requireAllowed("timers");
+  const { supabase, user } = await requireAllowed("timers");
+  await assertOwnTimer(supabase, user, entryId);
   const { error } = await supabase
     .from("time_entries")
     .update({ ended_at: new Date().toISOString() })
@@ -293,8 +306,9 @@ export async function addTimeEntry(ticketId: string, form: FormData) {
 }
 
 export async function deleteTimeEntry(ticketId: string, entryId: string) {
-  const { supabase } = await requireAllowed("timers");
+  const { supabase, user } = await requireAllowed("timers");
   await assertOpen(supabase, ticketId);
+  await assertOwnTimer(supabase, user, entryId);
   const { error } = await supabase.from("time_entries").delete().eq("id", entryId);
   if (error) fail(error.message);
   revalidatePath(`/tickets/${ticketId}`);

@@ -84,7 +84,7 @@ async function SettingsLink() {
 async function MobileMenu() {
   const { supabase, user } = await requireUser();
   const counts = await pendingCounts(supabase);
-  return <BottomNav counts={counts} canCreateJobs={permissions(user).createJobs} canExpenses={permissions(user).expenses} />;
+  return <BottomNav counts={counts} canExpenses={permissions(user).expenses} />;
 }
 
 export default function AppLayout({ children }: LayoutProps<"/">) {

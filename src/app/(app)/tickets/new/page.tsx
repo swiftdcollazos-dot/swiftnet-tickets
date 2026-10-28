@@ -19,8 +19,10 @@ export default function NewTicketPage(props: PageProps<"/tickets/new">) {
 async function NewTicketForm({ searchParams }: { searchParams: PageProps<"/tickets/new">["searchParams"] }) {
   const params = await searchParams;
   const serviceCall = params.call === "1";
+  // From the Repeats tab: a service call that repeats every week unless changed.
+  const repeat = serviceCall && params.repeat === "1";
   const project = !serviceCall && params.project === "1";
-  const label = serviceCall ? "service call" : project ? "special project" : "service ticket";
+  const label = repeat ? "repeating job" : serviceCall ? "service call" : project ? "special project" : "service ticket";
   const { supabase, user } = await requireUser();
   if (!project && !permissions(user).createJobs) {
     return <p className="card text-center text-slate-500">Your account can&apos;t create service tickets or service calls. Ask David to change this in Settings.</p>;
@@ -47,7 +49,7 @@ async function NewTicketForm({ searchParams }: { searchParams: PageProps<"/ticke
           </div>
         </section>
         <section className="card">
-          <TicketFields ticket={{ technician_id: user.id }} today={todayLocal()} withContactedBy={false} project={project} technicians={technicians} call={serviceCall} />
+          <TicketFields ticket={{ technician_id: user.id, repeats: repeat ? "weekly" : "" }} today={todayLocal()} withContactedBy={false} project={project} technicians={technicians} call={serviceCall} />
         </section>
         <button className="btn w-full">Create {label}</button>
       </form>

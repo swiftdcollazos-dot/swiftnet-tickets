@@ -18,6 +18,12 @@ export async function pendingCounts(supabase: Supabase) {
     if (error) throw new Error(error.message);
     return count ?? 0;
   };
-  const [tickets, calls, projects] = await Promise.all([count("hourly", false), count("contract", false), count(null, true)]);
-  return { tickets, calls, projects };
+  // Standing jobs that repeat weekly or monthly, shown on their own Repeats tab.
+  const repeatsCount = async () => {
+    const { count, error } = await supabase.from("tickets").select("id", { count: "exact", head: true }).eq("status", "open").neq("repeats", "");
+    if (error) throw new Error(error.message);
+    return count ?? 0;
+  };
+  const [tickets, calls, projects, repeats] = await Promise.all([count("hourly", false), count("contract", false), count(null, true), repeatsCount()]);
+  return { tickets, calls, projects, repeats };
 }

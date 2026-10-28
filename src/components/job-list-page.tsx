@@ -20,18 +20,20 @@ const STATUS_STYLES: Record<TicketStatus, string> = {
 const TABS = [
   { view: "", path: "/", title: "Service Tickets", count: "tickets", newPath: "/tickets/new", frame: "border-amber-400", badge: "bg-amber-400 text-slate-900" },
   { view: "calls", path: "/?view=calls", title: "Service Calls", count: "calls", newPath: "/tickets/new?call=1", frame: "border-red-500", badge: "bg-red-500 text-white" },
+  { view: "repeats", path: "/?view=repeats", title: "Repeats", count: "repeats", newPath: "/tickets/new?call=1&repeat=1", frame: "border-sky-500", badge: "bg-sky-500 text-white" },
   { view: "completed", path: "/?view=completed", title: "Completed", count: "", newPath: "", frame: "border-green-500", badge: "" },
   { view: "sent", path: "/?view=sent", title: "Sent to Customer", count: "", newPath: "", frame: "border-green-500", badge: "" },
   { view: "paid", path: "/?view=paid", title: "Paid", count: "", newPath: "", frame: "border-green-500", badge: "" },
   { view: "projects", path: "/projects", title: "Special Projects", count: "projects", newPath: "/tickets/new?project=1", frame: "border-purple-500", badge: "bg-purple-500 text-white" },
 ] as const;
 
-const PROJECTS = TABS[5];
+const PROJECTS = TABS[6];
 
 /** Work Tickets buttons: filled in their color when selected, outlined otherwise. */
 const BUTTON_LOOK: Record<string, { on: string; off: string }> = {
   "": { on: "border-amber-500 bg-amber-400 text-slate-900", off: "border-amber-400 bg-white text-amber-700 hover:bg-amber-50" },
   calls: { on: "border-red-600 bg-red-500 text-white", off: "border-red-400 bg-white text-red-700 hover:bg-red-50" },
+  repeats: { on: "border-sky-600 bg-sky-500 text-white", off: "border-sky-400 bg-white text-sky-700 hover:bg-sky-50" },
   completed: { on: "border-blue-700 bg-blue-600 text-white", off: "border-blue-300 bg-white text-blue-700 hover:bg-blue-50" },
   sent: { on: "border-violet-700 bg-violet-600 text-white", off: "border-violet-300 bg-white text-violet-700 hover:bg-violet-50" },
   paid: { on: "border-green-700 bg-green-600 text-white", off: "border-green-300 bg-white text-green-700 hover:bg-green-50" },
@@ -54,6 +56,8 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
   // Service calls are the jobs for contract clients; service tickets and special projects, for hourly clients.
   const tab = projects ? PROJECTS : (TABS.find((t) => t.view === view && t !== PROJECTS) ?? TABS[0]);
   const calls = tab.view === "calls";
+  // Standing service calls that repeat every week or month, on their own tab.
+  const repeating = tab.view === "repeats";
   // Finished service tickets and service calls together, one status per tab.
   const doneStatus = DONE_STATUS[tab.view];
   const completed = Boolean(doneStatus);
@@ -72,7 +76,8 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
     .limit(completed ? 300 : 100);
   // Special projects can be for any client.
   if (completed) query = query.eq("status", doneStatus);
-  else if (tab.view !== "projects") query = query.eq("clients.client_type", calls ? "contract" : "hourly");
+  else if (repeating) query = query.neq("repeats", "");
+  else if (tab.view !== "projects") query = query.eq("clients.client_type", calls ? "contract" : "hourly").eq("repeats", "");
   if (!completed && status && status in STATUS_LABELS) query = query.eq("status", status);
   if (q && /^\d+$/.test(q)) query = query.eq("number", Number(q));
   const [{ data: tickets, error }, pending] = await Promise.all([query, pendingCounts(supabase)]);
@@ -94,15 +99,13 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
   else {
     const isRunning = (t: (typeof rows)[number]) => t.time_entries.some((e: { ended_at: string | null }) => !e.ended_at);
     rows.sort((a, b) => Number(isRunning(b)) - Number(isRunning(a)));
-    // Standing jobs that repeat weekly or monthly get their own section at the top.
-    rows.sort((a, b) => Number(!!b.repeats) - Number(!!a.repeats));
   }
 
   return (
     <>
       {!projects && (
         <div className="mb-4 grid grid-cols-6 gap-2 text-center text-sm font-bold">
-          {TABS.slice(0, 5).map((t, i) => {
+          {TABS.slice(0, 6).map((t, i) => {
             const active = t === tab;
             const look = BUTTON_LOOK[t.view];
             return (
@@ -110,7 +113,7 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
                 key={t.view}
                 href={t.path}
                 aria-current={active ? "page" : undefined}
-                className={`flex items-center justify-center rounded-xl border-2 px-2 leading-tight shadow-sm transition active:scale-95 ${i < 2 ? "col-span-3 py-3 text-base" : "col-span-2 py-2.5"} ${active ? `${look.on} shadow-md` : look.off}`}
+                className={`flex items-center justify-center rounded-xl border-2 px-2 leading-tight shadow-sm transition active:scale-95 ${i < 3 ? "col-span-2 py-3 text-base" : "col-span-2 py-2.5"} ${active ? `${look.on} shadow-md` : look.off}`}
               >
                 {t.title} {t.count && <CountBadge count={pending[t.count]} className={active ? "bg-white text-slate-900" : t.badge} />}
               </Link>
@@ -123,11 +126,12 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
         {tab.newPath && canCreate && <Link href={tab.newPath} className="btn w-full sm:w-auto">+ New {label}</Link>}
       </div>
       {calls && <p className="-mt-2 mb-4 text-sm text-slate-500">For contract clients. Time is tracked, not charged.</p>}
+      {repeating && <p className="-mt-2 mb-4 text-sm text-slate-500">Weekly or monthly jobs for contract clients. They stay open; each visit&apos;s time adds to the contract.</p>}
       {completed && <p className="-mt-2 mb-4 text-sm text-slate-500">{DONE_NOTE[tab.view]}</p>}
       <form className="mb-4 flex gap-2">
-        {(calls || completed) && <input type="hidden" name="view" value={tab.view} />}
+        {(calls || repeating || completed) && <input type="hidden" name="view" value={tab.view} />}
         <input className="input" name="q" placeholder={`Search client, device, ${label} #`} defaultValue={q ?? ""} />
-        {!completed && (
+        {!completed && !repeating && (
           <select className="input w-36" name="status" defaultValue={status ?? ""}>
             <option value="">All</option>
             {Object.entries(STATUS_LABELS).map(([v, l]) => (
@@ -157,15 +161,11 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
             const isCall = t.clients?.client_type === "contract";
             // Completed: a heading where each group (tickets, then calls) starts.
             const groupStart = completed && (i === 0 || isCall !== (rows[i - 1].clients?.client_type === "contract"));
-            const repeatStart = !completed && rows.some((r) => r.repeats) && (i === 0 || !!t.repeats !== !!rows[i - 1].repeats);
             const lastWorked = t.time_entries.reduce((max: string, e: { started_at: string }) => (e.started_at > max ? e.started_at : max), "");
             const daysSince = lastWorked ? (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${todayLocal(new Date(lastWorked))}T00:00:00Z`)) / 86_400_000 : Infinity;
             const due = t.repeats && daysSince >= (REPEAT_DAYS[t.repeats] ?? 7);
             return (
               <Fragment key={t.id}>
-              {repeatStart && (
-                <li className={`h2 border-b border-slate-200 pb-1 ${i > 0 ? "pt-4" : ""}`}>{t.repeats ? "🔁 Repeating jobs" : tab.title}</li>
-              )}
               {groupStart && (
                 <li className={`h2 border-b border-slate-200 pb-1 ${i > 0 ? "pt-4" : ""}`}>{isCall ? "Service calls" : "Service tickets"}</li>
               )}

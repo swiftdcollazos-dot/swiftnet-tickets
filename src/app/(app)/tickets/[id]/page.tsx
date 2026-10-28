@@ -45,7 +45,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
   const { ticket, client, entries, parts, jobItems, totals, settings, techName, technicians } = await loadTicket(id);
   const call = client.client_type === "contract" && !ticket.is_project;
   const label = recordLabel(client.client_type, ticket.is_project);
-  const listPath = call ? "/?view=calls" : ticket.is_project ? "/projects" : "/";
+  const listPath = ticket.repeats ? "/?view=repeats" : call ? "/?view=calls" : ticket.is_project ? "/projects" : "/";
   const { supabase, user } = await requireUser();
   const { data: clientRows } = await supabase.from("clients").select("*").order("name");
   const allClients = (clientRows ?? []) as Client[];

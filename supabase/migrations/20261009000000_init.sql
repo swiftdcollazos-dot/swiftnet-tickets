@@ -249,6 +249,8 @@ create index if not exists expense_items_ticket_id_idx on public.expense_items (
 -- Everyone who can open a job sees the items bought for it, so its total is the same for all.
 drop policy if exists "on a job" on public.expense_items;
 create policy "on a job" on public.expense_items for select to authenticated using (ticket_id is not null);
+-- A standing service call that repeats every week or month: it stays open, and each visit's time counts when it was worked.
+alter table public.tickets add column if not exists repeats text not null default '';
 
 -- Users given "See Office" in Settings > Users can use the Office section like the owner.
 drop policy if exists "owner only" on public.renewals;

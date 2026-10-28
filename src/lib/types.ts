@@ -113,6 +113,11 @@ export type Client = {
   address: string;
 };
 
+/** How often a standing service call repeats. */
+export const REPEATS: Record<string, string> = { weekly: "Every week", monthly: "Every month" };
+/** Days after which a standing job is due again. */
+export const REPEAT_DAYS: Record<string, number> = { weekly: 7, monthly: 30 };
+
 export type Ticket = {
   id: string;
   number: number;
@@ -143,6 +148,8 @@ export type Ticket = {
   signed_name: string | null;
   signed_at: string | null;
   service_location: string;
+  /** "weekly" or "monthly" for a standing job that stays open; "" for a normal one. */
+  repeats: string;
 };
 
 /** Where the work was done, chosen next to the signature. "" means not chosen yet. */

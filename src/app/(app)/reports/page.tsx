@@ -61,13 +61,12 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
   const to = typeof params.to === "string" && DATE.test(params.to) ? params.to : monthEnd;
 
   const owner = isOwner(user.email);
-  const [{ data, error }, { data: settings }, { data: profiles }, { data: contractClients }, { data: expenseRows }] = await Promise.all([
-    supabase
-      .from("tickets")
-      .select("*, clients!inner(name, client_type, internal), time_entries(started_at, ended_at, technician_id), ticket_parts(qty, unit_price_cents), expense_items(amount_cents, markup_pct)")
-      .gte("ticket_date", from)
-      .lte("ticket_date", to)
-      .order("ticket_date"),
+  const jobSelect =
+    "*, clients!inner(name, client_type, internal), time_entries(started_at, ended_at, technician_id), ticket_parts(qty, unit_price_cents), expense_items(amount_cents, markup_pct)";
+  const [{ data, error }, { data: standing, error: standingError }, { data: settings }, { data: profiles }, { data: contractClients }, { data: expenseRows }] = await Promise.all([
+    supabase.from("tickets").select(jobSelect).eq("repeats", "").gte("ticket_date", from).lte("ticket_date", to).order("ticket_date"),
+    // Standing jobs stay open for good, so they count the visits worked in these dates, not the job date.
+    supabase.from("tickets").select(jobSelect).neq("repeats", ""),
     supabase.from("settings").select("*").single(),
     supabase.from("profiles").select("id, full_name"),
     supabase.from("clients").select("id, name, monthly_fee_cents, created_at").eq("client_type", "contract").gt("monthly_fee_cents", 0),
@@ -75,13 +74,20 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
     owner ? supabase.from("expenses").select("amount_cents").gte("spent_on", from).lte("spent_on", to) : Promise.resolve({ data: [] }),
   ]);
   const expenses = (expenseRows ?? []).reduce((s, e) => s + (e.amount_cents as number), 0);
-  if (error) throw new Error(error.message);
+  if (error || standingError) throw new Error((error ?? standingError)!.message);
+  const inRange = (iso: string) => {
+    const day = todayLocal(new Date(iso));
+    return day >= from && day <= to;
+  };
+  const standingInRange = ((standing ?? []) as unknown as Row[])
+    .map((t) => ({ ...t, time_entries: t.time_entries.filter((e) => inRange(e.started_at)), ticket_parts: [], expense_items: [] }))
+    .filter((t) => t.time_entries.length > 0);
   const currency = (settings as Settings | null)?.currency ?? "USD";
   const hourlyRate = (settings as Settings | null)?.hourly_rate_cents ?? 0;
   const money = (c: number) => formatMoney(c, currency);
   const names = new Map((profiles ?? []).map((p) => [p.id as string, p.full_name as string]));
 
-  const jobs = ((data ?? []) as unknown as Row[]).map((t) => {
+  const jobs = [...((data ?? []) as unknown as Row[]), ...standingInRange].map((t) => {
     const clientType = t.clients.client_type;
     const kind: Kind = t.is_project ? "project" : clientType === "contract" ? "call" : "ticket";
     const entries = t.time_entries.map((e) => ({ startedAt: e.started_at, endedAt: e.ended_at }));

@@ -19,7 +19,7 @@ import {
 import { entryMinutes, formatHours, formatMinutes, formatMoney } from "@/lib/billing";
 import { loadTicket } from "@/lib/ticket-data";
 import { formatDate, formatTime, todayLocal } from "@/lib/time";
-import { SERVICE_LOCATIONS, STATUS_LABELS, recordLabel, resaleCents, type Client, type ServiceLocation } from "@/lib/types";
+import { REPEATS, REPEAT_DAYS, SERVICE_LOCATIONS, STATUS_LABELS, recordLabel, resaleCents, type Client, type ServiceLocation } from "@/lib/types";
 import { requireUser } from "@/lib/supabase/server";
 import { ClientPicker } from "@/components/client-picker";
 import { LiveTimer } from "@/components/live-timer";
@@ -118,6 +118,8 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
         </div>
         <Link href={`/print/${ticket.id}`} className="btn-light">Print / PDF</Link>
       </div>
+
+      {ticket.repeats && <RepeatBanner repeats={ticket.repeats} entries={entries} />}
 
       {closed ? (
         <div className="card flex flex-wrap items-center gap-2 border-green-300 bg-green-50">
@@ -354,7 +356,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
         <h2 className="h2">{ticket.is_project ? "Project details" : "Job details"}</h2>
         <form action={updateTicket.bind(null, ticket.id)}>
           <fieldset disabled={closed} className="space-y-4 disabled:opacity-70">
-            <TicketFields ticket={ticket} today={todayLocal()} project={ticket.is_project} technicians={technicians} />
+            <TicketFields ticket={ticket} today={todayLocal()} project={ticket.is_project} technicians={technicians} call={call} />
             {!closed && <button className="btn w-full">Save details</button>}
           </fieldset>
         </form>
@@ -404,13 +406,35 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
         )}
       </section>
 
-      {!closed && (
+      {!closed && !ticket.repeats && (
         <form action={closeTicket.bind(null, ticket.id)} className="flex justify-center pt-2">
           <button className="btn bg-green-700 px-6">✓ Complete &amp; close {label.toLowerCase()}</button>
         </form>
       )}
 
       {isOwner(user.email) && <DeleteTicketButton ticketId={ticket.id} label={label.toLowerCase()} />}
+    </div>
+  );
+}
+
+/** A standing job: how often it repeats, when it was last worked, and this month's time. */
+function RepeatBanner({ repeats, entries }: { repeats: string; entries: { started_at: string; ended_at: string | null }[] }) {
+  const today = todayLocal();
+  const last = entries.reduce<string | null>((max, e) => (!max || e.started_at > max ? e.started_at : max), null);
+  const lastDay = last ? todayLocal(new Date(last)) : null;
+  const daysAgo = lastDay ? Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${lastDay}T00:00:00Z`)) / 86_400_000) : null;
+  const due = daysAgo === null || daysAgo >= (REPEAT_DAYS[repeats] ?? 7);
+  const monthMinutes = entries
+    .filter((e) => todayLocal(new Date(e.started_at)).slice(0, 7) === today.slice(0, 7))
+    .reduce((sum, e) => sum + entryMinutes({ startedAt: e.started_at, endedAt: e.ended_at }), 0);
+  return (
+    <div className={`card border-2 ${due ? "border-amber-400 bg-amber-50" : "border-sky-300 bg-sky-50"}`}>
+      <p className="font-bold">🔁 Repeats {REPEATS[repeats]?.toLowerCase()}</p>
+      <p className="text-sm text-slate-700">
+        {lastDay ? `Last worked ${formatDate(lastDay)}${daysAgo ? ` (${daysAgo} ${daysAgo === 1 ? "day" : "days"} ago)` : " (today)"}` : "Not worked yet"}
+        {due && " · due now"} · {formatMinutes(monthMinutes)} this month
+      </p>
+      <p className="mt-1 text-xs text-slate-500">This job stays open. Start the timer on each visit; the time adds to the contract hours for the month it was worked.</p>
     </div>
   );
 }

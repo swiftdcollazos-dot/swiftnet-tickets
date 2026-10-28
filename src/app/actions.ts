@@ -12,7 +12,7 @@ import { formatMoney, parseMoney } from "@/lib/billing";
 import { formatDate, localToIso, todayLocal } from "@/lib/time";
 import { isOwner, permissions, type Permissions } from "@/lib/owner";
 import { scanReceiptImage, type ScannedReceipt } from "@/lib/receipt-scan";
-import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENEWAL_KINDS, VEHICLE_CATEGORY, VEHICLES, RENEWAL_REPEATS, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
+import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENEWAL_KINDS, REPEATS, VEHICLE_CATEGORY, VEHICLES, RENEWAL_REPEATS, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 const STATUSES: TicketStatus[] = ["open", "completed", "sent", "paid"];
@@ -110,6 +110,8 @@ function ticketFields(form: FormData) {
     contacted_by: text(form, "contacted_by"),
     service_request: optional("service_request"),
     labor_performed: text(form, "labor_performed"),
+    // Only service calls have "Repeats".
+    repeats: form.has("repeats") ? (text(form, "repeats") in REPEATS ? text(form, "repeats") : "") : undefined,
     // Only the job page's details form has "Assigned to".
     technician_id: form.get("technician_id") ? text(form, "technician_id") : undefined,
   };
@@ -214,6 +216,8 @@ export async function setStatus(ticketId: string, status: TicketStatus) {
 /** Stops any running timer and marks the ticket closed, so it can no longer be edited. */
 export async function closeTicket(ticketId: string) {
   const { supabase } = await requireUser();
+  const { data: job } = await supabase.from("tickets").select("repeats").eq("id", ticketId).single();
+  if (job?.repeats) fail("This job repeats, so it stays open. Set Repeats to No first to close it.");
   const { error: timerError } = await supabase
     .from("time_entries")
     .update({ ended_at: new Date().toISOString() })

@@ -1,5 +1,5 @@
 import { DictationTextarea } from "@/components/dictation-textarea";
-import { PROJECT_TYPES, SERVICE_TYPES, kindLabel, projectKinds, type Ticket } from "@/lib/types";
+import { PROJECT_TYPES, REPEATS, SERVICE_TYPES, kindLabel, projectKinds, type Ticket } from "@/lib/types";
 
 export function ContactedByField({ value }: { value?: string }) {
   return (
@@ -15,9 +15,20 @@ export function ContactedByField({ value }: { value?: string }) {
  * Special projects get a shorter form: a project title, several project types can be ticked, there are no make, model
  * or machine fields, and the issue box becomes "Labor to be performed".
  */
-export function TicketFields({ ticket, today, withContactedBy = true, project = false, technicians }: { ticket?: Partial<Ticket>; today: string; withContactedBy?: boolean; project?: boolean; technicians?: { id: string; name: string }[] }) {
+export function TicketFields({ ticket, today, withContactedBy = true, project = false, technicians, call = false }: { ticket?: Partial<Ticket>; today: string; withContactedBy?: boolean; project?: boolean; technicians?: { id: string; name: string }[]; call?: boolean }) {
   return (
     <div className="space-y-4">
+      {call && (
+        <div>
+          <label className="label" htmlFor="repeats">Repeats</label>
+          <select className="input" id="repeats" name="repeats" defaultValue={ticket?.repeats ?? ""}>
+            <option value="">No, a one-time call</option>
+            {Object.entries(REPEATS).map(([value, label]) => (
+              <option key={value} value={value}>{label} (stays open, time adds to the contract)</option>
+            ))}
+          </select>
+        </div>
+      )}
       {project && (
         // Projects keep their title in the column service tickets use for the item to be serviced.
         <div>

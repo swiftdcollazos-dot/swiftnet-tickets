@@ -2,8 +2,8 @@ import Link from "next/link";
 import { Fragment } from "react";
 import { requireUser } from "@/lib/supabase/server";
 import { computeTotals, formatMinutes, formatMoney, notBilled } from "@/lib/billing";
-import { formatDate } from "@/lib/time";
-import { STATUS_LABELS, billingType, jobItemParts, kindLabel, rulesOf, type TicketStatus } from "@/lib/types";
+import { formatDate, todayLocal } from "@/lib/time";
+import { REPEATS, REPEAT_DAYS, STATUS_LABELS, billingType, jobItemParts, kindLabel, rulesOf, type TicketStatus } from "@/lib/types";
 import { Loading } from "@/components/loading";
 import { CountBadge } from "@/components/pending-badge";
 import { PaidStamp } from "@/components/paid-stamp";
@@ -79,6 +79,7 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
   if (error) throw new Error(error.message);
 
   const needle = q && !/^\d+$/.test(q) ? q.toLowerCase() : "";
+  const today = todayLocal();
   const rows = (tickets ?? []).filter(
     (t) =>
       !needle ||
@@ -93,6 +94,8 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
   else {
     const isRunning = (t: (typeof rows)[number]) => t.time_entries.some((e: { ended_at: string | null }) => !e.ended_at);
     rows.sort((a, b) => Number(isRunning(b)) - Number(isRunning(a)));
+    // Standing jobs that repeat weekly or monthly get their own section at the top.
+    rows.sort((a, b) => Number(!!b.repeats) - Number(!!a.repeats));
   }
 
   return (
@@ -154,8 +157,15 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
             const isCall = t.clients?.client_type === "contract";
             // Completed: a heading where each group (tickets, then calls) starts.
             const groupStart = completed && (i === 0 || isCall !== (rows[i - 1].clients?.client_type === "contract"));
+            const repeatStart = !completed && rows.some((r) => r.repeats) && (i === 0 || !!t.repeats !== !!rows[i - 1].repeats);
+            const lastWorked = t.time_entries.reduce((max: string, e: { started_at: string }) => (e.started_at > max ? e.started_at : max), "");
+            const daysSince = lastWorked ? (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${todayLocal(new Date(lastWorked))}T00:00:00Z`)) / 86_400_000 : Infinity;
+            const due = t.repeats && daysSince >= (REPEAT_DAYS[t.repeats] ?? 7);
             return (
               <Fragment key={t.id}>
+              {repeatStart && (
+                <li className={`h2 border-b border-slate-200 pb-1 ${i > 0 ? "pt-4" : ""}`}>{t.repeats ? "🔁 Repeating jobs" : tab.title}</li>
+              )}
               {groupStart && (
                 <li className={`h2 border-b border-slate-200 pb-1 ${i > 0 ? "pt-4" : ""}`}>{isCall ? "Service calls" : "Service tickets"}</li>
               )}
@@ -166,6 +176,11 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
                       <span className="font-mono text-sm text-slate-400">#{t.number}</span>
                       <span className="truncate font-semibold">{t.clients?.name}</span>
                       {running && <span className="rounded bg-red-100 px-1.5 text-xs font-semibold text-red-700">● timer</span>}
+                      {t.repeats && (
+                        <span className={`shrink-0 rounded px-1.5 text-xs font-semibold ${due ? "bg-amber-100 text-amber-800" : "bg-sky-100 text-sky-800"}`}>
+                          {due ? "Due" : REPEATS[t.repeats]}
+                        </span>
+                      )}
                       {completed && (
                         <span className={`shrink-0 rounded px-1.5 text-xs font-semibold ${isCall ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800"}`}>
                           {isCall ? "Call" : "Ticket"}

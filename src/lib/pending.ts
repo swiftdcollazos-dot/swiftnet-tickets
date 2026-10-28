@@ -10,7 +10,9 @@ export async function pendingCounts(supabase: Supabase) {
       .from("tickets")
       .select("id, clients!inner(client_type)", { count: "exact", head: true })
       .eq("status", "open")
-      .eq("is_project", isProject);
+      .eq("is_project", isProject)
+      // Standing jobs are always open, so they aren't waiting on anyone.
+      .eq("repeats", "");
     if (clientType) query = query.eq("clients.client_type", clientType);
     const { count, error } = await query;
     if (error) throw new Error(error.message);

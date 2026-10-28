@@ -240,7 +240,7 @@ export function ExpenseForm({
           )}
         </div>
         {items.length > 1 && (
-          <div className="grid grid-cols-[1fr_auto] gap-2">
+          <div className={`grid gap-2 ${items.some((it) => it.bill_client_id) ? "grid-cols-[1fr_auto]" : "grid-cols-1"}`}>
             <select
               className="input"
               aria-label="Charge all items to"
@@ -258,10 +258,15 @@ export function ExpenseForm({
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
+            {/* A markup only applies to items resold to a customer; Swiftnet IT's own items are just a cost. */}
+            {items.some((it) => it.bill_client_id) && (
             <select
               className="input"
               aria-label="Markup for all items"
-              value={items.every((it) => it.markup_pct === items[0].markup_pct) ? items[0].markup_pct : ""}
+              value={(() => {
+                const resold = items.filter((it) => it.bill_client_id);
+                return resold.every((it) => it.markup_pct === resold[0].markup_pct) ? resold[0].markup_pct : "";
+              })()}
               onChange={(e) => setItems((list) => list.map((it) => ({ ...it, markup_pct: Number(e.target.value) })))}
             >
               <option value="" disabled>
@@ -271,6 +276,7 @@ export function ExpenseForm({
                 <option key={m} value={m}>{m}%</option>
               ))}
             </select>
+            )}
           </div>
         )}
         {items.map((it, i) => {

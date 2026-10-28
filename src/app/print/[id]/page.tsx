@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { formatHours, formatMinutes, formatMoney } from "@/lib/billing";
 import { loadTicket } from "@/lib/ticket-data";
 import { formatDate, formatTime } from "@/lib/time";
-import { kindLabel, recordLabel, SERVICE_LOCATIONS, type ServiceLocation } from "@/lib/types";
+import { kindLabel, recordLabel, resaleCents, SERVICE_LOCATIONS, type ServiceLocation } from "@/lib/types";
 import { Loading } from "@/components/loading";
 import { PrintButton } from "@/components/print-button";
 import { PaidStamp } from "@/components/paid-stamp";
@@ -18,7 +18,7 @@ export default function PrintPage(props: PageProps<"/print/[id]">) {
 
 async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["params"] }) {
   const { id } = await params;
-  const { ticket, client, parts, totals, settings, techName } = await loadTicket(id);
+  const { ticket, client, parts, jobItems, totals, settings, techName } = await loadTicket(id);
   const call = client.client_type === "contract" && !ticket.is_project; // special projects are billed like tickets
   const money = (c: number) => formatMoney(c, settings.currency);
 
@@ -81,7 +81,7 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
           </section>
         )}
 
-        {parts.length > 0 && (
+        {parts.length + jobItems.length > 0 && (
           <table className="mb-6 w-full border-collapse">
             <thead>
               <tr className="bg-slate-100 text-left text-xs uppercase">
@@ -96,6 +96,16 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
                   <td className="p-2">{p.description}</td>
                   <td className="p-2 text-right">{money(p.unit_price_cents)}</td>
                   <td className="p-2 text-right">{money(Math.round(p.qty * p.unit_price_cents))}</td>
+                </tr>
+              ))}
+              {/* Bought for this job on an expense: the customer sees only the final price. */}
+              {jobItems.map((it) => (
+                <tr key={it.id} className="border-b border-slate-200">
+                  <td className="p-2">1</td>
+                  <td className="p-2"></td>
+                  <td className="p-2">{it.description}</td>
+                  <td className="p-2 text-right">{money(resaleCents(it.amount_cents, it.markup_pct))}</td>
+                  <td className="p-2 text-right">{money(resaleCents(it.amount_cents, it.markup_pct))}</td>
                 </tr>
               ))}
             </tbody>

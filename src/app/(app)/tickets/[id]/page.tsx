@@ -19,7 +19,7 @@ import {
 import { entryMinutes, formatHours, formatMinutes, formatMoney } from "@/lib/billing";
 import { loadTicket } from "@/lib/ticket-data";
 import { formatDate, formatTime, todayLocal } from "@/lib/time";
-import { SERVICE_LOCATIONS, STATUS_LABELS, recordLabel, type Client, type ServiceLocation } from "@/lib/types";
+import { SERVICE_LOCATIONS, STATUS_LABELS, recordLabel, resaleCents, type Client, type ServiceLocation } from "@/lib/types";
 import { requireUser } from "@/lib/supabase/server";
 import { ClientPicker } from "@/components/client-picker";
 import { LiveTimer } from "@/components/live-timer";
@@ -42,7 +42,7 @@ export default function TicketPage(props: PageProps<"/tickets/[id]">) {
 
 async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["params"] }) {
   const { id } = await params;
-  const { ticket, client, entries, parts, totals, settings, techName, technicians } = await loadTicket(id);
+  const { ticket, client, entries, parts, jobItems, totals, settings, techName, technicians } = await loadTicket(id);
   const call = client.client_type === "contract" && !ticket.is_project;
   const label = recordLabel(client.client_type, ticket.is_project);
   const listPath = call ? "/?view=calls" : ticket.is_project ? "/projects" : "/";
@@ -252,7 +252,26 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
       </CollapsibleCard>
 
       {/* Parts */}
-      <CollapsibleCard title="Parts and materials" summary={parts.length > 0 ? `${parts.length} · ${money(totals.materialsCents)}` : null}>
+      <CollapsibleCard
+        title="Parts and materials"
+        summary={parts.length + jobItems.length > 0 ? `${parts.length + jobItems.length} · ${money(totals.materialsCents)}` : null}
+      >
+        {jobItems.length > 0 && (
+          <div className="mb-4">
+            <p className="label">Bought for this job (from expenses)</p>
+            <ul className="divide-y divide-slate-100 text-sm">
+              {jobItems.map((it) => (
+                <li key={it.id} className="flex items-center justify-between gap-3 py-1.5">
+                  <Link href={`/expenses/${it.expense_id}`} className="min-w-0">
+                    <span className="block truncate">{it.description}</span>
+                    <span className="block text-xs text-slate-500">cost {money(it.amount_cents)} + {it.markup_pct}%</span>
+                  </Link>
+                  <span className="shrink-0 font-semibold">{money(resaleCents(it.amount_cents, it.markup_pct))}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {parts.length > 0 && (
           <table className="mb-4 w-full text-sm">
             <thead className="text-left text-xs uppercase text-slate-500">

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { findDuplicateExpense, scanReceipt } from "@/app/actions";
 import { ReceiptView } from "@/components/receipt-view";
+import type { JobOption } from "@/lib/job-options";
 import { EXPENSE_CATEGORIES, PAYMENT_METHODS, VEHICLE_CATEGORY, VEHICLES, type Expense, type ExpenseItem } from "@/lib/types";
 
 /** Shrinks a photo to at most 1600 px on its long side and returns it as a JPEG data URL. */
@@ -38,7 +39,7 @@ type Values = { spent_on: string; vendor: string; category: string; description:
 /** Markups offered when an item is bought to resell to a customer. */
 const MARKUPS = [10, 15, 20, 25];
 
-type Item = { key: string; description: string; amount: string; bill_client_id: string; markup_pct: number; charged: boolean };
+type Item = { key: string; description: string; amount: string; bill_client_id: string; markup_pct: number; charged: boolean; ticket_id: string };
 
 const blankItem = (description = "", amount = ""): Item => ({
   key: crypto.randomUUID(),
@@ -47,6 +48,7 @@ const blankItem = (description = "", amount = ""): Item => ({
   bill_client_id: "",
   markup_pct: 20,
   charged: false,
+  ticket_id: "",
 });
 
 /** Add or edit an expense. "Scan receipt" takes a photo and fills in the fields for you to check. */
@@ -55,12 +57,15 @@ export function ExpenseForm({
   items: savedItems = [],
   today,
   clients,
+  jobs = [],
   save,
 }: {
   expense?: Expense;
   items?: ExpenseItem[];
   today: string;
   clients: { id: string; name: string }[];
+  /** Customers' jobs an item can be put on. */
+  jobs?: JobOption[];
   save: (form: FormData) => Promise<void>;
 }) {
   const [values, setValues] = useState<Values>({
@@ -82,6 +87,7 @@ export function ExpenseForm({
       bill_client_id: it.bill_client_id ?? "",
       markup_pct: it.markup_pct || 20,
       charged: it.charged,
+      ticket_id: it.ticket_id ?? "",
     })),
   );
   const setItem = (i: number, change: Partial<Item>) => setItems((list) => list.map((it, j) => (j === i ? { ...it, ...change } : it)));
@@ -241,7 +247,7 @@ export function ExpenseForm({
               value={items.every((it) => it.bill_client_id === items[0].bill_client_id) ? items[0].bill_client_id || "none" : ""}
               onChange={(e) => {
                 const client = e.target.value === "none" ? "" : e.target.value;
-                setItems((list) => list.map((it) => ({ ...it, bill_client_id: client })));
+                setItems((list) => list.map((it) => ({ ...it, bill_client_id: client, ticket_id: it.bill_client_id === client ? it.ticket_id : "" })));
               }}
             >
               <option value="" disabled>
@@ -279,7 +285,7 @@ export function ExpenseForm({
               </div>
               <div className="flex gap-2">
                 <input className="input w-24 shrink-0" aria-label="Item amount" inputMode="decimal" placeholder="$" value={it.amount} onChange={(e) => setItem(i, { amount: e.target.value })} />
-                <select className="input min-w-0 flex-1" aria-label="Charge to" value={it.bill_client_id} onChange={(e) => setItem(i, { bill_client_id: e.target.value })}>
+                <select className="input min-w-0 flex-1" aria-label="Charge to" value={it.bill_client_id} onChange={(e) => setItem(i, { bill_client_id: e.target.value, ticket_id: "" })}>
                   <option value="">Swiftnet IT</option>
                   {clients.map((c) => (
                     <option key={c.id} value={c.id}>Charge to {c.name}</option>
@@ -288,6 +294,14 @@ export function ExpenseForm({
               </div>
               {it.bill_client_id && (
                 <>
+                  <select className="input" aria-label="Put on job" value={it.ticket_id} onChange={(e) => setItem(i, { ticket_id: e.target.value })}>
+                    <option value="">Not on a job (bill it separately)</option>
+                    {jobs
+                      .filter((j) => j.client_id === it.bill_client_id)
+                      .map((j) => (
+                        <option key={j.id} value={j.id}>Put on {j.label}</option>
+                      ))}
+                  </select>
                   <div className="grid grid-cols-4 gap-1">
                     {MARKUPS.map((m) => (
                       <button
@@ -304,10 +318,14 @@ export function ExpenseForm({
                     <span>
                       Charge <span className="font-bold">${(Math.round(amount * (100 + it.markup_pct)) / 100).toFixed(2)}</span>
                     </span>
-                    <label className="flex items-center gap-1.5">
-                      <input type="checkbox" className="h-4 w-4" checked={it.charged} onChange={(e) => setItem(i, { charged: e.target.checked })} />
-                      Sent to customer
-                    </label>
+                    {it.ticket_id ? (
+                      <span className="text-slate-500">Billed on the job</span>
+                    ) : (
+                      <label className="flex items-center gap-1.5">
+                        <input type="checkbox" className="h-4 w-4" checked={it.charged} onChange={(e) => setItem(i, { charged: e.target.checked })} />
+                        Sent to customer
+                      </label>
+                    )}
                   </div>
                 </>
               )}
@@ -317,7 +335,7 @@ export function ExpenseForm({
         <button type="button" className="btn-light w-full" onClick={() => setItems((list) => [...list, blankItem(list.length ? "" : values.description, list.length ? "" : values.amount)])}>
           + Add item
         </button>
-        <input type="hidden" name="items" value={JSON.stringify(items.map((it) => ({ description: it.description, amount: it.amount, bill_client_id: it.bill_client_id, markup_pct: it.markup_pct, charged: it.charged })))} />
+        <input type="hidden" name="items" value={JSON.stringify(items.map((it) => ({ description: it.description, amount: it.amount, bill_client_id: it.bill_client_id, markup_pct: it.markup_pct, charged: it.charged, ticket_id: it.ticket_id })))} />
       </div>
       {!expense && <input type="hidden" name="new_id" value={newId} />}
       {duplicate && (

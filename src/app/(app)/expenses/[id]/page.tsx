@@ -7,6 +7,7 @@ import { todayLocal } from "@/lib/time";
 import { deleteExpense, saveExpense } from "@/app/actions";
 import { DeleteExpenseButton, ExpenseForm } from "@/components/expense-form";
 import { Loading } from "@/components/loading";
+import { jobOptions } from "@/lib/job-options";
 import type { Expense, ExpenseItem } from "@/lib/types";
 
 // Reading a receipt can take a little while.
@@ -34,6 +35,7 @@ async function EditExpense({ params }: { params: PageProps<"/expenses/[id]">["pa
     supabase.from("clients").select("id, name").order("name"),
   ]);
   if (!data) redirect("/expenses");
+  const jobs = await jobOptions(supabase, ((items ?? []) as ExpenseItem[]).map((it) => it.ticket_id).filter((t): t is string => !!t));
   const expense = data as Expense & { created_by: string | null };
   const { data: addedBy } = expense.created_by
     ? await supabase.from("profiles").select("full_name").eq("id", expense.created_by).maybeSingle()
@@ -52,7 +54,7 @@ async function EditExpense({ params }: { params: PageProps<"/expenses/[id]">["pa
         </div>
       )}
       <div className="card">
-        <ExpenseForm expense={expense} items={(items ?? []) as ExpenseItem[]} today={todayLocal()} clients={clients ?? []} save={saveExpense.bind(null, expense.id)} />
+        <ExpenseForm expense={expense} items={(items ?? []) as ExpenseItem[]} today={todayLocal()} clients={clients ?? []} jobs={jobs} save={saveExpense.bind(null, expense.id)} />
       </div>
       <DeleteExpenseButton remove={deleteExpense.bind(null, expense.id)} />
     </div>

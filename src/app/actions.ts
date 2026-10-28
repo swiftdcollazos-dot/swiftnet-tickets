@@ -629,6 +629,7 @@ function expenseItems(form: FormData) {
         bill_client_id: client || null,
         markup_pct: client && [10, 15, 20, 25].includes(markup) ? markup : 0,
         charged: !!client && it?.charged === true,
+        ticket_id: client && typeof it?.ticket_id === "string" && /^[0-9a-f-]{36}$/i.test(it.ticket_id) ? it.ticket_id : null,
       };
     })
     .filter((it) => it.description || it.amount_cents);
@@ -673,6 +674,13 @@ export async function saveExpense(id: string | null, form: FormData) {
     if (error) fail(error.message);
     expenseId = data?.[0]?.id ?? null; // null when this was a repeated tap that saved nothing
   }
+  // An item can only go on a job of the customer it's charged to.
+  const jobIds = [...new Set(items.map((it) => it.ticket_id).filter((t): t is string => !!t))];
+  if (jobIds.length) {
+    const { data: jobs } = await supabase.from("tickets").select("id, client_id").in("id", jobIds);
+    const owner = new Map((jobs ?? []).map((j) => [j.id as string, j.client_id as string]));
+    for (const it of items) if (it.ticket_id && owner.get(it.ticket_id) !== it.bill_client_id) it.ticket_id = null;
+  }
   if (expenseId) {
     // The form always sends the whole list, so replace what was saved.
     const { error: delError } = await supabase.from("expense_items").delete().eq("expense_id", expenseId);
@@ -684,6 +692,7 @@ export async function saveExpense(id: string | null, form: FormData) {
   }
   revalidatePath("/expenses");
   revalidatePath("/office/charges");
+  for (const jobId of jobIds) revalidatePath(`/tickets/${jobId}`);
   redirect(`/expenses?month=${fields.spent_on.slice(0, 7)}`);
 }
 

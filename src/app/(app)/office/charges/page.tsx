@@ -40,8 +40,9 @@ async function Charges() {
   // Each invoice item charged to a customer, with the expense it came from.
   const select = "id, expense_id, description, amount_cents, markup_pct, charged, bill_client_id, clients(name), expenses(spent_on, vendor, created_by)";
   const [{ data: toSend, error }, { data: sent }, { data: profiles }] = await Promise.all([
-    supabase.from("expense_items").select(select).not("bill_client_id", "is", null).eq("charged", false),
-    supabase.from("expense_items").select(select).not("bill_client_id", "is", null).eq("charged", true).limit(100),
+    // Items put on a job are billed with that job, so they aren't listed here.
+    supabase.from("expense_items").select(select).not("bill_client_id", "is", null).is("ticket_id", null).eq("charged", false),
+    supabase.from("expense_items").select(select).not("bill_client_id", "is", null).is("ticket_id", null).eq("charged", true).limit(100),
     supabase.from("profiles").select("id, full_name"),
   ]);
   if (error) throw new Error(error.message);

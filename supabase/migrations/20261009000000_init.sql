@@ -243,6 +243,12 @@ where e.bill_client_id is not null
 alter table public.tickets add column if not exists service_location text not null default '';
 -- Swiftnet IT itself: time on its jobs is tracked for the records but never billed.
 alter table public.clients add column if not exists internal boolean not null default false;
+-- An expense item bought for a customer's job: it shows on that job at cost plus markup.
+alter table public.expense_items add column if not exists ticket_id uuid references public.tickets (id) on delete set null;
+create index if not exists expense_items_ticket_id_idx on public.expense_items (ticket_id);
+-- Everyone who can open a job sees the items bought for it, so its total is the same for all.
+drop policy if exists "on a job" on public.expense_items;
+create policy "on a job" on public.expense_items for select to authenticated using (ticket_id is not null);
 
 -- Users given "See Office" in Settings > Users can use the Office section like the owner.
 drop policy if exists "owner only" on public.renewals;

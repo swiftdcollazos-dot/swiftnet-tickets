@@ -35,7 +35,7 @@ async function Office() {
     moneyOwed(supabase, today),
     supabase.from("expenses").select("amount_cents").gte("spent_on", `${month}-01`).lt("spent_on", `${nextMonth(month)}-01`),
     supabase.from("renewals").select("due_on").lte("due_on", in30),
-    supabase.from("expense_items").select("amount_cents, markup_pct").not("bill_client_id", "is", null).eq("charged", false),
+    supabase.from("expense_items").select("amount_cents, markup_pct").not("bill_client_id", "is", null).is("ticket_id", null).eq("charged", false),
     supabase.from("clients").select("id, monthly_fee_cents, created_at").eq("client_type", "contract").gt("monthly_fee_cents", 0),
     supabase.from("contract_payments").select("client_id").eq("month", month),
   ]);

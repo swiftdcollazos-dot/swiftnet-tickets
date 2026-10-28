@@ -244,6 +244,8 @@ export type Expense = {
 
 /** One item on an expense's invoice, which can be charged to a customer with a markup. */
 export type ExpenseItem = {
+  /** The customer's job this item was bought for; it's billed on that job at cost plus markup. */
+  ticket_id: string | null;
   id: string;
   expense_id: string;
   description: string;
@@ -256,6 +258,11 @@ export type ExpenseItem = {
 /** What the customer pays for an item bought to resell: the cost plus the markup. */
 export function resaleCents(amountCents: number, markupPct: number): number {
   return Math.round((amountCents * (100 + markupPct)) / 100);
+}
+
+/** Expense items bought for a job, as material lines at the customer's price (cost plus markup). */
+export function jobItemParts(items: { amount_cents: number; markup_pct: number }[] | null | undefined) {
+  return (items ?? []).map((it) => ({ qty: 1, unitPriceCents: resaleCents(it.amount_cents, it.markup_pct) }));
 }
 
 export const RENEWAL_KINDS = [

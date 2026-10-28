@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/supabase/server";
 import { computeTotals, notBilled } from "@/lib/billing";
-import { billingType, rulesOf, type Client, type PartRow, type Settings, type Ticket, type TimeEntryRow } from "@/lib/types";
+import { billingType, jobItemParts, rulesOf, type Client, type PartRow, type Settings, type Ticket, type TimeEntryRow } from "@/lib/types";
 
 /** Loads everything needed to show or print one ticket. */
 export async function loadTicket(id: string) {
@@ -9,7 +9,7 @@ export async function loadTicket(id: string) {
   const [ticketRes, settingsRes, profilesRes] = await Promise.all([
     supabase
       .from("tickets")
-      .select("*, clients(*), time_entries(*), ticket_parts(*)")
+      .select("*, clients(*), time_entries(*), ticket_parts(*), expense_items(id, expense_id, description, amount_cents, markup_pct)")
       .eq("id", id)
       .maybeSingle(),
     supabase.from("settings").select("*").single(),
@@ -18,14 +18,16 @@ export async function loadTicket(id: string) {
   if (ticketRes.error) throw new Error(ticketRes.error.message);
   if (!ticketRes.data) notFound();
 
-  const { clients, time_entries, ticket_parts, ...ticket } = ticketRes.data;
+  const { clients, time_entries, ticket_parts, expense_items, ...ticket } = ticketRes.data;
+  // Items bought on an expense for this job, billed at cost plus markup.
+  const jobItems = (expense_items ?? []) as { id: string; expense_id: string; description: string; amount_cents: number; markup_pct: number }[];
   const entries = (time_entries as TimeEntryRow[]).sort((a, b) => a.started_at.localeCompare(b.started_at));
   const parts = (ticket_parts as PartRow[]).map((p) => ({ ...p, qty: Number(p.qty) }));
   const t = { ...ticket, tax_rate_pct: Number(ticket.tax_rate_pct) } as Ticket;
 
   const computed = computeTotals(
     entries.map((e) => ({ startedAt: e.started_at, endedAt: e.ended_at })),
-    parts.map((p) => ({ qty: p.qty, unitPriceCents: p.unit_price_cents })),
+    [...parts.map((p) => ({ qty: p.qty, unitPriceCents: p.unit_price_cents })), ...jobItemParts(jobItems)],
     rulesOf(t, billingType((clients as Client).client_type, t.is_project)),
     t.deposit_cents,
   );
@@ -39,6 +41,7 @@ export async function loadTicket(id: string) {
     client: clients as Client,
     entries,
     parts,
+    jobItems,
     totals,
     settings: settingsRes.data as Settings,
     techName: (id: string | null) => (id ? names.get(id) ?? "" : ""),

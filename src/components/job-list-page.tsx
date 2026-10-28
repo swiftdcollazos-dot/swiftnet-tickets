@@ -3,7 +3,7 @@ import { Fragment } from "react";
 import { requireUser } from "@/lib/supabase/server";
 import { computeTotals, formatMinutes, formatMoney, notBilled } from "@/lib/billing";
 import { formatDate } from "@/lib/time";
-import { STATUS_LABELS, billingType, kindLabel, rulesOf, type TicketStatus } from "@/lib/types";
+import { STATUS_LABELS, billingType, jobItemParts, kindLabel, rulesOf, type TicketStatus } from "@/lib/types";
 import { Loading } from "@/components/loading";
 import { CountBadge } from "@/components/pending-badge";
 import { PaidStamp } from "@/components/paid-stamp";
@@ -64,7 +64,7 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
 
   let query = supabase
     .from("tickets")
-    .select("*, clients!inner(name, client_type, internal), time_entries(started_at, ended_at), ticket_parts(qty, unit_price_cents)")
+    .select("*, clients!inner(name, client_type, internal), time_entries(started_at, ended_at), ticket_parts(qty, unit_price_cents), expense_items(amount_cents, markup_pct)")
     .eq("is_project", tab.view === "projects")
     // Open jobs first (status order: open, closed, sent, paid), newest first within each.
     .order("status")
@@ -142,7 +142,10 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
           {rows.map((t, i) => {
             const computed = computeTotals(
               t.time_entries.map((e: { started_at: string; ended_at: string | null }) => ({ startedAt: e.started_at, endedAt: e.ended_at })),
-              t.ticket_parts.map((p: { qty: number; unit_price_cents: number }) => ({ qty: Number(p.qty), unitPriceCents: p.unit_price_cents })),
+              [
+                ...t.ticket_parts.map((p: { qty: number; unit_price_cents: number }) => ({ qty: Number(p.qty), unitPriceCents: p.unit_price_cents })),
+                ...jobItemParts(t.expense_items),
+              ],
               rulesOf(t, billingType(t.clients?.client_type, t.is_project)),
               t.deposit_cents,
             );

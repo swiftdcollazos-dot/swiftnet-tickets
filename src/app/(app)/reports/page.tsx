@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/supabase/server";
 import { isOwner, permissions } from "@/lib/owner";
 import { computeTotals, entryMinutes, formatMoney, notBilled } from "@/lib/billing";
 import { formatDate, todayLocal } from "@/lib/time";
-import { billingType, rulesOf, type ClientType, type Settings, type Ticket } from "@/lib/types";
+import { billingType, jobItemParts, rulesOf, type ClientType, type Settings, type Ticket } from "@/lib/types";
 import { Loading } from "@/components/loading";
 
 export default function ReportsPage(props: PageProps<"/reports">) {
@@ -43,6 +43,7 @@ type Row = Ticket & {
   clients: { name: string; client_type: ClientType; internal: boolean };
   time_entries: { started_at: string; ended_at: string | null; technician_id: string | null }[];
   ticket_parts: { qty: number; unit_price_cents: number }[];
+  expense_items: { amount_cents: number; markup_pct: number }[];
 };
 
 type Kind = "ticket" | "call" | "project";
@@ -63,7 +64,7 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
   const [{ data, error }, { data: settings }, { data: profiles }, { data: contractClients }, { data: expenseRows }] = await Promise.all([
     supabase
       .from("tickets")
-      .select("*, clients!inner(name, client_type, internal), time_entries(started_at, ended_at, technician_id), ticket_parts(qty, unit_price_cents)")
+      .select("*, clients!inner(name, client_type, internal), time_entries(started_at, ended_at, technician_id), ticket_parts(qty, unit_price_cents), expense_items(amount_cents, markup_pct)")
       .gte("ticket_date", from)
       .lte("ticket_date", to)
       .order("ticket_date"),
@@ -84,7 +85,7 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
     const clientType = t.clients.client_type;
     const kind: Kind = t.is_project ? "project" : clientType === "contract" ? "call" : "ticket";
     const entries = t.time_entries.map((e) => ({ startedAt: e.started_at, endedAt: e.ended_at }));
-    const parts = t.ticket_parts.map((p) => ({ qty: Number(p.qty), unitPriceCents: p.unit_price_cents }));
+    const parts = [...t.ticket_parts.map((p) => ({ qty: Number(p.qty), unitPriceCents: p.unit_price_cents })), ...jobItemParts(t.expense_items)];
     const computed = computeTotals(entries, parts, rulesOf(t, billingType(clientType, t.is_project)));
     // Swiftnet IT's own jobs count as hours worked, never as money.
     const internal = t.clients.internal;

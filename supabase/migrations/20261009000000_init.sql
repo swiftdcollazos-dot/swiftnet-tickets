@@ -276,3 +276,5 @@ drop policy if exists "owner or office" on public.contract_payments;
 create policy "owner or office" on public.contract_payments for all to authenticated
   using (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com' or auth.jwt() -> 'app_metadata' ->> 'can_see_office' = 'true')
   with check (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com' or auth.jwt() -> 'app_metadata' ->> 'can_see_office' = 'true');
+-- "Phone and internet" was folded into "Mobile phone".
+update public.expenses set category = 'Mobile phone' where category = 'Phone and internet';

@@ -781,6 +781,19 @@ export async function setContractPaid(clientId: string, month: string, amountCen
     ? await supabase.from("contract_payments").upsert({ client_id: clientId, month, amount_cents: amountCents, paid_on: todayLocal() })
     : await supabase.from("contract_payments").delete().eq("client_id", clientId).eq("month", month);
   if (error) fail(error.message);
+  // The monthly fee pays for that month's closed service calls (standing jobs stay open).
+  const [y, m] = month.split("-").map(Number);
+  const nextMonth = new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 7);
+  const { error: callsError } = await supabase
+    .from("tickets")
+    .update({ status: paid ? "paid" : "completed" })
+    .eq("client_id", clientId)
+    .eq("is_project", false)
+    .in("status", paid ? ["completed", "sent"] : ["paid"])
+    .gte("ticket_date", `${month}-01`)
+    .lt("ticket_date", `${nextMonth}-01`);
+  if (callsError) fail(callsError.message);
+  revalidatePath("/", "layout");
   revalidatePath("/office/contracts");
   revalidatePath("/office");
 }

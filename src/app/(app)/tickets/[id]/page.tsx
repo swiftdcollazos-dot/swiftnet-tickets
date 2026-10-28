@@ -132,10 +132,13 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
               <button className="btn bg-violet-600">Sent to customer</button>
             </form>
           )}
-          {(ticket.status === "completed" || ticket.status === "sent") && (
+          {(ticket.status === "completed" || ticket.status === "sent") && !call && (
             <form action={setStatus.bind(null, ticket.id, "paid")}>
               <button className="btn">Mark as paid</button>
             </form>
+          )}
+          {call && ticket.status !== "paid" && (
+            <span className="basis-full text-sm text-slate-600">Marked paid when this month&apos;s contract payment is recorded in Office &gt; Contract payments.</span>
           )}
           <form action={setStatus.bind(null, ticket.id, "open")}>
             <button className="btn-light">Reopen</button>

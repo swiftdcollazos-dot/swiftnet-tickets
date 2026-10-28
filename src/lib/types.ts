@@ -211,6 +211,7 @@ export const EXPENSE_CATEGORIES = [
   "Office supplies",
   "Shipping",
   "Mobile phone",
+  "Internet access",
   "Meals",
   "Travel",
   "Training",

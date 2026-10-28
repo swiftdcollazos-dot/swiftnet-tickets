@@ -91,6 +91,11 @@ export function computeTotals(
   };
 }
 
+/** Jobs for Swiftnet IT itself: the time stays on record, but nothing is billed or counted as money made. */
+export function notBilled(totals: TicketTotals): TicketTotals {
+  return { ...totals, billableMinutes: 0, laborCents: 0, materialsCents: 0, taxCents: 0, totalCents: 0, depositCents: 0, balanceDueCents: 0 };
+}
+
 export function formatMoney(cents: number, currency = "USD"): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
 }

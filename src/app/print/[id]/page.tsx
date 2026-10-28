@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { formatHours, formatMoney } from "@/lib/billing";
+import { formatHours, formatMinutes, formatMoney } from "@/lib/billing";
 import { loadTicket } from "@/lib/ticket-data";
 import { formatDate, formatTime } from "@/lib/time";
 import { kindLabel, recordLabel, SERVICE_LOCATIONS, type ServiceLocation } from "@/lib/types";
@@ -106,13 +106,19 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
           {ticket.status === "paid" && !call && <PaidStamp className="mr-auto ml-8 w-36" />}
           <table className="w-72">
             <tbody>
-              {call ? (
-                <Total label={`Time spent (${formatHours(Math.ceil(Math.round(totals.jobMinutes) / 60) * 60)})`} value="Not charged" />
+              {client.internal ? (
+                <Total label="Time spent" value={formatMinutes(totals.jobMinutes)} bold />
               ) : (
-                <Total label={`Total labor (${formatHours(totals.billableMinutes)})`} value={money(totals.laborCents)} />
+                <>
+                  {call ? (
+                    <Total label={`Time spent (${formatHours(Math.ceil(Math.round(totals.jobMinutes) / 60) * 60)})`} value="Not charged" />
+                  ) : (
+                    <Total label={`Total labor (${formatHours(totals.billableMinutes)})`} value={money(totals.laborCents)} />
+                  )}
+                  <Total label="Total materials" value={money(totals.materialsCents)} />
+                  <Total label="Total amount" value={money(totals.totalCents)} bold />
+                </>
               )}
-              <Total label="Total materials" value={money(totals.materialsCents)} />
-              <Total label="Total amount" value={money(totals.totalCents)} bold />
             </tbody>
           </table>
         </section>

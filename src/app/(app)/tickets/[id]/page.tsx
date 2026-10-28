@@ -66,7 +66,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
   const noTime = closed || !permissions(user).timers;
   const money = (c: number) => formatMoney(c, settings.currency);
   // Whole hours, matching the printout.
-  const hours = formatHours(call ? Math.ceil(Math.round(totals.jobMinutes) / 60) * 60 : totals.billableMinutes);
+  const hours = client.internal ? formatMinutes(totals.jobMinutes) : formatHours(call ? Math.ceil(Math.round(totals.jobMinutes) / 60) * 60 : totals.billableMinutes);
 
   return (
     <div className="space-y-4">
@@ -309,6 +309,12 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
           </span>
         }
       >
+        {client.internal ? (
+          <dl className="space-y-1 text-sm">
+            <Row label="Time spent" value={formatMinutes(totals.jobMinutes)} bold />
+            <p className="text-xs text-slate-500">Swiftnet IT&apos;s own work: time is tracked, nothing is billed.</p>
+          </dl>
+        ) : (
         <dl className="space-y-1 text-sm">
           {call ? (
             <Row label={`Time spent: ${formatMinutes(totals.jobMinutes)}`} value="Not charged" />
@@ -320,6 +326,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
             <Row label="Total" value={money(totals.totalCents)} bold />
           </div>
         </dl>
+        )}
         {runningAll.length > 0 && <p className="mt-2 text-xs text-amber-700">The timer is still running, so this total will keep going up.</p>}
       </CollapsibleCard>
 

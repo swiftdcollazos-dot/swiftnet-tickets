@@ -400,6 +400,7 @@ export async function createClientRecord(_prev: ClientResult, form: FormData): P
       address: text(form, "address"),
       client_type: clientType(form, "client_type"),
       monthly_fee_cents: monthlyFee(form, "client_type", "monthly_fee"),
+      internal: form.get("internal") === "on",
     });
     if (error) fail(error.message);
   });
@@ -417,6 +418,7 @@ export async function updateClient(clientId: string, _prev: ClientResult, form: 
         address: text(form, "address"),
         client_type: clientType(form, "client_type"),
         monthly_fee_cents: monthlyFee(form, "client_type", "monthly_fee"),
+        internal: form.get("internal") === "on",
       })
       .eq("id", clientId);
     if (error) fail(error.message);

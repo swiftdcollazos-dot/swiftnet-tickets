@@ -106,6 +106,8 @@ export type Client = {
   client_type: ClientType;
   /** What a contract client pays per month, for the records. Not added to service tickets. */
   monthly_fee_cents: number;
+  /** Swiftnet IT itself: hours are tracked but never billed. */
+  internal: boolean;
   phone: string;
   email: string;
   address: string;

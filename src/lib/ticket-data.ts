@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/supabase/server";
-import { computeTotals } from "@/lib/billing";
+import { computeTotals, notBilled } from "@/lib/billing";
 import { billingType, rulesOf, type Client, type PartRow, type Settings, type Ticket, type TimeEntryRow } from "@/lib/types";
 
 /** Loads everything needed to show or print one ticket. */
@@ -23,12 +23,13 @@ export async function loadTicket(id: string) {
   const parts = (ticket_parts as PartRow[]).map((p) => ({ ...p, qty: Number(p.qty) }));
   const t = { ...ticket, tax_rate_pct: Number(ticket.tax_rate_pct) } as Ticket;
 
-  const totals = computeTotals(
+  const computed = computeTotals(
     entries.map((e) => ({ startedAt: e.started_at, endedAt: e.ended_at })),
     parts.map((p) => ({ qty: p.qty, unitPriceCents: p.unit_price_cents })),
     rulesOf(t, billingType((clients as Client).client_type, t.is_project)),
     t.deposit_cents,
   );
+  const totals = (clients as Client).internal ? notBilled(computed) : computed;
 
   const names = new Map<string, string>((profilesRes.data ?? []).map((p) => [p.id, p.full_name]));
 

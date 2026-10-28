@@ -241,6 +241,8 @@ where e.bill_client_id is not null
 
 -- Remote or on-site service, chosen next to the client signature ('' = not chosen).
 alter table public.tickets add column if not exists service_location text not null default '';
+-- Swiftnet IT itself: time on its jobs is tracked for the records but never billed.
+alter table public.clients add column if not exists internal boolean not null default false;
 
 -- Users given "See Office" in Settings > Users can use the Office section like the owner.
 drop policy if exists "owner only" on public.renewals;

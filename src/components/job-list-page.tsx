@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Fragment } from "react";
 import { requireUser } from "@/lib/supabase/server";
-import { computeTotals, formatMoney } from "@/lib/billing";
+import { computeTotals, formatMinutes, formatMoney, notBilled } from "@/lib/billing";
 import { formatDate } from "@/lib/time";
 import { STATUS_LABELS, billingType, kindLabel, rulesOf, type TicketStatus } from "@/lib/types";
 import { Loading } from "@/components/loading";
@@ -64,7 +64,7 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
 
   let query = supabase
     .from("tickets")
-    .select("*, clients!inner(name, client_type), time_entries(started_at, ended_at), ticket_parts(qty, unit_price_cents)")
+    .select("*, clients!inner(name, client_type, internal), time_entries(started_at, ended_at), ticket_parts(qty, unit_price_cents)")
     .eq("is_project", tab.view === "projects")
     // Open jobs first (status order: open, closed, sent, paid), newest first within each.
     .order("status")
@@ -140,12 +140,13 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
       ) : (
         <ul className="space-y-2">
           {rows.map((t, i) => {
-            const totals = computeTotals(
+            const computed = computeTotals(
               t.time_entries.map((e: { started_at: string; ended_at: string | null }) => ({ startedAt: e.started_at, endedAt: e.ended_at })),
               t.ticket_parts.map((p: { qty: number; unit_price_cents: number }) => ({ qty: Number(p.qty), unitPriceCents: p.unit_price_cents })),
               rulesOf(t, billingType(t.clients?.client_type, t.is_project)),
               t.deposit_cents,
             );
+            const totals = t.clients?.internal ? notBilled(computed) : computed;
             const running = t.time_entries.some((e: { ended_at: string | null }) => !e.ended_at);
             const isCall = t.clients?.client_type === "contract";
             // Completed: a heading where each group (tickets, then calls) starts.
@@ -176,7 +177,7 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
                   </div>
                   {t.status === "paid" && !calls && !(completed && isCall) && <PaidStamp className="w-14" />}
                   <div className="text-right">
-                    <div className="font-semibold">{formatMoney(totals.totalCents)}</div>
+                    <div className="font-semibold">{t.clients?.internal ? formatMinutes(totals.jobMinutes) : formatMoney(totals.totalCents)}</div>
                     <span className={`rounded px-1.5 text-xs font-semibold ${STATUS_STYLES[t.status as TicketStatus]}`}>
                       {STATUS_LABELS[t.status as TicketStatus]}
                     </span>

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { requireUser } from "@/lib/supabase/server";
 import { isOwner, permissions } from "@/lib/owner";
-import { computeTotals, entryMinutes, formatMoney } from "@/lib/billing";
+import { computeTotals, entryMinutes, formatMoney, notBilled } from "@/lib/billing";
 import { formatDate, todayLocal } from "@/lib/time";
 import { billingType, rulesOf, type ClientType, type Settings, type Ticket } from "@/lib/types";
 import { Loading } from "@/components/loading";
@@ -40,7 +40,7 @@ function monthsBetween(start: string, end: string): number {
 const hrs = (minutes: number) => `${(Math.round((minutes / 60) * 10) / 10).toLocaleString("en-US")} h`;
 
 type Row = Ticket & {
-  clients: { name: string; client_type: ClientType };
+  clients: { name: string; client_type: ClientType; internal: boolean };
   time_entries: { started_at: string; ended_at: string | null; technician_id: string | null }[];
   ticket_parts: { qty: number; unit_price_cents: number }[];
 };
@@ -63,7 +63,7 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
   const [{ data, error }, { data: settings }, { data: profiles }, { data: contractClients }, { data: expenseRows }] = await Promise.all([
     supabase
       .from("tickets")
-      .select("*, clients!inner(name, client_type), time_entries(started_at, ended_at, technician_id), ticket_parts(qty, unit_price_cents)")
+      .select("*, clients!inner(name, client_type, internal), time_entries(started_at, ended_at, technician_id), ticket_parts(qty, unit_price_cents)")
       .gte("ticket_date", from)
       .lte("ticket_date", to)
       .order("ticket_date"),
@@ -85,11 +85,15 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
     const kind: Kind = t.is_project ? "project" : clientType === "contract" ? "call" : "ticket";
     const entries = t.time_entries.map((e) => ({ startedAt: e.started_at, endedAt: e.ended_at }));
     const parts = t.ticket_parts.map((p) => ({ qty: Number(p.qty), unitPriceCents: p.unit_price_cents }));
-    const totals = computeTotals(entries, parts, rulesOf(t, billingType(clientType, t.is_project)));
+    const computed = computeTotals(entries, parts, rulesOf(t, billingType(clientType, t.is_project)));
+    // Swiftnet IT's own jobs count as hours worked, never as money.
+    const internal = t.clients.internal;
+    const totals = internal ? notBilled(computed) : computed;
     // What the job would cost billed by the hour at today's rate; service calls are otherwise covered by the contract.
-    const hourlyCents =
-      kind === "call" ? computeTotals(entries, parts, { ...rulesOf(t, "hourly"), hourlyRateCents: hourlyRate }).totalCents : totals.totalCents;
-    return { t, kind, totals, hourlyCents };
+    const hourlyCents = internal
+      ? 0
+      : kind === "call" ? computeTotals(entries, parts, { ...rulesOf(t, "hourly"), hourlyRateCents: hourlyRate }).totalCents : totals.totalCents;
+    return { t, kind, internal, totals, hourlyCents };
   });
 
   // Contract clients pay a monthly fee: count each month in the range up to this month,
@@ -121,6 +125,9 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
       money: kind === "call" ? feesTotal : sum(list, (j) => j.totals.totalCents),
     };
   });
+
+  const internalJobs = jobs.filter((j) => j.internal);
+  const internalMin = sum(internalJobs, (j) => j.totals.workedMinutes);
 
   const callKind = byKind.find((k) => k.kind === "call")!;
   const ticketKind = byKind.find((k) => k.kind === "ticket")!;
@@ -215,6 +222,14 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
         <Stat label="Contract hours" value={hrs(callKind.worked)} note={`${callKind.count} service ${callKind.count === 1 ? "call" : "calls"}, covered by contracts`} />
         <Stat label="Billable hours" value={hrs(ticketKind.billed)} note={`${ticketKind.count} service ${ticketKind.count === 1 ? "ticket" : "tickets"}, charged by the hour`} />
       </div>
+
+      {internalJobs.length > 0 && (
+        <Stat
+          label="Swiftnet IT hours"
+          value={hrs(internalMin)}
+          note={`${internalJobs.length} ${internalJobs.length === 1 ? "job" : "jobs"} for our own company, not billed`}
+        />
+      )}
 
       <Table
         title="By type"

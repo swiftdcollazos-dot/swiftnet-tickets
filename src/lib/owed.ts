@@ -1,9 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { computeTotals } from "@/lib/billing";
+import { computeTotals, notBilled } from "@/lib/billing";
 import { billingType, recordLabel, rulesOf, type ClientType, type Ticket } from "@/lib/types";
 
 type Row = Ticket & {
-  clients: { name: string; client_type: ClientType };
+  clients: { name: string; client_type: ClientType; internal: boolean };
   time_entries: { started_at: string; ended_at: string | null }[];
   ticket_parts: { qty: number; unit_price_cents: number }[];
 };
@@ -14,7 +14,7 @@ export type OwedJob = { id: string; number: number; client: string; label: strin
 export async function moneyOwed(supabase: SupabaseClient, today: string): Promise<OwedJob[]> {
   const { data, error } = await supabase
     .from("tickets")
-    .select("*, clients!inner(name, client_type), time_entries(started_at, ended_at), ticket_parts(qty, unit_price_cents)")
+    .select("*, clients!inner(name, client_type, internal), time_entries(started_at, ended_at), ticket_parts(qty, unit_price_cents)")
     .in("status", ["completed", "sent"])
     .eq("is_estimate", false);
   if (error) throw new Error(error.message);
@@ -32,7 +32,7 @@ export async function moneyOwed(supabase: SupabaseClient, today: string): Promis
         status: t.status as "completed" | "sent",
         date: t.ticket_date,
         days: Math.max(0, Math.round((todayMs - Date.parse(`${t.ticket_date}T00:00:00Z`)) / 86_400_000)),
-        cents: totals.balanceDueCents,
+        cents: t.clients.internal ? notBilled(totals).balanceDueCents : totals.balanceDueCents,
       };
     })
     .filter((j) => j.cents > 0)

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { useRouter } from "next/navigation";
 import { findDuplicateExpense, scanReceipt } from "@/app/actions";
 import { ReceiptView } from "@/components/receipt-view";
 import { pdfToJpeg } from "@/lib/pdf-to-image";
@@ -94,6 +95,7 @@ export function ExpenseForm({
   const setItem = (i: number, change: Partial<Item>) => setItems((list) => list.map((it, j) => (j === i ? { ...it, ...change } : it)));
   // A new expense gets its id up front, so a second tap on Save can't save it twice.
   const [newId] = useState(() => crypto.randomUUID());
+  const router = useRouter();
   const [receipt, setReceipt] = useState(expense?.receipt ? "keep" : "");
   const [scanning, setScanning] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -367,7 +369,21 @@ export function ExpenseForm({
           </label>
         </div>
       )}
-      <SaveButton disabled={scanning} />
+      <div className="flex gap-2">
+        <button
+          type="button"
+          className="btn-light flex-1"
+          onClick={() => {
+            if (!confirm(expense ? "Cancel your changes to this expense?" : "Cancel this expense? Nothing will be saved.")) return;
+            // Reloading clears everything typed into a new expense; an edit goes back to the list.
+            if (expense) router.push("/expenses");
+            else window.location.reload();
+          }}
+        >
+          Cancel
+        </button>
+        <SaveButton disabled={scanning} />
+      </div>
     </form>
   );
 }
@@ -376,7 +392,7 @@ export function ExpenseForm({
 function SaveButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <button className="btn w-full" disabled={disabled || pending}>
+    <button className="btn flex-1" disabled={disabled || pending}>
       {pending ? "Saving…" : "Save expense"}
     </button>
   );

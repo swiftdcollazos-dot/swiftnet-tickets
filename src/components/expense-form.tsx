@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { findDuplicateExpense, scanReceipt } from "@/app/actions";
 import { ReceiptView } from "@/components/receipt-view";
+import { pdfToJpeg } from "@/lib/pdf-to-image";
 import type { JobOption } from "@/lib/job-options";
 import { EXPENSE_CATEGORIES, PAYMENT_METHODS, VEHICLE_CATEGORY, VEHICLES, type Expense, type ExpenseItem } from "@/lib/types";
 
@@ -29,7 +30,7 @@ function readAsDataUrl(file: File): Promise<string> {
   });
 }
 
-/** PDFs larger than this can't be sent for scanning or saved. */
+/** PDFs larger than this are shrunk into an image before scanning and saving. */
 const PDF_MAX_BYTES = 2_000_000;
 
 const dollars = (cents: number) => (cents ? (cents / 100).toFixed(2) : "");
@@ -123,17 +124,30 @@ export function ExpenseForm({
     if (!file) return;
     setMessage(null);
     const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-    if (isPdf && file.size > PDF_MAX_BYTES) {
-      setMessage({ ok: false, text: "That PDF is too big (over 2 MB). Try a smaller file or a photo of the receipt." });
-      return;
-    }
     setScanning(true);
+    // A PDF over 2 MB is shrunk into one compressed image of its pages.
+    let shrunk = "";
     try {
-      const dataUrl = isPdf ? (await readAsDataUrl(file)).replace(/^data:[^;]*;/, "data:application/pdf;") : await compress(file);
+      let dataUrl: string;
+      if (isPdf && file.size > PDF_MAX_BYTES) {
+        try {
+          const image = await pdfToJpeg(file);
+          dataUrl = image.dataUrl;
+          shrunk = image.totalPages > image.pages
+            ? ` The PDF was over 2 MB, so its first ${image.pages} of ${image.totalPages} pages were saved as a smaller image.`
+            : " The PDF was over 2 MB, so it was saved as a smaller image.";
+        } catch (e) {
+          console.error("pdfToJpeg", e);
+          setMessage({ ok: false, text: "That PDF is too big to shrink. Try a photo of the receipt instead." });
+          return;
+        }
+      } else {
+        dataUrl = isPdf ? (await readAsDataUrl(file)).replace(/^data:[^;]*;/, "data:application/pdf;") : await compress(file);
+      }
       setReceipt(dataUrl);
       const result = await scanReceipt(dataUrl);
       if ("error" in result) {
-        setMessage({ ok: false, text: result.error });
+        setMessage({ ok: false, text: result.error + shrunk });
       } else {
         setValues((v) => ({
           spent_on: result.date || v.spent_on,
@@ -147,7 +161,7 @@ export function ExpenseForm({
         }));
         if (result.items.length > 0) setItems(result.items.map((it) => blankItem(it.description, it.amount.toFixed(2))));
         const converted = result.guilders_total ? ` Converted NAf ${result.guilders_total.toFixed(2)} to $${result.total.toFixed(2)} (1.8 guilders per dollar).` : "";
-        setMessage({ ok: true, text: `Filled in from the receipt.${converted} Please check it, then Save.` });
+        setMessage({ ok: true, text: `Filled in from the receipt.${converted}${shrunk} Please check it, then Save.` });
       }
     } catch {
       setMessage({ ok: false, text: "That file couldn't be read. Please try another." });

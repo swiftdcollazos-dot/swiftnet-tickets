@@ -63,6 +63,12 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
   const reporter = (id: string | null) => (owner && id ? names.get(id) : undefined);
 
   const total = expenses.reduce((sum, e) => sum + e.amount_cents, 0);
+  // What was bought for customers (at cost); everything else is Swiftnet IT's own spending.
+  const forCustomers = expenses.reduce(
+    (sum, e) => sum + Math.min(e.amount_cents, e.expense_items.filter((it) => it.bill_client_id).reduce((s, it) => s + it.amount_cents, 0)),
+    0,
+  );
+  const ownSpending = total - forCustomers;
   const byCategory = new Map<string, number>();
   for (const e of expenses) byCategory.set(e.category, (byCategory.get(e.category) ?? 0) + e.amount_cents);
   const categories = [...byCategory].sort((a, b) => b[1] - a[1]);
@@ -112,6 +118,20 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
         </p>
       </div>
 
+      {total > 0 && (
+        <div className="grid grid-cols-2 gap-2">
+          <div className="card">
+            <p className="label">Spent on Swiftnet IT</p>
+            <p className="text-xl font-bold">{formatMoney(ownSpending)}</p>
+            <p className="text-xs text-slate-500">our own company</p>
+          </div>
+          <div className="card">
+            <p className="label">Bought for customers</p>
+            <p className="text-xl font-bold">{formatMoney(forCustomers)}</p>
+            <p className="text-xs text-slate-500">at cost, to charge them</p>
+          </div>
+        </div>
+      )}
 
       {categories.length > 0 && (
         <div className="card">

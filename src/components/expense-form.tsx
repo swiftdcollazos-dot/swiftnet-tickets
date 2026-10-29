@@ -93,6 +93,12 @@ export function ExpenseForm({
     })),
   );
   const setItem = (i: number, change: Partial<Item>) => setItems((list) => list.map((it, j) => (j === i ? { ...it, ...change } : it)));
+  // Typing or removing an item amount keeps the Total equal to the items added up.
+  const changeAmounts = (next: Item[]) => {
+    setItems(next);
+    const sum = next.reduce((s, it) => s + (Number(it.amount.replace(/[$,\s]/g, "")) || 0), 0);
+    if (sum > 0) setValues((v) => ({ ...v, amount: sum.toFixed(2) }));
+  };
   // A new expense gets its id up front, so a second tap on Save can't save it twice.
   const [newId] = useState(() => crypto.randomUUID());
   const router = useRouter();
@@ -381,12 +387,12 @@ export function ExpenseForm({
             <div key={it.key} className="space-y-2 rounded-lg border border-slate-200 bg-white p-2">
               <div className="flex gap-2">
                 <input className="input flex-1" aria-label="Item" placeholder="Item" value={it.description} onChange={(e) => setItem(i, { description: e.target.value })} />
-                <button type="button" aria-label="Remove item" className="px-1 text-slate-400 hover:text-red-600" onClick={() => setItems((list) => list.filter((_, j) => j !== i))}>
+                <button type="button" aria-label="Remove item" className="px-1 text-slate-400 hover:text-red-600" onClick={() => changeAmounts(items.filter((_, j) => j !== i))}>
                   ✕
                 </button>
               </div>
               <div className="flex gap-2">
-                <input className="input w-24 shrink-0" aria-label="Item amount" inputMode="decimal" placeholder="$" value={it.amount} onChange={(e) => setItem(i, { amount: e.target.value })} />
+                <input className="input w-24 shrink-0" aria-label="Item amount" inputMode="decimal" placeholder="$" value={it.amount} onChange={(e) => changeAmounts(items.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)))} />
                 <select className="input min-w-0 flex-1" aria-label="Charge to" value={it.bill_client_id} onChange={(e) => setItem(i, { bill_client_id: e.target.value, ticket_id: "" })}>
                   <option value="">Swiftnet IT</option>
                   {clients.map((c) => (

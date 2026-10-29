@@ -12,7 +12,8 @@ import { formatMoney, parseMoney } from "@/lib/billing";
 import { formatDate, localToIso, todayLocal } from "@/lib/time";
 import { isOwner, permissions, type Permissions } from "@/lib/owner";
 import { scanReceiptImage, type ScannedReceipt } from "@/lib/receipt-scan";
-import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENEWAL_KINDS, REPEATS, VEHICLE_CATEGORY, VEHICLES, RENEWAL_REPEATS, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
+import { TOT_CATEGORY, TOT_VENDOR, totFor } from "@/lib/tot";
+import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENEWAL_KINDS, REPEATS, VEHICLE_CATEGORY, VEHICLES, RENEWAL_REPEATS, TOT_RATE_PCT, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 const STATUSES: TicketStatus[] = ["open", "completed", "sent", "paid"];
@@ -207,7 +208,11 @@ export async function changeTicketClient(ticketId: string, move: boolean, form: 
 export async function setStatus(ticketId: string, status: TicketStatus) {
   if (!STATUSES.includes(status)) fail("Unknown status.");
   const { supabase } = await requireUser();
-  const { error } = await supabase.from("tickets").update({ status }).eq("id", ticketId);
+  // Remember the day it was paid, for the TOT on Reports; a job already paid keeps its day.
+  const { error } =
+    status === "paid"
+      ? await supabase.from("tickets").update({ status, paid_on: todayLocal() }).eq("id", ticketId).neq("status", "paid")
+      : await supabase.from("tickets").update({ status, paid_on: null }).eq("id", ticketId);
   if (error) fail(error.message);
   revalidatePath(`/tickets/${ticketId}`);
   revalidatePath("/", "layout"); // pending count in the header
@@ -797,6 +802,29 @@ export async function deleteRenewal(id: string) {
   revalidatePath("/office/renewals");
 }
 
+/** Reports: approves a month's TOT and records it (or updates it) as an expense on the month's last day. Owner only. */
+export async function recordTot(monthStart: string) {
+  const { supabase, user } = await requireUser();
+  if (!isOwner(user.email)) fail("Only the owner can approve the TOT.");
+  if (!/^\d{4}-\d{2}-01$/.test(monthStart)) fail("Invalid month.");
+  const [y, m] = monthStart.split("-").map(Number);
+  const monthEnd = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+  const tot = await totFor(supabase, monthStart, monthEnd);
+  const monthName = new Date(`${monthStart}T00:00:00Z`).toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+  const fields = {
+    amount_cents: tot.totCents,
+    description: `TOT ${TOT_RATE_PCT}% for ${monthName} on ${formatMoney(tot.jobsCents + tot.feesCents)} received`,
+  };
+  const { data: existing } = await supabase.from("expenses").select("id").eq("vendor", TOT_VENDOR).eq("category", TOT_CATEGORY).eq("spent_on", monthEnd).maybeSingle();
+  const { error } = existing
+    ? await supabase.from("expenses").update(fields).eq("id", existing.id)
+    : await supabase.from("expenses").insert({ ...fields, spent_on: monthEnd, vendor: TOT_VENDOR, category: TOT_CATEGORY, payment_method: "Swiftnet IT account" });
+  if (error) fail(error.message);
+  revalidatePath("/reports");
+  revalidatePath("/expenses");
+  revalidatePath("/office");
+}
+
 /** Office > Contract payments: marks a contract client's fee for a month as paid, or not paid. */
 export async function setContractPaid(clientId: string, month: string, amountCents: number, paid: boolean) {
   const { supabase } = await requireOffice();
@@ -810,7 +838,7 @@ export async function setContractPaid(clientId: string, month: string, amountCen
   const nextMonth = new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 7);
   const { error: callsError } = await supabase
     .from("tickets")
-    .update({ status: paid ? "paid" : "completed" })
+    .update({ status: paid ? "paid" : "completed", paid_on: paid ? todayLocal() : null })
     .eq("client_id", clientId)
     .eq("is_project", false)
     .in("status", paid ? ["completed", "sent"] : ["paid"])

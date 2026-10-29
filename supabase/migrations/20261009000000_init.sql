@@ -280,3 +280,6 @@ create policy "owner or office" on public.contract_payments for all to authentic
 update public.expenses set category = 'Mobile phone' where category = 'Phone and internet';
 -- A second photo on an expense: the slip from the credit card machine.
 alter table public.expenses add column if not exists card_slip text;
+-- The day a job was marked paid, for the TOT on payments received. Older paid jobs use their job date.
+alter table public.tickets add column if not exists paid_on date;
+update public.tickets set paid_on = ticket_date where status = 'paid' and paid_on is null;

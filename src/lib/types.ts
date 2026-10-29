@@ -127,6 +127,7 @@ export type Ticket = {
   kind: string;
   is_estimate: boolean;
   status: TicketStatus;
+  paid_on: string | null;
   item_to_service: string;
   make: string;
   model: string;
@@ -213,6 +214,7 @@ export const EXPENSE_CATEGORIES = [
   "Mobile phone",
   "Internet access",
   "Payroll",
+  "Taxes",
   "Meals",
   "Travel",
   "Training",
@@ -233,6 +235,9 @@ export const PAYMENT_METHODS = [
 export const VEHICLES = ["Jeepo", "Gladiator", "Swift"] as const;
 export const VEHICLE_CATEGORY = "Fuel and vehicle";
 /** Payroll is usually paid in guilders; the form converts at this rate. */
+/** TOT (turnover tax): this percent of the money received from paid jobs and contract fees. */
+export const TOT_RATE_PCT = 5;
+
 export const PAYROLL_CATEGORY = "Payroll";
 export const PAYROLL_GUILDERS_PER_DOLLAR = 1.78;
 

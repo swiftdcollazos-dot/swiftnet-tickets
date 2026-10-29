@@ -5,11 +5,8 @@ import { requireUser } from "@/lib/supabase/server";
 import { isOwner, permissions } from "@/lib/owner";
 import { computeTotals, entryMinutes, formatMoney, notBilled } from "@/lib/billing";
 import { formatDate, todayLocal } from "@/lib/time";
-import { billingType, jobItemParts, rulesOf, TOT_RATE_PCT, type ClientType, type Settings, type Ticket } from "@/lib/types";
+import { billingType, jobItemParts, rulesOf, type ClientType, type Settings, type Ticket } from "@/lib/types";
 import { Loading } from "@/components/loading";
-import { ConfirmButton } from "@/components/confirm-button";
-import { recordTot } from "@/app/actions";
-import { TOT_CATEGORY, TOT_VENDOR, totFor } from "@/lib/tot";
 
 export default function ReportsPage(props: PageProps<"/reports">) {
   return (
@@ -81,8 +78,6 @@ async function ReportBody({ searchParams }: { searchParams: PageProps<"/reports"
   const to = typeof params.to === "string" && DATE.test(params.to) ? params.to : monthEnd;
 
   const owner = isOwner(user.email);
-  // The TOT can be approved for one whole month that has started.
-  const wholeMonth = from.slice(8) === "01" && to === monthRange(from)[1] && from <= today;
   const jobSelect =
     "*, clients!inner(name, client_type, internal), time_entries(started_at, ended_at, technician_id), ticket_parts(qty, unit_price_cents), expense_items(amount_cents, markup_pct)";
   const [
@@ -92,8 +87,6 @@ async function ReportBody({ searchParams }: { searchParams: PageProps<"/reports"
     { data: profiles },
     { data: contractClients },
     { data: expenseRows },
-    tot,
-    { data: recorded },
   ] = await Promise.all([
     supabase.from("tickets").select(jobSelect).eq("repeats", "").gte("ticket_date", from).lte("ticket_date", to).order("ticket_date"),
     // Standing jobs stay open for good, so they count the visits worked in these dates, not the job date.
@@ -103,12 +96,6 @@ async function ReportBody({ searchParams }: { searchParams: PageProps<"/reports"
     supabase.from("clients").select("id, name, monthly_fee_cents, created_at").eq("client_type", "contract").gt("monthly_fee_cents", 0),
     // Expenses are the owner's only.
     owner ? supabase.from("expenses").select("amount_cents").gte("spent_on", from).lte("spent_on", to) : Promise.resolve({ data: [] }),
-    // A TOT problem shows in its own card instead of breaking the whole report.
-    totFor(supabase, from, to).catch((e: unknown) => ({ jobsCents: 0, feesCents: 0, totCents: 0, error: e instanceof Error ? e.message : String(e) })),
-    // A whole month's TOT, once approved, is an expense on the month's last day.
-    owner && wholeMonth
-      ? supabase.from("expenses").select("amount_cents").eq("vendor", TOT_VENDOR).eq("category", TOT_CATEGORY).eq("spent_on", to).maybeSingle()
-      : Promise.resolve({ data: null }),
   ]);
   const expenses = (expenseRows ?? []).reduce((s, e) => s + (e.amount_cents as number), 0);
   if (error || standingError) throw new Error((error ?? standingError)!.message);
@@ -169,8 +156,6 @@ async function ReportBody({ searchParams }: { searchParams: PageProps<"/reports"
       money: kind === "call" ? feesTotal : sum(list, (j) => j.totals.totalCents),
     };
   });
-
-  const monthName = new Date(`${from}T00:00:00Z`).toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
 
   const internalJobs = jobs.filter((j) => j.internal);
   const internalMin = sum(internalJobs, (j) => j.totals.workedMinutes);
@@ -253,31 +238,6 @@ async function ReportBody({ searchParams }: { searchParams: PageProps<"/reports"
         <Stat label="Hours billed" value={hrs(billedMin)} note="tickets & projects" />
         <Stat label="Total money" value={money(earned + feesTotal)} note={`${money(earned)} jobs + ${money(feesTotal)} contracts`} />
         <Stat label="Jobs paid" value={money(paid)} note={`${money(earned - paid)} not paid yet`} />
-      </div>
-
-      {/* TOT on the payments received in these dates */}
-      <div className="card border-l-4 border-l-amber-500">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">TOT to pay ({TOT_RATE_PCT}%)</div>
-        {"error" in tot && <p className="mt-1 text-sm text-red-700">The TOT couldn&apos;t be worked out: {tot.error}</p>}
-        <div className="mt-1 text-3xl font-bold tabular-nums text-slate-900">{money(tot.totCents)}</div>
-        <div className="text-xs text-slate-500">
-          on {money(tot.jobsCents + tot.feesCents)} received: {money(tot.jobsCents)} paid jobs + {money(tot.feesCents)} contract fees, by the day they were marked paid
-        </div>
-        {owner && wholeMonth && !("error" in tot) && (
-          <div className="mt-3">
-            {recorded && recorded.amount_cents === tot.totCents ? (
-              <p className="text-sm font-semibold text-green-700">✓ Approved and recorded in {monthName} expenses</p>
-            ) : (
-              <ConfirmButton
-                action={recordTot.bind(null, from)}
-                question={`Record ${money(tot.totCents)} TOT in ${monthName} expenses?`}
-                className="btn w-full"
-              >
-                {recorded ? `Update recorded TOT (${money(recorded.amount_cents as number)} → ${money(tot.totCents)})` : `Approve ${money(tot.totCents)} and add to ${monthName} expenses`}
-              </ConfirmButton>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Profit, for the owner: money in minus expenses in the same dates. */}

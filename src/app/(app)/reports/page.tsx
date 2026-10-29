@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { requireUser } from "@/lib/supabase/server";
 import { isOwner, permissions } from "@/lib/owner";
@@ -52,7 +52,24 @@ type Row = Ticket & {
 type Kind = "ticket" | "call" | "project";
 const KIND_LABEL: Record<Kind, string> = { ticket: "Service tickets", call: "Service calls", project: "Special projects" };
 
-async function Report({ searchParams }: { searchParams: PageProps<"/reports">["searchParams"] }) {
+/** Shows what went wrong instead of the generic error page, so a problem can be reported exactly. */
+async function Report(props: { searchParams: PageProps<"/reports">["searchParams"] }) {
+  try {
+    return await ReportBody(props);
+  } catch (e) {
+    // Redirects, "not found" and Next's own signals must still work.
+    unstable_rethrow(e);
+    console.error("reports", e);
+    return (
+      <div className="card text-sm">
+        <p className="mb-2 font-semibold">Reports couldn&apos;t load.</p>
+        <p className="text-red-700">{e instanceof Error ? e.message : String(e)}</p>
+      </div>
+    );
+  }
+}
+
+async function ReportBody({ searchParams }: { searchParams: PageProps<"/reports">["searchParams"] }) {
   const { supabase, user } = await requireUser();
   // Only the owner and users allowed in Settings > Users can see the money.
   if (!permissions(user).reports) notFound();
@@ -86,7 +103,8 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
     supabase.from("clients").select("id, name, monthly_fee_cents, created_at").eq("client_type", "contract").gt("monthly_fee_cents", 0),
     // Expenses are the owner's only.
     owner ? supabase.from("expenses").select("amount_cents").gte("spent_on", from).lte("spent_on", to) : Promise.resolve({ data: [] }),
-    totFor(supabase, from, to),
+    // A TOT problem shows in its own card instead of breaking the whole report.
+    totFor(supabase, from, to).catch((e: unknown) => ({ jobsCents: 0, feesCents: 0, totCents: 0, error: e instanceof Error ? e.message : String(e) })),
     // A whole month's TOT, once approved, is an expense on the month's last day.
     owner && wholeMonth
       ? supabase.from("expenses").select("amount_cents").eq("vendor", TOT_VENDOR).eq("category", TOT_CATEGORY).eq("spent_on", to).maybeSingle()
@@ -240,11 +258,12 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
       {/* TOT on the payments received in these dates */}
       <div className="card border-l-4 border-l-amber-500">
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">TOT to pay ({TOT_RATE_PCT}%)</div>
+        {"error" in tot && <p className="mt-1 text-sm text-red-700">The TOT couldn&apos;t be worked out: {tot.error}</p>}
         <div className="mt-1 text-3xl font-bold tabular-nums text-slate-900">{money(tot.totCents)}</div>
         <div className="text-xs text-slate-500">
           on {money(tot.jobsCents + tot.feesCents)} received: {money(tot.jobsCents)} paid jobs + {money(tot.feesCents)} contract fees, by the day they were marked paid
         </div>
-        {owner && wholeMonth && (
+        {owner && wholeMonth && !("error" in tot) && (
           <div className="mt-3">
             {recorded && recorded.amount_cents === tot.totCents ? (
               <p className="text-sm font-semibold text-green-700">✓ Approved and recorded in {monthName} expenses</p>

@@ -232,6 +232,9 @@ export const PAYMENT_METHODS = [
 /** Company vehicles, picked on "Fuel and vehicle" expenses. */
 export const VEHICLES = ["Jeepo", "Gladiator", "Swift"] as const;
 export const VEHICLE_CATEGORY = "Fuel and vehicle";
+/** Payroll is usually paid in guilders; the form converts at this rate. */
+export const PAYROLL_CATEGORY = "Payroll";
+export const PAYROLL_GUILDERS_PER_DOLLAR = 1.78;
 
 export type Expense = {
   id: string;

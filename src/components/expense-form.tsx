@@ -7,7 +7,7 @@ import { findDuplicateExpense, scanReceipt } from "@/app/actions";
 import { ReceiptView } from "@/components/receipt-view";
 import { pdfToJpeg } from "@/lib/pdf-to-image";
 import type { JobOption } from "@/lib/job-options";
-import { EXPENSE_CATEGORIES, PAYMENT_METHODS, VEHICLE_CATEGORY, VEHICLES, type Expense, type ExpenseItem } from "@/lib/types";
+import { EXPENSE_CATEGORIES, PAYMENT_METHODS, PAYROLL_CATEGORY, PAYROLL_GUILDERS_PER_DOLLAR, VEHICLE_CATEGORY, VEHICLES, type Expense, type ExpenseItem } from "@/lib/types";
 
 /** Shrinks a photo to at most 1600 px on its long side and returns it as a JPEG data URL. */
 async function compress(file: File): Promise<string> {
@@ -116,6 +116,19 @@ export function ExpenseForm({
       clearTimeout(timer);
     };
   }, [values.spent_on, values.amount, expense?.id]);
+
+  // Payroll in guilders: typing the NAf amount fills the dollar total and notes the conversion.
+  const [guilders, setGuilders] = useState("");
+  function onGuilders(text: string) {
+    setGuilders(text);
+    const naf = Number(text.replace(/[,\s]/g, "")) || 0;
+    const note = naf ? ` (NAf ${naf.toFixed(2)} at ${PAYROLL_GUILDERS_PER_DOLLAR} per $1)` : "";
+    setValues((v) => ({
+      ...v,
+      amount: naf ? (Math.round((naf / PAYROLL_GUILDERS_PER_DOLLAR) * 100) / 100).toFixed(2) : v.amount,
+      description: v.description.replace(/\s*\(NAf [\d.]+ at [\d.]+ per \$1\)/, "") + note,
+    }));
+  }
 
   const set = (key: keyof Values) => (e: { target: { value: string } }) => setValues((v) => ({ ...v, [key]: e.target.value }));
   const preview = receipt === "keep" ? expense?.receipt : receipt;
@@ -237,6 +250,13 @@ export function ExpenseForm({
                 <option key={v}>{v}</option>
               ))}
             </select>
+          </div>
+        )}
+        {values.category === PAYROLL_CATEGORY && (
+          <div className="col-span-2 rounded-lg bg-slate-50 p-3">
+            <label className="label" htmlFor="guilders">Paid in guilders? Amount in NAf</label>
+            <input className="input" inputMode="decimal" id="guilders" placeholder="NAf" value={guilders} onChange={(e) => onGuilders(e.target.value)} />
+            <p className="mt-1 text-xs text-slate-500">The dollar total fills in at {PAYROLL_GUILDERS_PER_DOLLAR} guilders per $1.</p>
           </div>
         )}
         <div className="col-span-2">

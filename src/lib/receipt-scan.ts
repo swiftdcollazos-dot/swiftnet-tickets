@@ -54,7 +54,7 @@ const SCHEMA = {
 };
 
 const PROMPT = `This is a photo or PDF of a receipt or invoice for Swiftnet I.T., a small IT services company. Read it and fill in the expense fields. Copy amounts exactly as printed, in the receipt's own currency.
-Pick the category that fits best for an IT company (cables, switches, computers and spare parts are "Parts and hardware"; gas, tolls and car repairs are "Fuel and vehicle"; postage, courier and freight charges are "Shipping"; cell phone plans, phones and phone accessories are "Mobile phone"; internet service bills are "Internet access"; wages, salaries and paychecks are "Payroll").
+Pick the category that fits best for an IT company (cables, switches, computers and spare parts are "Parts and hardware"; gas, tolls and car repairs are "Fuel and vehicle"; postage, courier and freight charges are "Shipping"; cell phone plans, phones and phone accessories are "Mobile phone"; internet service bills are "Internet access"; wages, salaries and paychecks are "Payroll"; office or building rent is "Office rent").
 Use payment_method "Cash" when cash or change is shown; otherwise leave it empty, since the person picks which card or account was used.
 If a year is missing or unclear, assume the most recent date that is not after today.`;
 

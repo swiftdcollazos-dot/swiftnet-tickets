@@ -210,6 +210,7 @@ export const EXPENSE_CATEGORIES = [
   "Tools and equipment",
   "Fuel and vehicle",
   "Office supplies",
+  "Office rent",
   "Shipping",
   "Mobile phone",
   "Internet access",

@@ -102,7 +102,9 @@ export function ExpenseForm({
   const camera = useRef<HTMLInputElement>(null);
   // The credit card machine's slip, kept as a second, smaller photo.
   const [slip, setSlip] = useState(expense?.card_slip ? "keep" : "");
-  const slipInput = useRef<HTMLInputElement>(null);
+  const [slipMenu, setSlipMenu] = useState(false);
+  const slipCamera = useRef<HTMLInputElement>(null);
+  const slipFile = useRef<HTMLInputElement>(null);
   const slipPreview = slip === "keep" ? expense?.card_slip : slip;
   const library = useRef<HTMLInputElement>(null);
 
@@ -138,6 +140,26 @@ export function ExpenseForm({
   const preview = receipt === "keep" ? expense?.receipt : receipt;
   const cost = Number(values.amount.replace(/[$,\s]/g, "")) || 0;
   const itemsTotal = items.reduce((sum, it) => sum + (Number(it.amount.replace(/[$,\s]/g, "")) || 0), 0);
+
+  // A slip is kept small so it fits in the same save as the receipt: photos are shrunk, big PDFs become an image.
+  async function onSlip(file: File | undefined) {
+    if (!file) return;
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    try {
+      let dataUrl: string;
+      if (!isPdf) dataUrl = await compress(file, 1200, 0.6);
+      else if (file.size <= 600_000) dataUrl = (await readAsDataUrl(file)).replace(/^data:[^;]*;/, "data:application/pdf;");
+      else dataUrl = (await pdfToJpeg(file)).dataUrl;
+      if (dataUrl.length > 1_000_000) {
+        setMessage({ ok: false, text: "That slip file is too big. Try taking a picture of it instead." });
+        return;
+      }
+      setSlip(dataUrl);
+      setSlipMenu(false);
+    } catch {
+      setMessage({ ok: false, text: "That slip couldn't be read. Please try another." });
+    }
+  }
 
   async function onPhoto(file: File | undefined) {
     if (!file) return;
@@ -223,27 +245,28 @@ export function ExpenseForm({
             </button>
           </div>
         </div>
+      ) : slipMenu ? (
+        <div className="space-y-2 rounded-lg border border-slate-200 p-2">
+          <p className="text-sm font-semibold text-slate-700">🧾 Card machine slip</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" className="btn-light" onClick={() => slipCamera.current?.click()}>
+              📷 Take picture
+            </button>
+            <button type="button" className="btn-light" onClick={() => slipFile.current?.click()}>
+              📎 Choose file
+            </button>
+          </div>
+          <button type="button" className="w-full text-sm text-slate-500 underline" onClick={() => setSlipMenu(false)}>
+            Never mind
+          </button>
+        </div>
       ) : (
-        <button type="button" className="btn-light w-full" disabled={scanning} onClick={() => slipInput.current?.click()}>
+        <button type="button" className="btn-light w-full" disabled={scanning} onClick={() => setSlipMenu(true)}>
           🧾 Add card machine slip
         </button>
       )}
-      <input
-        ref={slipInput}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={async (e) => {
-          const file = e.target.files?.[0];
-          e.target.value = "";
-          if (!file) return;
-          try {
-            setSlip(await compress(file, 1200, 0.6));
-          } catch {
-            setMessage({ ok: false, text: "That slip photo couldn't be read. Please try another." });
-          }
-        }}
-      />
+      <input ref={slipCamera} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { onSlip(e.target.files?.[0]); e.target.value = ""; }} />
+      <input ref={slipFile} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => { onSlip(e.target.files?.[0]); e.target.value = ""; }} />
       <input type="hidden" name="card_slip" value={slip} />
       {/* Tax isn't shown any more, but a scanned or saved amount is kept. */}
       <input type="hidden" name="tax" value={values.tax} />

@@ -613,6 +613,7 @@ function expenseFields(form: FormData) {
   const method = text(form, "payment_method");
   const vehicle = text(form, "vehicle");
   const receipt = text(form, "receipt");
+  const slip = text(form, "card_slip");
   const spentOn = text(form, "spent_on");
   return {
     spent_on: /^\d{4}-\d{2}-\d{2}$/.test(spentOn) ? spentOn : todayLocal(),
@@ -624,6 +625,7 @@ function expenseFields(form: FormData) {
     payment_method: (PAYMENT_METHODS as readonly string[]).includes(method) ? method : "",
     vehicle: category === VEHICLE_CATEGORY && (VEHICLES as readonly string[]).includes(vehicle) ? vehicle : "",
     receipt: isReceipt(receipt) ? receipt : null,
+    card_slip: isReceipt(slip) ? slip : null,
   };
 }
 
@@ -677,12 +679,20 @@ export async function saveExpense(id: string | null, form: FormData) {
   const items = expenseItems(form);
   if (!fields.vendor) fail("Please enter where it was purchased from.");
   if (!fields.payment_method) fail("Please pick what it was paid with.");
+  // Both photos travel in one request, which can't be much over 4 MB.
+  if ((fields.receipt?.length ?? 0) + (fields.card_slip?.length ?? 0) > 3_600_000) fail("The receipt and card slip are too big together. Try a photo of the receipt instead of the PDF.");
   let expenseId = id;
   if (id) {
-    // Keep the saved receipt unless a new photo was taken or it was removed.
-    const { receipt, ...rest } = fields;
-    const keep = text(form, "receipt") === "keep";
-    const { error } = await supabase.from("expenses").update(keep ? rest : { ...rest, receipt }).eq("id", id);
+    // Keep the saved receipt and card slip unless a new photo was taken or it was removed.
+    const { receipt, card_slip, ...rest } = fields;
+    const { error } = await supabase
+      .from("expenses")
+      .update({
+        ...rest,
+        ...(text(form, "receipt") === "keep" ? {} : { receipt }),
+        ...(text(form, "card_slip") === "keep" ? {} : { card_slip }),
+      })
+      .eq("id", id);
     if (error) fail(error.message);
   } else {
     // The form sends a fresh id; saving the same one again does nothing, so double taps don't duplicate.

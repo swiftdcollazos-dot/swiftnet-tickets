@@ -10,15 +10,15 @@ import type { JobOption } from "@/lib/job-options";
 import { EXPENSE_CATEGORIES, PAYMENT_METHODS, PAYROLL_CATEGORY, PAYROLL_GUILDERS_PER_DOLLAR, VEHICLE_CATEGORY, VEHICLES, type Expense, type ExpenseItem } from "@/lib/types";
 
 /** Shrinks a photo to at most 1600 px on its long side and returns it as a JPEG data URL. */
-async function compress(file: File): Promise<string> {
+async function compress(file: File, maxSide = 1600, quality = 0.75): Promise<string> {
   const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(bitmap.width * scale);
   canvas.height = Math.round(bitmap.height * scale);
   canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
-  return canvas.toDataURL("image/jpeg", 0.75);
+  return canvas.toDataURL("image/jpeg", quality);
 }
 
 /** Reads a file (a PDF) as a data URL, unchanged. */
@@ -100,6 +100,10 @@ export function ExpenseForm({
   const [scanning, setScanning] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const camera = useRef<HTMLInputElement>(null);
+  // The credit card machine's slip, kept as a second, smaller photo.
+  const [slip, setSlip] = useState(expense?.card_slip ? "keep" : "");
+  const slipInput = useRef<HTMLInputElement>(null);
+  const slipPreview = slip === "keep" ? expense?.card_slip : slip;
   const library = useRef<HTMLInputElement>(null);
 
   // Warn when an expense with the same date and total is already entered.
@@ -208,6 +212,39 @@ export function ExpenseForm({
         </div>
       )}
       <input type="hidden" name="receipt" value={receipt} />
+
+      {slipPreview ? (
+        <div className="flex items-start gap-3">
+          <ReceiptView receipt={slipPreview} />
+          <div className="space-y-1 text-sm">
+            <p className="font-semibold text-slate-700">Card machine slip</p>
+            <button type="button" className="text-red-600 underline" onClick={() => setSlip("")}>
+              Remove slip
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" className="btn-light w-full" disabled={scanning} onClick={() => slipInput.current?.click()}>
+          🧾 Add card machine slip
+        </button>
+      )}
+      <input
+        ref={slipInput}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (!file) return;
+          try {
+            setSlip(await compress(file, 1200, 0.6));
+          } catch {
+            setMessage({ ok: false, text: "That slip photo couldn't be read. Please try another." });
+          }
+        }}
+      />
+      <input type="hidden" name="card_slip" value={slip} />
       {/* Tax isn't shown any more, but a scanned or saved amount is kept. */}
       <input type="hidden" name="tax" value={values.tax} />
 

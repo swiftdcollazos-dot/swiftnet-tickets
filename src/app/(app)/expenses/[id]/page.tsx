@@ -53,6 +53,12 @@ async function EditExpense({ params }: { params: PageProps<"/expenses/[id]">["pa
           <ReceiptView receipt={expense.receipt} large />
         </div>
       )}
+      {expense.card_slip && (
+        <div className="card">
+          <p className="mb-2 text-sm font-semibold text-slate-700">Card machine slip</p>
+          <ReceiptView receipt={expense.card_slip} large />
+        </div>
+      )}
       <div className="card">
         <ExpenseForm expense={expense} items={(items ?? []) as ExpenseItem[]} today={todayLocal()} clients={clients ?? []} jobs={jobs} save={saveExpense.bind(null, expense.id)} />
       </div>

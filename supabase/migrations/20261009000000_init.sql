@@ -278,3 +278,5 @@ create policy "owner or office" on public.contract_payments for all to authentic
   with check (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com' or auth.jwt() -> 'app_metadata' ->> 'can_see_office' = 'true');
 -- "Phone and internet" was folded into "Mobile phone".
 update public.expenses set category = 'Mobile phone' where category = 'Phone and internet';
+-- A second photo on an expense: the slip from the credit card machine.
+alter table public.expenses add column if not exists card_slip text;

@@ -247,6 +247,7 @@ export type Expense = {
   payment_method: string;
   vehicle: string;
   receipt: string | null;
+  card_slip: string | null;
   bill_client_id: string | null;
   markup_pct: number;
   charged: boolean;

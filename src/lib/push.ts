@@ -36,6 +36,41 @@ export async function sendTestPush(userId: string): Promise<string> {
   return `${subs.length} device(s): ${results.join(", ")}.`;
 }
 
+type Message = { title: string; body: string; url: string };
+
+/**
+ * Sends a message to one user's devices, or to every device when `userId` is null, and forgets devices that were
+ * turned off. Returns how many devices it reached. Never throws.
+ */
+export async function sendMessage(userId: string | null, message: Message): Promise<number> {
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  const admin = createAdminClient();
+  if (!privateKey || !admin) return 0;
+  try {
+    let query = admin.from("push_subscriptions").select("endpoint, p256dh, auth");
+    if (userId) query = query.eq("user_id", userId);
+    const { data: subs } = await query;
+    if (!subs?.length) return 0;
+    webpush.setVapidDetails("mailto:david@swiftnetit.com", VAPID_PUBLIC_KEY, privateKey);
+    const sent = await Promise.all(
+      subs.map((s) =>
+        webpush
+          .sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(message), { TTL: 3600 })
+          .then(() => 1)
+          .catch(async (e: { statusCode?: number }) => {
+            if (e.statusCode === 404 || e.statusCode === 410) await admin.from("push_subscriptions").delete().eq("endpoint", s.endpoint);
+            else console.error("Push notification failed", e);
+            return 0;
+          }),
+      ),
+    );
+    return sent.reduce<number>((a, b) => a + b, 0);
+  } catch (e) {
+    console.error("Push notification failed", e);
+    return 0;
+  }
+}
+
 /** Sends to one user's devices, or to every device when `userId` is null. */
 async function send(ticketId: string, userId: string | null, title: (label: string) => string) {
   const privateKey = process.env.VAPID_PRIVATE_KEY;

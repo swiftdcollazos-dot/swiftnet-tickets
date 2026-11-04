@@ -1,5 +1,5 @@
 import { REPEAT_DAYS } from "./types";
-import { addDays, addMonths, todayLocal } from "./time";
+import { addDays, addMonths, TIME_ZONE, todayLocal } from "./time";
 
 /** An open or just-finished job, as the Today screen needs it. */
 export type ScheduleJob = {
@@ -101,3 +101,33 @@ export function nextReminderDate(dueDate: string, repeats: string): string {
   if (repeats === "monthly") return addMonths(dueDate, 1);
   return "";
 }
+
+/** The morning summary goes out at 8:00 AM Saint Martin time (any run between 8 and noon sends it, once). */
+export const MORNING_HOUR = 8;
+/** How long before a job or reminder with a set time the heads-up is sent. */
+export const HEADS_UP_MINUTES = 45;
+
+/** "08:15" in Saint Martin, for comparing with times stored as "08:30:00". */
+export function clockLocal(now: Date): string {
+  return new Intl.DateTimeFormat("en-GB", { timeZone: TIME_ZONE, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now);
+}
+
+/** True when a time of day ("14:30:00") is after `now` and at most HEADS_UP_MINUTES later, on the same day. */
+export function isDueSoon(time: string, now: Date): boolean {
+  const [h, m] = time.split(":").map(Number);
+  const [nh, nm] = clockLocal(now).split(":").map(Number);
+  const diff = h * 60 + m - (nh * 60 + nm);
+  return diff > 0 && diff <= HEADS_UP_MINUTES;
+}
+
+/** "Today: 3 jobs, 2 reminders · 1 overdue", or "" when there's nothing on. */
+export function summaryLine(counts: { jobs: number; reminders: number; overdue: number }): string {
+  const parts = [
+    counts.jobs ? `${counts.jobs} ${counts.jobs === 1 ? "job" : "jobs"}` : "",
+    counts.reminders ? `${counts.reminders} ${counts.reminders === 1 ? "reminder" : "reminders"}` : "",
+  ].filter(Boolean);
+  const today = parts.length ? `Today: ${parts.join(", ")}` : "";
+  const overdue = counts.overdue ? `${counts.overdue} overdue` : "";
+  return [today, overdue].filter(Boolean).join(" · ");
+}
+

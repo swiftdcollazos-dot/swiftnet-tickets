@@ -310,3 +310,11 @@ create index if not exists reminders_due_date_idx on public.reminders (due_date)
 alter table public.reminders enable row level security;
 drop policy if exists "staff full access" on public.reminders;
 create policy "staff full access" on public.reminders for all to authenticated using (true) with check (true);
+
+-- Swiftnet Work Tracker: one row per scheduled notification sent, so none goes out twice.
+create table if not exists public.push_log (
+  key     text primary key,
+  sent_at timestamptz not null default now()
+);
+-- No policies: only the server (service role key) reads and writes it.
+alter table public.push_log enable row level security;

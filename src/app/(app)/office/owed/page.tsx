@@ -67,7 +67,14 @@ async function Owed() {
                 <span className="min-w-0">
                   <span className="block truncate font-semibold">{j.client}</span>
                   <span className="block truncate text-sm text-slate-500">
-                    {j.label} #{j.number} · {formatDate(j.date)} · {j.status === "sent" ? "Sent" : "Not sent yet"}
+                    {j.label} #{j.number} · {formatDate(j.date)}
+                  </span>
+                  <span
+                    className={`mt-1 inline-block rounded-full px-2 text-xs font-semibold ${
+                      j.status === "sent" ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {j.status === "sent" ? "✓ Sent to client" : "Not sent to client yet"}
                   </span>
                 </span>
                 <span className="shrink-0 text-right">

@@ -3,7 +3,7 @@ import { notFound, unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { requireUser } from "@/lib/supabase/server";
 import { isOwner, permissions } from "@/lib/owner";
-import { computeTotals, entryMinutes, formatMoney, notBilled } from "@/lib/billing";
+import { computeTotals, contractStartMonth, entryMinutes, formatMoney, notBilled } from "@/lib/billing";
 import { formatDate, todayLocal } from "@/lib/time";
 import { billingType, jobItemParts, rulesOf, type ClientType, type Settings, type Ticket } from "@/lib/types";
 import { Loading } from "@/components/loading";
@@ -128,10 +128,10 @@ async function ReportBody({ searchParams }: { searchParams: PageProps<"/reports"
   });
 
   // Contract clients pay a monthly fee: count each month in the range up to this month,
-  // starting from the month the client was added.
+  // starting from January of the year the client was added.
   const lastMonth = (to < today ? to : today).slice(0, 7);
   const fees = (contractClients ?? []).map((c) => {
-    const added = String(c.created_at).slice(0, 7);
+    const added = contractStartMonth(c.created_at as string);
     const first = from.slice(0, 7) > added ? from.slice(0, 7) : added;
     const months = monthsBetween(first, lastMonth);
     return { id: c.id as string, name: c.name as string, cents: months * (c.monthly_fee_cents as number) };

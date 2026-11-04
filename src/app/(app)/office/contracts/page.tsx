@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { requireUser } from "@/lib/supabase/server";
 import { permissions } from "@/lib/owner";
-import { formatMoney } from "@/lib/billing";
+import { contractStartMonth, formatMoney } from "@/lib/billing";
 import { formatDate, todayLocal } from "@/lib/time";
 import { setContractPaid } from "@/app/actions";
 import { Loading } from "@/components/loading";
@@ -40,9 +40,9 @@ async function Contracts({ searchParams }: { searchParams: PageProps<"/office/co
   ]);
   if (error) throw new Error(error.message);
   const paidBy = new Map((payments ?? []).map((p) => [p.client_id as string, p as { amount_cents: number; paid_on: string }]));
-  // Only clients that were already on contract that month.
+  // Only clients on contract that year (from January of the year they were added).
   const rows = (clients ?? [])
-    .filter((c) => String(c.created_at).slice(0, 7) <= month)
+    .filter((c) => contractStartMonth(c.created_at as string) <= month)
     .map((c) => ({ id: c.id as string, name: c.name as string, fee: c.monthly_fee_cents as number, paid: paidBy.get(c.id as string) }));
   const paid = rows.filter((r) => r.paid);
   const unpaid = rows.filter((r) => !r.paid);

@@ -10,35 +10,108 @@ function base64UrlToBytes(base64: string) {
 
 type State = "loading" | "unsupported" | "install" | "off" | "on" | "blocked";
 
-/** Menu item that turns "job assigned to you" notifications on or off for this device. */
-export function NotificationsToggle({ publicKey }: { publicKey: string }) {
+/** Subscribes this device and saves it for the signed-in user. Asks for permission only if it wasn't given yet. */
+async function subscribe(publicKey: string): Promise<boolean> {
+  if ((await Notification.requestPermission()) !== "granted") return false;
+  const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" });
+  await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToBytes(publicKey) });
+  await savePushSubscription(JSON.parse(JSON.stringify(sub)));
+  return true;
+}
+
+/** Where this device stands: notifications on, off, blocked, or not possible here. */
+async function currentState(): Promise<State> {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+    // iPhones only allow notifications once the app is added to the Home Screen.
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) ? "install" : "unsupported";
+  }
+  if (Notification.permission === "denied") return "blocked";
+  const reg = await navigator.serviceWorker.getRegistration("/");
+  const sub = await reg?.pushManager.getSubscription();
+  return sub ? "on" : "off";
+}
+
+/** Someone turned notifications off on purpose on this device: don't turn them back on by ourselves. */
+const OFF_KEY = "notifications-off";
+const turnedOff = () => {
+  try {
+    return localStorage.getItem(OFF_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+const rememberOff = (off: boolean) => {
+  try {
+    if (off) localStorage.setItem(OFF_KEY, "1");
+    else localStorage.removeItem(OFF_KEY);
+  } catch {}
+};
+
+/**
+ * Notifications are on by default. Phones only let a site ask once someone taps, so this card on the Today screen
+ * asks until they are on. Where permission was already given but the device lost its subscription, it quietly
+ * subscribes again. Hidden once on, and on a device where someone turned them off from the menu.
+ */
+export function NotificationsPrompt({ publicKey }: { publicKey: string }) {
   const [state, setState] = useState<State>("loading");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     (async () => {
-      if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
-        // iPhones only allow notifications once the app is added to the Home Screen.
-        const ios = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        setState(ios ? "install" : "unsupported");
-        return;
-      }
-      if (Notification.permission === "denied") return setState("blocked");
-      const reg = await navigator.serviceWorker.getRegistration("/");
-      const sub = await reg?.pushManager.getSubscription();
-      setState(sub ? "on" : "off");
+      let now = await currentState();
+      if (now === "off" && turnedOff()) return setState("on"); // their choice: say nothing
+      if (now === "off" && Notification.permission === "granted") now = (await subscribe(publicKey)) ? "on" : "off";
+      setState(now);
     })().catch(() => setState("unsupported"));
+  }, [publicKey]);
+
+  if (state !== "off" && state !== "install") return null;
+  if (state === "install") {
+    return (
+      <p className="card border-2 border-sky-300 bg-sky-50 text-sm text-slate-700">
+        🔔 To get your morning schedule and job alerts, add this app to your Home Screen (Share → Add to Home Screen) and open it from there.
+      </p>
+    );
+  }
+  return (
+    <div className="card flex items-center gap-3 border-2 border-sky-300 bg-sky-50">
+      <p className="flex-1 text-sm text-slate-700">🔔 Turn on notifications on this phone for your 8 AM schedule, appointment reminders and new jobs.</p>
+      <button
+        type="button"
+        className="btn shrink-0"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          try {
+            setState((await subscribe(publicKey)) ? "on" : "blocked");
+          } catch (e) {
+            alert(`Couldn't turn on notifications on this device: ${e instanceof Error ? e.message : String(e)}`);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {busy ? "Working…" : "Turn on"}
+      </button>
+    </div>
+  );
+}
+
+/** Menu item that turns notifications on or off for this device. */
+export function NotificationsToggle({ publicKey }: { publicKey: string }) {
+  const [state, setState] = useState<State>("loading");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    currentState().then(setState, () => setState("unsupported"));
   }, []);
 
   async function turnOn() {
     setBusy(true);
     try {
-      if ((await Notification.requestPermission()) !== "granted") return setState("blocked");
-      const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" });
-      await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToBytes(publicKey) });
-      await savePushSubscription(JSON.parse(JSON.stringify(sub)));
-      setState("on");
+      rememberOff(false);
+      setState((await subscribe(publicKey)) ? "on" : "blocked");
     } catch (e) {
       alert(`Couldn't turn on notifications on this device: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -55,6 +128,7 @@ export function NotificationsToggle({ publicKey }: { publicKey: string }) {
         await deletePushSubscription(sub.endpoint);
         await sub.unsubscribe();
       }
+      rememberOff(true);
       setState("off");
     } finally {
       setBusy(false);

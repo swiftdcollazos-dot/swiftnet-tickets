@@ -30,7 +30,7 @@ export function BottomNav({ counts, canExpenses }: { counts: Counts; canExpenses
   const tickets = !repeats && (path === "/" || path.startsWith("/tickets"));
   // Each tab keeps its own icon color; the selected one also gets a tinted background.
   const tabs: { href: string; label: string; d: string; color: string; active: boolean; badge?: number; badgeClass?: string }[] = [
-    { href: "/dashboard", label: "Home", d: HOME, color: "text-sky-600", active: path === "/dashboard" },
+    { href: "/dashboard", label: "Today", d: HOME, color: "text-sky-600", active: path === "/dashboard" },
     { href: "/", label: "Tickets", d: TICKET, color: "text-amber-500", active: tickets, badge: counts.tickets + counts.calls, badgeClass: "bg-red-500 text-white" },
     { href: "/?view=repeats", label: "Repeats", d: REPEAT, color: "text-sky-500", active: repeats, badge: counts.repeats, badgeClass: "bg-sky-500 text-white" },
     { href: "/projects", label: "Projects", d: PROJECT, color: "text-purple-600", active: path.startsWith("/projects"), badge: counts.projects, badgeClass: "bg-red-500 text-white" },

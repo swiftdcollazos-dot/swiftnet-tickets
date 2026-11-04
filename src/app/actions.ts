@@ -744,6 +744,14 @@ export async function markChargeSent(id: string, sent: boolean) {
   revalidatePath("/expenses");
 }
 
+/** Ticks an expense as paid (today), or unticks it. */
+export async function setExpensePaid(id: string, paid: boolean) {
+  const { supabase } = await requireAllowed("expenses");
+  const { error } = await supabase.from("expenses").update({ paid_on: paid ? todayLocal() : null }).eq("id", id);
+  if (error) fail(error.message);
+  revalidatePath("/expenses");
+}
+
 export async function deleteExpense(id: string) {
   const { supabase } = await requireAllowed("expenses");
   const { error } = await supabase.from("expenses").delete().eq("id", id);

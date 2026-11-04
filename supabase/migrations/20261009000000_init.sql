@@ -318,3 +318,6 @@ create table if not exists public.push_log (
 );
 -- No policies: only the server (service role key) reads and writes it.
 alter table public.push_log enable row level security;
+
+-- The day an expense was ticked as paid on the Expenses list.
+alter table public.expenses add column if not exists paid_on date;

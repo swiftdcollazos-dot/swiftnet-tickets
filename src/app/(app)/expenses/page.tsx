@@ -9,7 +9,7 @@ import { saveExpense } from "@/app/actions";
 import { ExpenseForm } from "@/components/expense-form";
 import { jobOptions } from "@/lib/job-options";
 import { Loading } from "@/components/loading";
-import { resaleCents, type Expense } from "@/lib/types";
+import { PAYMENT_COLORS, resaleCents, type Expense } from "@/lib/types";
 
 // Reading a receipt can take a little while.
 export const maxDuration = 60;
@@ -183,7 +183,14 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
                         </span>
                       ))}
                     </span>
-                    <span className="shrink-0 font-bold">{formatMoney(e.amount_cents)}</span>
+                    <span className="flex shrink-0 flex-col items-end gap-1">
+                      <span className="font-bold">{formatMoney(e.amount_cents)}</span>
+                      {e.payment_method && (
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ${PAYMENT_COLORS[e.payment_method] ?? "bg-slate-100 text-slate-700 ring-slate-300"}`}>
+                          {e.payment_method}
+                        </span>
+                      )}
+                    </span>
                   </Link>
                 </li>
               ))}

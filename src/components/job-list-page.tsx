@@ -193,7 +193,7 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
                       {!t.is_project && t.item_to_service ? ` · ${t.item_to_service}` : ""}
                     </div>
                   </div>
-                  {t.status === "paid" && !calls && !(completed && isCall) && <PaidStamp className="w-14" />}
+                  {t.status === "paid" && <PaidStamp className="w-14" />}
                   <div className="text-right">
                     <div className="font-semibold">{t.clients?.internal ? formatMinutes(totals.jobMinutes) : formatMoney(totals.totalCents)}</div>
                     <span className={`rounded px-1.5 text-xs font-semibold ${STATUS_STYLES[t.status as TicketStatus]}`}>

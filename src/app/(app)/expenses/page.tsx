@@ -9,7 +9,7 @@ import { saveExpense, setExpensePaid } from "@/app/actions";
 import { ExpenseForm } from "@/components/expense-form";
 import { jobOptions } from "@/lib/job-options";
 import { Loading } from "@/components/loading";
-import { PAID_DIRECT_METHODS, PAYMENT_COLORS, resaleCents, type Expense } from "@/lib/types";
+import { PAID_DIRECT_METHODS, PAYMENT_COLORS, PAYMENT_METHODS, resaleCents, type Expense } from "@/lib/types";
 
 // Reading a receipt can take a little while.
 export const maxDuration = 60;
@@ -165,55 +165,78 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
                 <span className="text-sm font-semibold text-slate-600">{formatMoney(rows.reduce((sum, e) => sum + e.amount_cents, 0))}</span>
               </div>
             )}
-            <ul className="space-y-2">
-              {rows.map((e) => {
-                const payable = PAID_DIRECT_METHODS.includes(e.payment_method);
-                return (
-                <li key={e.id}>
-                  <Link href={`/expenses/${e.id}`} className={`card flex items-center justify-between gap-3 hover:bg-slate-50 ${payable ? "rounded-b-none" : ""}`}>
-                    <span className="min-w-0">
-                      <span className="block truncate font-semibold">{e.vendor}</span>
-                      <span className="block truncate text-sm text-slate-500">
-                        {reporter(e.created_by) && <span className="font-semibold text-brand">{reporter(e.created_by)} · </span>}
-                        {formatDate(e.spent_on)} · {e.category}
-                        {e.vehicle ? ` (${e.vehicle})` : ""}
-                        {e.description ? ` · ${e.description}` : ""}
-                      </span>
-                      {chargesByClient(e.expense_items).map((c) => (
-                        <span key={`${c.name}${c.job}`} className={`block truncate text-sm font-semibold ${c.allSent || c.job ? "text-slate-500" : "text-green-700"}`}>
-                          {c.job ? `On job #${c.job} for` : c.allSent ? "Sent to" : "Charge"} {c.name} {formatMoney(c.cents)}
+            {byPaymentMethod(rows).map(([method, group]) => (
+              <div key={method} className="space-y-2">
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <span className={`rounded-full px-2.5 py-0.5 text-sm font-semibold ring-1 ${PAYMENT_COLORS[method] ?? "bg-slate-100 text-slate-700 ring-slate-300"}`}>
+                    {method || "No payment method"}
+                  </span>
+                  <span className="text-sm text-slate-600">
+                    {group.length} · <span className="font-semibold">{formatMoney(group.reduce((sum, e) => sum + e.amount_cents, 0))}</span>
+                  </span>
+                </div>
+                <ul className="space-y-2">
+                  {group.map((e) => {
+                    const payable = PAID_DIRECT_METHODS.includes(e.payment_method);
+                    return (
+                    <li key={e.id}>
+                      <Link href={`/expenses/${e.id}`} className={`card flex items-center justify-between gap-3 hover:bg-slate-50 ${payable ? "rounded-b-none" : ""}`}>
+                        <span className="min-w-0">
+                          <span className="block truncate font-semibold">{e.vendor}</span>
+                          <span className="block truncate text-sm text-slate-500">
+                            {reporter(e.created_by) && <span className="font-semibold text-brand">{reporter(e.created_by)} · </span>}
+                            {formatDate(e.spent_on)} · {e.category}
+                            {e.vehicle ? ` (${e.vehicle})` : ""}
+                            {e.description ? ` · ${e.description}` : ""}
+                          </span>
+                          {chargesByClient(e.expense_items).map((c) => (
+                            <span key={`${c.name}${c.job}`} className={`block truncate text-sm font-semibold ${c.allSent || c.job ? "text-slate-500" : "text-green-700"}`}>
+                              {c.job ? `On job #${c.job} for` : c.allSent ? "Sent to" : "Charge"} {c.name} {formatMoney(c.cents)}
+                            </span>
+                          ))}
                         </span>
-                      ))}
-                    </span>
-                    <span className="flex shrink-0 flex-col items-end gap-1">
-                      <span className="font-bold">{formatMoney(e.amount_cents)}</span>
-                      {e.payment_method && (
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ${PAYMENT_COLORS[e.payment_method] ?? "bg-slate-100 text-slate-700 ring-slate-300"}`}>
-                          {e.payment_method}
+                        <span className="flex shrink-0 flex-col items-end gap-1">
+                          <span className="font-bold">{formatMoney(e.amount_cents)}</span>
+                          {e.payment_method && (
+                            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ${PAYMENT_COLORS[e.payment_method] ?? "bg-slate-100 text-slate-700 ring-slate-300"}`}>
+                              {e.payment_method}
+                            </span>
+                          )}
                         </span>
+                      </Link>
+                      {payable && (
+                        // Tick to record that this was paid; tap again to undo.
+                        <form action={setExpensePaid.bind(null, e.id, !e.paid_on)}>
+                          <button
+                            className={`flex w-full items-center gap-2 rounded-b-xl border border-t-0 px-4 py-2 text-left text-sm font-semibold ${e.paid_on ? "border-green-300 bg-green-50 text-green-800" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+                          >
+                            <span className={`flex h-5 w-5 items-center justify-center rounded border-2 text-xs ${e.paid_on ? "border-green-600 bg-green-600 text-white" : "border-slate-400 bg-white"}`}>{e.paid_on ? "✓" : ""}</span>
+                            {e.paid_on ? `Paid ${formatDate(e.paid_on)}` : "Mark as paid"}
+                          </button>
+                        </form>
                       )}
-                    </span>
-                  </Link>
-                  {payable && (
-                    // Tick to record that this was paid; tap again to undo.
-                    <form action={setExpensePaid.bind(null, e.id, !e.paid_on)}>
-                      <button
-                        className={`flex w-full items-center gap-2 rounded-b-xl border border-t-0 px-4 py-2 text-left text-sm font-semibold ${e.paid_on ? "border-green-300 bg-green-50 text-green-800" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
-                      >
-                        <span className={`flex h-5 w-5 items-center justify-center rounded border-2 text-xs ${e.paid_on ? "border-green-600 bg-green-600 text-white" : "border-slate-400 bg-white"}`}>{e.paid_on ? "✓" : ""}</span>
-                        {e.paid_on ? `Paid ${formatDate(e.paid_on)}` : "Mark as paid"}
-                      </button>
-                    </form>
-                  )}
-                </li>
-                );
-              })}
-            </ul>
+                    </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
           </section>
         ))
       )}
     </div>
   );
+}
+
+/** Expenses split by how they were paid, in the order the payment methods are listed on the form; others after, then ones with none. */
+function byPaymentMethod<T extends { payment_method: string | null }>(rows: T[]): [string, T[]][] {
+  const groups = new Map<string, T[]>();
+  for (const e of rows) groups.set(e.payment_method ?? "", [...(groups.get(e.payment_method ?? "") ?? []), e]);
+  const rank = (m: string) => {
+    const i = (PAYMENT_METHODS as readonly string[]).indexOf(m);
+    return i >= 0 ? i : m ? PAYMENT_METHODS.length : PAYMENT_METHODS.length + 1;
+  };
+  return [...groups].sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0]));
 }
 
 /** The items charged to customers on one expense, added up per customer, or per job when put on one. */

@@ -290,7 +290,7 @@ async function ReportBody({ searchParams }: { searchParams: PageProps<"/reports"
       />
 
       <p className="text-xs text-slate-500">
-        Service calls are covered by the client&apos;s contract: their money is the contract clients&apos; monthly fees for each month in the range, up to this month. The last By client column is what each client&apos;s jobs would cost billed by the hour at {money(hourlyRate)}/h, so you can compare a contract&apos;s monthly fee with the time spent. Two technicians working at the same time are billed once. Running timers count up to now.
+        Service calls are covered by the client&apos;s contract: their money is the contract clients&apos; monthly fees for each month in the range, up to this month. The last By client column is what each client&apos;s jobs would cost billed by the hour at {money(hourlyRate)}/h, so you can compare a contract&apos;s monthly fee with the time spent. Every time entry is billed, including time added by hand. Running timers count up to now.
       </p>
     </div>
   );

@@ -238,6 +238,20 @@ export const PAYMENT_METHODS = [
   "Bank transfer",
 ] as const;
 
+/** Money that already left our account or debit card straight to the seller, so nothing is owed on it later. */
+export const PAID_DIRECT_METHODS = ["Swiftnet IT account", "Debit Card David US", "Debit Card David SXM", "Debit Card Daniel SXM"];
+
+/** A color per way of paying, so the expense list shows at a glance what was used. Others get gray. */
+export const PAYMENT_COLORS: Record<string, string> = {
+  "Swiftnet IT account": "bg-blue-100 text-blue-800 ring-blue-300",
+  "Credit Card Swiftnet": "bg-violet-100 text-violet-800 ring-violet-300",
+  "Debit Card David US": "bg-sky-100 text-sky-800 ring-sky-300",
+  "Debit Card David SXM": "bg-teal-100 text-teal-800 ring-teal-300",
+  "Debit Card Daniel SXM": "bg-orange-100 text-orange-800 ring-orange-300",
+  Cash: "bg-green-100 text-green-800 ring-green-300",
+  "Bank transfer": "bg-amber-100 text-amber-800 ring-amber-300",
+};
+
 /** Company vehicles, picked on "Fuel and vehicle" expenses. */
 export const VEHICLES = ["Jeepo", "Gladiator", "Swift"] as const;
 export const VEHICLE_CATEGORY = "Fuel and vehicle";

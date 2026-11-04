@@ -30,6 +30,16 @@ body {
     content: " *";
     @apply font-bold text-red-600;
   }
+  /* Job details labels, colored by group so the eye can tell them apart. */
+  .label-when, .label-who, .label-device, .label-issue, .label-labor, .label-schedule {
+    @apply w-fit bg-clip-text text-transparent;
+  }
+  .label-when { @apply bg-gradient-to-r from-blue-700 to-indigo-500; }
+  .label-who { @apply bg-gradient-to-r from-teal-700 to-emerald-500; }
+  .label-device { @apply bg-gradient-to-r from-amber-600 to-orange-500; }
+  .label-issue { @apply bg-gradient-to-r from-rose-600 to-red-500; }
+  .label-labor { @apply bg-gradient-to-r from-green-700 to-lime-600; }
+  .label-schedule { @apply bg-gradient-to-r from-violet-700 to-fuchsia-600 font-bold; }
   .input {
     @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base outline-none focus:border-brand focus:ring-2 focus:ring-brand/20;
   }

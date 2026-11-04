@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { requireUser } from "@/lib/supabase/server";
 import { isOwner, permissions } from "@/lib/owner";
-import { formatMoney } from "@/lib/billing";
+import { contractStartMonth, formatMoney } from "@/lib/billing";
 import { todayLocal } from "@/lib/time";
 import { moneyOwed } from "@/lib/owed";
 import { resaleCents, TOT_RATE_PCT } from "@/lib/types";
@@ -45,7 +45,7 @@ async function Office() {
   ]);
   // Contract fees for this month that haven't been marked paid.
   const paidIds = new Set((contractPaid ?? []).map((p) => p.client_id as string));
-  const unpaidContracts = (contracts ?? []).filter((c) => String(c.created_at).slice(0, 7) <= month && !paidIds.has(c.id as string));
+  const unpaidContracts = (contracts ?? []).filter((c) => contractStartMonth(c.created_at as string) <= month && !paidIds.has(c.id as string));
   const unpaidFees = unpaidContracts.reduce((s, c) => s + (c.monthly_fee_cents as number), 0);
   const chargeTotal = (toCharge ?? []).reduce((s, e) => s + resaleCents(e.amount_cents as number, e.markup_pct as number), 0);
   const overdue = (due ?? []).filter((r) => (r.due_on as string) < today).length;

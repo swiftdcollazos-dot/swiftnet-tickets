@@ -106,3 +106,11 @@ export function parseMoney(input: string | null | undefined): number {
   const n = Number(String(input).replace(/[$,\s]/g, ""));
   return Number.isFinite(n) ? Math.round(n * 100) : 0;
 }
+
+/**
+ * First month ("2026-01") a contract client's monthly fee counts. Contracts run for the whole
+ * year the client was added, so clients entered mid-year still show from January.
+ */
+export function contractStartMonth(createdAt: string): string {
+  return `${String(createdAt).slice(0, 4)}-01`;
+}

@@ -7,7 +7,7 @@ import { findDuplicateExpense, scanReceipt } from "@/app/actions";
 import { ReceiptView } from "@/components/receipt-view";
 import { pdfToJpeg } from "@/lib/pdf-to-image";
 import type { JobOption } from "@/lib/job-options";
-import { EXPENSE_CATEGORIES, PAYMENT_METHODS, PAYROLL_CATEGORY, PAYROLL_GUILDERS_PER_DOLLAR, VEHICLE_CATEGORY, VEHICLES, type Expense, type ExpenseItem } from "@/lib/types";
+import { EXPENSE_CATEGORIES, PAYMENT_METHODS, PAYROLL_CATEGORY, PAYROLL_GUILDERS_PER_DOLLAR, UTILITIES_CATEGORY, VEHICLE_CATEGORY, VEHICLES, type Expense, type ExpenseItem } from "@/lib/types";
 
 /** Shrinks a photo to at most 1600 px on its long side and returns it as a JPEG data URL. */
 async function compress(file: File, maxSide = 1600, quality = 0.75): Promise<string> {
@@ -36,7 +36,7 @@ const PDF_MAX_BYTES = 2_000_000;
 
 const dollars = (cents: number) => (cents ? (cents / 100).toFixed(2) : "");
 
-type Values = { spent_on: string; vendor: string; category: string; description: string; amount: string; tax: string; payment_method: string; vehicle: string };
+type Values = { spent_on: string; vendor: string; category: string; description: string; amount: string; tax: string; payment_method: string; vehicle: string; period_from: string; period_to: string };
 
 /** Markups offered when an item is bought to resell to a customer. */
 const MARKUPS = [10, 15, 20, 25];
@@ -79,6 +79,8 @@ export function ExpenseForm({
     tax: dollars(expense?.tax_cents ?? 0),
     payment_method: expense?.payment_method ?? "",
     vehicle: expense?.vehicle ?? "",
+    period_from: expense?.period_from ?? "",
+    period_to: expense?.period_to ?? "",
   });
   // "keep" leaves the saved photo alone; "" removes it; a data URL replaces it.
   const [items, setItems] = useState<Item[]>(() =>
@@ -205,6 +207,8 @@ export function ExpenseForm({
           tax: result.tax ? result.tax.toFixed(2) : v.tax,
           payment_method: result.payment_method || v.payment_method,
           vehicle: v.vehicle,
+          period_from: v.period_from,
+          period_to: v.period_to,
         }));
         if (result.items.length > 0) setItems(result.items.map((it) => blankItem(it.description, it.amount.toFixed(2))));
         const converted = result.guilders_total ? ` Converted NAf ${result.guilders_total.toFixed(2)} to $${result.total.toFixed(2)} (1.8 guilders per dollar).` : "";
@@ -327,6 +331,21 @@ export function ExpenseForm({
                 <option key={v}>{v}</option>
               ))}
             </select>
+          </div>
+        )}
+        {values.category === UTILITIES_CATEGORY && (
+          <div className="col-span-2">
+            <p className="label label-when">Billing period on the invoice</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-slate-500" htmlFor="period_from">From</label>
+                <input className="input" type="date" id="period_from" name="period_from" value={values.period_from} onChange={set("period_from")} />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500" htmlFor="period_to">To</label>
+                <input className="input" type="date" id="period_to" name="period_to" value={values.period_to} min={values.period_from || undefined} onChange={set("period_to")} />
+              </div>
+            </div>
           </div>
         )}
         <div className="col-span-2">

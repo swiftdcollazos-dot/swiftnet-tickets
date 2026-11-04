@@ -215,6 +215,10 @@ alter table public.expenses add column if not exists charged boolean not null de
 -- Which company vehicle a "Fuel and vehicle" expense was for.
 alter table public.expenses add column if not exists vehicle text not null default '';
 
+-- The billing period printed on a "Utilities" bill.
+alter table public.expenses add column if not exists period_from date;
+alter table public.expenses add column if not exists period_to date;
+
 -- Each item on an expense's invoice, so items can be charged to different customers.
 create table if not exists public.expense_items (
   id             uuid primary key default gen_random_uuid(),

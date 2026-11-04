@@ -48,7 +48,7 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
   const month = typeof params.month === "string" && /^\d{4}-\d{2}$/.test(params.month) ? params.month : today.slice(0, 7);
   let query = supabase
     .from("expenses")
-    .select("id, spent_on, vendor, category, description, amount_cents, tax_cents, payment_method, vehicle, created_by, paid_on, expense_items(amount_cents, markup_pct, charged, bill_client_id, ticket_id, clients(name), tickets(number))")
+    .select("id, spent_on, vendor, category, description, amount_cents, tax_cents, payment_method, vehicle, period_from, period_to, created_by, paid_on, expense_items(amount_cents, markup_pct, charged, bill_client_id, ticket_id, clients(name), tickets(number))")
     .order("spent_on", { ascending: false })
     .order("created_at", { ascending: false });
   if (!all) query = query.gte("spent_on", `${month}-01`).lt("spent_on", `${shiftMonth(month, 1)}-01`);
@@ -187,6 +187,7 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
                             {reporter(e.created_by) && <span className="font-semibold text-brand">{reporter(e.created_by)} · </span>}
                             {formatDate(e.spent_on)} · {e.category}
                             {e.vehicle ? ` (${e.vehicle})` : ""}
+                            {e.period_from || e.period_to ? ` (${formatDate(e.period_from)} to ${formatDate(e.period_to)})` : ""}
                             {e.description ? ` · ${e.description}` : ""}
                           </span>
                           {chargesByClient(e.expense_items).map((c) => (

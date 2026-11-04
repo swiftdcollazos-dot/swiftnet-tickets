@@ -34,19 +34,19 @@ export function PartRow({
             className="grid grid-cols-4 gap-2 rounded-lg bg-slate-50 p-2"
           >
             <div>
-              <label className="label" htmlFor={`qty-${part.id}`}>Qty</label>
+              <label className="label label-device" htmlFor={`qty-${part.id}`}>Qty</label>
               <input className="input" inputMode="decimal" id={`qty-${part.id}`} name="qty" defaultValue={String(part.qty)} />
             </div>
             <div className="col-span-3">
-              <label className="label" htmlFor={`description-${part.id}`}>Description</label>
+              <label className="label label-device" htmlFor={`description-${part.id}`}>Description</label>
               <input className="input" id={`description-${part.id}`} name="description" defaultValue={part.description} required />
             </div>
             <div className="col-span-2">
-              <label className="label" htmlFor={`part_number-${part.id}`}>Part #</label>
+              <label className="label label-device" htmlFor={`part_number-${part.id}`}>Part #</label>
               <input className="input" id={`part_number-${part.id}`} name="part_number" defaultValue={part.part_number} />
             </div>
             <div className="col-span-2">
-              <label className="label" htmlFor={`price-${part.id}`}>Price each ($)</label>
+              <label className="label label-money" htmlFor={`price-${part.id}`}>Price each ($)</label>
               <input className="input" inputMode="decimal" id={`price-${part.id}`} name="price" defaultValue={(part.unit_price_cents / 100).toFixed(2)} required />
             </div>
             <button className="btn col-span-2">Save</button>

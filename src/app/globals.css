@@ -30,8 +30,10 @@ body {
     content: " *";
     @apply font-bold text-red-600;
   }
-  /* Job details labels, colored by group so the eye can tell them apart. */
-  .label-when, .label-who, .label-device, .label-issue, .label-labor, .label-schedule {
+  /* Form labels, colored by group so the eye can tell them apart (used on every form):
+     when = dates and repeats, who = people and companies, device = what it is about,
+     issue = notes and passwords, labor = work done, money = amounts and payment. */
+  .label-when, .label-who, .label-device, .label-issue, .label-labor, .label-schedule, .label-money {
     @apply w-fit bg-clip-text text-transparent;
   }
   .label-when { @apply bg-gradient-to-r from-blue-700 to-indigo-500; }
@@ -40,6 +42,7 @@ body {
   .label-issue { @apply bg-gradient-to-r from-rose-600 to-red-500; }
   .label-labor { @apply bg-gradient-to-r from-green-700 to-lime-600; }
   .label-schedule { @apply bg-gradient-to-r from-violet-700 to-fuchsia-600 font-bold; }
+  .label-money { @apply bg-gradient-to-r from-sky-700 to-cyan-500 font-bold; }
   .input {
     @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base outline-none focus:border-brand focus:ring-2 focus:ring-brand/20;
   }

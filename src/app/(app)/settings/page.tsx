@@ -111,7 +111,7 @@ function limits(p: Permissions) {
 function Field(props: { name: string; label: string; value: string; decimal?: boolean }) {
   return (
     <div>
-      <label className="label" htmlFor={props.name}>{props.label}</label>
+      <label className={`label ${props.decimal ? "label-money" : "label-who"}`} htmlFor={props.name}>{props.label}</label>
       <input className="input" id={props.name} name={props.name} defaultValue={props.value} inputMode={props.decimal ? "decimal" : undefined} />
     </div>
   );

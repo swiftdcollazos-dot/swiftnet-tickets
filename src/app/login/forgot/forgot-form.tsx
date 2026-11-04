@@ -19,7 +19,7 @@ export function ForgotForm() {
     <form action={action} className="card space-y-4">
       <p className="text-sm text-slate-600">Enter the email you sign in with and we&apos;ll email you a link to choose a new password.</p>
       <div>
-        <label className="label" htmlFor="email">Email</label>
+        <label className="label label-who" htmlFor="email">Email</label>
         <input className="input" id="email" name="email" type="email" autoComplete="email" required />
       </div>
       {state && "error" in state && <p className="text-sm text-red-600">{state.error}</p>}

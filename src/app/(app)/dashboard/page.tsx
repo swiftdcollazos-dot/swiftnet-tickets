@@ -198,19 +198,19 @@ function NewReminder({ today, me, people }: { today: string; me: string; people:
       <summary className="cursor-pointer list-none font-semibold text-brand [&::-webkit-details-marker]:hidden">+ Reminder</summary>
       <form action={createReminder} className="mt-3 grid grid-cols-2 gap-3">
         <div className="col-span-2">
-          <label className="label" htmlFor="title">Remind me to</label>
+          <label className="label label-issue" htmlFor="title">Remind me to</label>
           <input className="input" id="title" name="title" placeholder="Call Marina back about the printer" required />
         </div>
         <div>
-          <label className="label" htmlFor="due_date">Day</label>
+          <label className="label label-schedule" htmlFor="due_date">Day</label>
           <input className="input" type="date" id="due_date" name="due_date" defaultValue={today} required />
         </div>
         <div>
-          <label className="label" htmlFor="due_time">Time <span className="font-normal normal-case text-slate-400">(optional)</span></label>
+          <label className="label label-schedule" htmlFor="due_time">Time <span className="font-normal normal-case text-slate-400">(optional)</span></label>
           <input className="input" type="time" id="due_time" name="due_time" />
         </div>
         <div>
-          <label className="label" htmlFor="assigned_to">For</label>
+          <label className="label label-schedule" htmlFor="assigned_to">For</label>
           <select className="input" id="assigned_to" name="assigned_to" defaultValue={me}>
             {people.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
@@ -219,7 +219,7 @@ function NewReminder({ today, me, people }: { today: string; me: string; people:
           </select>
         </div>
         <div>
-          <label className="label" htmlFor="reminder_repeats">Repeats</label>
+          <label className="label label-when" htmlFor="reminder_repeats">Repeats</label>
           <select className="input" id="reminder_repeats" name="repeats" defaultValue="">
             <option value="">No</option>
             {Object.entries(REPEATS).map(([value, label]) => (

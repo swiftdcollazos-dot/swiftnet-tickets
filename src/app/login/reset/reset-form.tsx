@@ -63,11 +63,11 @@ export function ResetForm() {
       }}
     >
       <div>
-        <label className="label" htmlFor="password">New password</label>
+        <label className="label label-issue" htmlFor="password">New password</label>
         <input className="input" id="password" name="password" type="password" autoComplete="new-password" minLength={8} required />
       </div>
       <div>
-        <label className="label" htmlFor="confirm">Type it again</label>
+        <label className="label label-issue" htmlFor="confirm">Type it again</label>
         <input className="input" id="confirm" name="confirm" type="password" autoComplete="new-password" minLength={8} required />
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}

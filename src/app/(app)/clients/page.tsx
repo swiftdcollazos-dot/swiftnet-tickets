@@ -103,7 +103,7 @@ function Field(props: { idPrefix: string; name: string; label: string; value: st
   const id = `${props.idPrefix}-${props.name}`;
   return (
     <div>
-      <label className="label" htmlFor={id}>{props.label}</label>
+      <label className="label label-who" htmlFor={id}>{props.label}</label>
       <input className="input" id={id} name={props.name} type={props.type ?? "text"} defaultValue={props.value} required={props.required} />
     </div>
   );

@@ -74,7 +74,7 @@ export function SignaturePad({ ticketId, defaultName }: { ticketId: string; defa
         onPointerLeave={() => (drawing.current = false)}
       />
       <div>
-        <label className="label" htmlFor="signed_name">Name of person signing</label>
+        <label className="label label-who" htmlFor="signed_name">Name of person signing</label>
         <input className="input" id="signed_name" value={name} onChange={(e) => setName(e.target.value)} />
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}

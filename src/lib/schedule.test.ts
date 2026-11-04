@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { planDay, type ScheduleJob } from "./schedule";
+import { nextReminderDate, planDay, planReminders, type Reminder, type ScheduleJob } from "./schedule";
 
 const job = (id: string, over: Partial<ScheduleJob> = {}): ScheduleJob => ({
   id, technician_id: "me", status: "open", repeats: "", scheduled_for: null, scheduled_time: null, completed_at: null, time_entries: [], ...over,
 });
-const ids = (list: ScheduleJob[]) => list.map((j) => j.id);
+const ids = (list: { id: string }[]) => list.map((j) => j.id);
 const TODAY = "2026-11-04";
 
 describe("Today screen", () => {
@@ -57,5 +57,27 @@ describe("Today screen", () => {
     expect(ids(day.today)).toEqual(["booked"]);
     expect(ids(day.unscheduled)).toEqual([]);
     expect(ids(day.upcoming)).toEqual([]);
+  });
+});
+
+describe("Reminders", () => {
+  const r = (id: string, over: Partial<Reminder> = {}): Reminder => ({ id, title: id, due_date: TODAY, due_time: null, assigned_to: null, repeats: "", done_at: null, done_by: null, ...over });
+
+  it("sorts reminders by day, and shows the person's own plus everyone's", () => {
+    const day = planReminders(
+      [r("late", { due_date: "2026-11-01" }), r("mine", { assigned_to: "me", due_time: "09:00:00" }), r("all"), r("daniels", { assigned_to: "daniel" }), r("ticked", { done_at: "2026-11-04T13:00:00Z" }), r("next", { due_date: "2026-11-06" })],
+      TODAY, "me",
+    );
+    expect(ids(day.overdue)).toEqual(["late"]);
+    expect(ids(day.today)).toEqual(["mine", "all"]);
+    expect(ids(day.done)).toEqual(["ticked"]);
+    expect(ids(day.upcoming)).toEqual(["next"]);
+  });
+
+  it("brings repeating reminders back a week or a month later", () => {
+    expect(nextReminderDate("2026-11-04", "weekly")).toBe("2026-11-11");
+    expect(nextReminderDate("2026-01-31", "monthly")).toBe("2026-02-28");
+    expect(nextReminderDate("2026-12-15", "monthly")).toBe("2027-01-15");
+    expect(nextReminderDate("2026-11-04", "")).toBe("");
   });
 });

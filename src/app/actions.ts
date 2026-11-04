@@ -10,6 +10,7 @@ import { createClient, requireUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatMoney, parseMoney } from "@/lib/billing";
 import { formatDate, localToIso, todayLocal } from "@/lib/time";
+import { nextReminderDate } from "@/lib/schedule";
 import { isOwner, permissions, type Permissions } from "@/lib/owner";
 import { scanReceiptImage, type ScannedReceipt } from "@/lib/receipt-scan";
 import { TOT_CATEGORY, TOT_VENDOR, totFor } from "@/lib/tot";
@@ -853,4 +854,64 @@ export async function setContractPaid(clientId: string, month: string, amountCen
   revalidatePath("/", "layout");
   revalidatePath("/office/contracts");
   revalidatePath("/office");
+}
+
+// ---------- Reminders ----------
+
+export async function createReminder(form: FormData) {
+  const { supabase, user } = await requireUser();
+  const title = text(form, "title") || fail("Write what the reminder is for.");
+  const repeats = text(form, "repeats");
+  const { error } = await supabase.from("reminders").insert({
+    title,
+    due_date: text(form, "due_date") || todayLocal(),
+    due_time: text(form, "due_time") || null,
+    // "everyone" leaves it unassigned so it shows for all; otherwise the picked person, the creator by default.
+    assigned_to: text(form, "assigned_to") === "everyone" ? null : text(form, "assigned_to") || user.id,
+    ticket_id: text(form, "ticket_id") || null,
+    repeats: repeats in REPEATS ? repeats : "",
+    created_by: user.id,
+  });
+  if (error) fail(error.message);
+  revalidatePath("/dashboard");
+}
+
+/** Ticks a reminder off. A repeating one comes back on its next day. */
+export async function completeReminder(id: string) {
+  const { supabase, user } = await requireUser();
+  const { data: r, error } = await supabase
+    .from("reminders")
+    .update({ done_at: new Date().toISOString(), done_by: user.id })
+    .eq("id", id)
+    .is("done_at", null)
+    .select("title, due_date, due_time, assigned_to, client_id, ticket_id, repeats, created_by")
+    .maybeSingle();
+  if (error) fail(error.message);
+  const next = r ? nextReminderDate(r.due_date, r.repeats) : "";
+  if (r && next) {
+    const { error: nextError } = await supabase.from("reminders").insert({ ...r, due_date: next });
+    if (nextError) fail(nextError.message);
+  }
+  revalidatePath("/dashboard");
+}
+
+/** Undoes a tick from today. The next copy of a repeating reminder is removed again. */
+export async function reopenReminder(id: string) {
+  const { supabase } = await requireUser();
+  const { data: r, error } = await supabase.from("reminders").update({ done_at: null, done_by: null }).eq("id", id).select("title, due_date, repeats, assigned_to").single();
+  if (error) fail(error.message);
+  const next = nextReminderDate(r.due_date, r.repeats);
+  if (next) {
+    let query = supabase.from("reminders").delete().eq("title", r.title).eq("due_date", next).is("done_at", null);
+    query = r.assigned_to ? query.eq("assigned_to", r.assigned_to) : query.is("assigned_to", null);
+    await query;
+  }
+  revalidatePath("/dashboard");
+}
+
+export async function deleteReminder(id: string) {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.from("reminders").delete().eq("id", id);
+  if (error) fail(error.message);
+  revalidatePath("/dashboard");
 }

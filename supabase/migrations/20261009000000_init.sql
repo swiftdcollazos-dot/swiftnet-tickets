@@ -290,3 +290,23 @@ alter table public.tickets add column if not exists scheduled_time time;
 alter table public.tickets add column if not exists completed_at timestamptz;
 create index if not exists tickets_scheduled_for_idx on public.tickets (scheduled_for) where status = 'open';
 create index if not exists tickets_completed_at_idx on public.tickets (completed_at);
+
+-- Short to-dos that aren't jobs ("Call Marina back"), shown on their day. assigned_to empty = for everyone.
+create table if not exists public.reminders (
+  id          uuid primary key default gen_random_uuid(),
+  title       text not null,
+  due_date    date not null,
+  due_time    time,
+  assigned_to uuid references public.profiles (id) on delete set null,
+  client_id   uuid references public.clients (id) on delete set null,
+  ticket_id   uuid references public.tickets (id) on delete cascade,
+  repeats     text not null default '',  -- 'weekly' or 'monthly': ticking one off adds the next
+  done_at     timestamptz,
+  done_by     uuid references public.profiles (id) on delete set null,
+  created_by  uuid references public.profiles (id) on delete set null,
+  created_at  timestamptz not null default now()
+);
+create index if not exists reminders_due_date_idx on public.reminders (due_date) where done_at is null;
+alter table public.reminders enable row level security;
+drop policy if exists "staff full access" on public.reminders;
+create policy "staff full access" on public.reminders for all to authenticated using (true) with check (true);

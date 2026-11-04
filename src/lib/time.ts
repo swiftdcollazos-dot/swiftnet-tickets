@@ -47,3 +47,11 @@ export function formatClock(value: string | null): string {
 export function formatDayHeading(date: string): string {
   return new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, weekday: "long", month: "short", day: "numeric" }).format(new Date(`${date}T12:00:00${OFFSET}`));
 }
+
+/** The same day of the month, `months` later; the 31st becomes the last day of a shorter month. */
+export function addMonths(date: string, months: number): string {
+  const [y, m, d] = date.split("-").map(Number);
+  const last = new Date(Date.UTC(y, m - 1 + months + 1, 0)).getUTCDate();
+  const next = new Date(Date.UTC(y, m - 1 + months, Math.min(d, last)));
+  return next.toISOString().slice(0, 10);
+}

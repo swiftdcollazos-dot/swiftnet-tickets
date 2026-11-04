@@ -1,5 +1,5 @@
 import { REPEAT_DAYS } from "./types";
-import { addDays, todayLocal } from "./time";
+import { addDays, addMonths, todayLocal } from "./time";
 
 /** An open or just-finished job, as the Today screen needs it. */
 export type ScheduleJob = {
@@ -59,4 +59,45 @@ export function planDay<T extends ScheduleJob>(jobs: T[], today: string, who: st
   day.today.sort(order);
   day.upcoming.sort(order);
   return day;
+}
+
+/** A to-do that isn't a job ("Call Marina back"). */
+export type Reminder = {
+  id: string;
+  title: string;
+  due_date: string;
+  due_time: string | null;
+  assigned_to: string | null;
+  repeats: string;
+  done_at: string | null;
+  done_by: string | null;
+};
+
+/**
+ * Sorts reminders into the same sections as jobs: past their day and not ticked off is overdue, and ticked off today
+ * is done. `who` keeps that person's reminders and the ones for everyone; null keeps all.
+ */
+export function planReminders<T extends Reminder>(reminders: T[], today: string, who: string | null): Omit<Day<T>, "unscheduled"> {
+  const day: Omit<Day<T>, "unscheduled"> = { overdue: [], today: [], upcoming: [], done: [] };
+  const horizon = addDays(today, UPCOMING_DAYS);
+  for (const r of reminders) {
+    if (who && r.assigned_to && r.assigned_to !== who) continue;
+    if (r.done_at) {
+      if (todayLocal(new Date(r.done_at)) === today) day.done.push(r);
+    } else if (r.due_date < today) day.overdue.push(r);
+    else if (r.due_date === today) day.today.push(r);
+    else if (r.due_date <= horizon) day.upcoming.push(r);
+  }
+  const order = (a: T, b: T) => a.due_date.localeCompare(b.due_date) || (a.due_time ?? "99").localeCompare(b.due_time ?? "99");
+  day.overdue.sort(order);
+  day.today.sort(order);
+  day.upcoming.sort(order);
+  return day;
+}
+
+/** The next day a repeating reminder comes back, counted from the day it was due. "" when it doesn't repeat. */
+export function nextReminderDate(dueDate: string, repeats: string): string {
+  if (repeats === "weekly") return addDays(dueDate, 7);
+  if (repeats === "monthly") return addMonths(dueDate, 1);
+  return "";
 }

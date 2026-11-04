@@ -3,9 +3,10 @@ import { Suspense, type ReactNode } from "react";
 import { requireUser } from "@/lib/supabase/server";
 import { isOwner } from "@/lib/owner";
 import { entryMinutes, formatMinutes } from "@/lib/billing";
-import { dayStartIso, formatClock, formatDate, formatDayHeading, todayLocal } from "@/lib/time";
-import { planDay, UPCOMING_DAYS, type ScheduleJob } from "@/lib/schedule";
-import { recordLabel } from "@/lib/types";
+import { addDays, dayStartIso, formatClock, formatDate, formatDayHeading, todayLocal } from "@/lib/time";
+import { planDay, planReminders, UPCOMING_DAYS, type Reminder, type ScheduleJob } from "@/lib/schedule";
+import { REPEATS, recordLabel } from "@/lib/types";
+import { completeReminder, createReminder, deleteReminder, reopenReminder } from "@/app/actions";
 import { VAPID_PUBLIC_KEY } from "@/lib/vapid";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { LiveTimer } from "@/components/live-timer";
@@ -45,18 +46,30 @@ async function Today({ searchParams }: { searchParams: PageProps<"/dashboard">["
   const owner = isOwner(user.email);
   const everyone = owner && (await searchParams).who === "all";
 
-  const [open, done, { data: profiles }] = await Promise.all([
+  const [open, done, reminders, { data: profiles }] = await Promise.all([
     supabase.from("tickets").select(FIELDS).eq("status", "open"),
     supabase.from("tickets").select(FIELDS).neq("status", "open").gte("completed_at", dayStartIso(today)),
-    supabase.from("profiles").select("id, full_name"),
+    // Open reminders up to a week ahead, and the ones ticked off today.
+    supabase
+      .from("reminders")
+      .select("id, title, due_date, due_time, assigned_to, repeats, done_at, done_by")
+      .or(`done_at.is.null,done_at.gte.${dayStartIso(today)}`)
+      .lte("due_date", addDays(today, UPCOMING_DAYS)),
+    supabase.from("profiles").select("id, full_name").order("full_name"),
   ]);
   if (open.error) throw new Error(open.error.message);
   if (done.error) throw new Error(done.error.message);
+  if (reminders.error) throw new Error(reminders.error.message);
   const names = new Map((profiles ?? []).map((p) => [p.id, p.full_name as string]));
   const jobs = [...(open.data ?? []), ...(done.data ?? [])] as unknown as Job[];
-  const day = planDay(jobs, today, everyone ? null : user.id);
+  const who = everyone ? null : user.id;
+  const day = planDay(jobs, today, who);
+  const notes = planReminders((reminders.data ?? []) as Reminder[], today, who);
   const rows = (list: Job[], frame: string, showDate = false) =>
     list.map((j) => <JobRow key={j.id} job={j} frame={frame} showDate={showDate} who={everyone ? names.get(j.technician_id ?? "") : undefined} names={names} />);
+  const reminderRows = (list: Reminder[], frame: string, showDate = false) =>
+    list.map((r) => <ReminderRow key={r.id} reminder={r} frame={frame} showDate={showDate} names={names} everyone={everyone} />);
+  const count = { overdue: day.overdue.length + notes.overdue.length, today: day.today.length + notes.today.length, done: day.done.length + notes.done.length, upcoming: day.upcoming.length + notes.upcoming.length };
 
   return (
     <div className="space-y-6">
@@ -74,22 +87,30 @@ async function Today({ searchParams }: { searchParams: PageProps<"/dashboard">["
       </div>
 
       <div className="grid grid-cols-3 gap-2">
-        <Stat label="Overdue" value={day.overdue.length} color={day.overdue.length ? "text-red-600" : "text-slate-400"} />
-        <Stat label="Today" value={day.today.length} color="text-sky-600" />
-        <Stat label="Done today" value={day.done.length} color="text-green-600" />
+        <Stat label="Overdue" value={count.overdue} color={count.overdue ? "text-red-600" : "text-slate-400"} />
+        <Stat label="Today" value={count.today} color="text-sky-600" />
+        <Stat label="Done today" value={count.done} color="text-green-600" />
       </div>
 
-      {day.overdue.length > 0 && (
-        <Section title="Overdue" count={day.overdue.length}>{rows(day.overdue, "border-red-500 bg-red-50/50", true)}</Section>
+      <NewReminder today={today} me={user.id} people={(profiles ?? []).map((p) => ({ id: p.id, name: p.full_name as string }))} />
+
+      {count.overdue > 0 && (
+        <Section title="Overdue" count={count.overdue}>
+          {reminderRows(notes.overdue, "border-red-500 bg-red-50/50", true)}
+          {rows(day.overdue, "border-red-500 bg-red-50/50", true)}
+        </Section>
       )}
-      <Section title="Scheduled for today" count={day.today.length} empty="Nothing scheduled for today.">
+      <Section title="Scheduled for today" count={count.today} empty="Nothing scheduled for today.">
         {rows(day.today, "border-sky-500")}
+        {reminderRows(notes.today, "border-sky-500")}
       </Section>
-      <Section title="Done today" count={day.done.length} empty="Nothing finished yet today.">
+      <Section title="Done today" count={count.done} empty="Nothing finished yet today.">
         {rows(day.done, "border-green-500 bg-green-50/50")}
+        {reminderRows(notes.done, "border-green-500 bg-green-50/50")}
       </Section>
-      <Section title={`Coming up (next ${UPCOMING_DAYS} days)`} count={day.upcoming.length} folded>
+      <Section title={`Coming up (next ${UPCOMING_DAYS} days)`} count={count.upcoming} folded>
         {rows(day.upcoming, "border-slate-300", true)}
+        {reminderRows(notes.upcoming, "border-slate-300", true)}
       </Section>
       <Section title="Open, not scheduled" count={day.unscheduled.length} folded>
         {rows(day.unscheduled, "border-amber-400")}
@@ -162,6 +183,78 @@ function JobRow({ job: j, frame, showDate, who, names }: { job: Job; frame: stri
           )}
         </div>
       </Link>
+    </li>
+  );
+}
+
+/** "+ Reminder": a short to-do with a day, optional time, who it's for, and whether it repeats. */
+function NewReminder({ today, me, people }: { today: string; me: string; people: { id: string; name: string }[] }) {
+  return (
+    <details className="card">
+      <summary className="cursor-pointer list-none font-semibold text-brand [&::-webkit-details-marker]:hidden">+ Reminder</summary>
+      <form action={createReminder} className="mt-3 grid grid-cols-2 gap-3">
+        <div className="col-span-2">
+          <label className="label" htmlFor="title">Remind me to</label>
+          <input className="input" id="title" name="title" placeholder="Call Marina back about the printer" required />
+        </div>
+        <div>
+          <label className="label" htmlFor="due_date">Day</label>
+          <input className="input" type="date" id="due_date" name="due_date" defaultValue={today} required />
+        </div>
+        <div>
+          <label className="label" htmlFor="due_time">Time <span className="font-normal normal-case text-slate-400">(optional)</span></label>
+          <input className="input" type="time" id="due_time" name="due_time" />
+        </div>
+        <div>
+          <label className="label" htmlFor="assigned_to">For</label>
+          <select className="input" id="assigned_to" name="assigned_to" defaultValue={me}>
+            {people.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+            <option value="everyone">Everyone</option>
+          </select>
+        </div>
+        <div>
+          <label className="label" htmlFor="reminder_repeats">Repeats</label>
+          <select className="input" id="reminder_repeats" name="repeats" defaultValue="">
+            <option value="">No</option>
+            {Object.entries(REPEATS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </div>
+        <button className="btn col-span-2">Add reminder</button>
+      </form>
+    </details>
+  );
+}
+
+/** A reminder with a tick box. Ticked ones (done today) can be unticked. */
+function ReminderRow({ reminder: r, frame, showDate, names, everyone }: { reminder: Reminder; frame: string; showDate: boolean; names: Map<string, string>; everyone: boolean }) {
+  const when = [showDate ? formatDate(r.due_date) : "", formatClock(r.due_time)].filter(Boolean).join(" · ");
+  const done = Boolean(r.done_at);
+  const forWhom = r.assigned_to ? (everyone ? names.get(r.assigned_to) : "") : "Everyone";
+  const detail = ["🔔 Reminder", r.repeats ? `🔁 ${REPEATS[r.repeats]?.toLowerCase()}` : "", forWhom, done && r.done_by ? `done by ${names.get(r.done_by) ?? ""}` : ""].filter(Boolean).join(" · ");
+  return (
+    <li className={`card flex items-center gap-3 border-2 ${frame}`}>
+      <form action={(done ? reopenReminder : completeReminder).bind(null, r.id)}>
+        <button
+          aria-label={done ? "Mark not done" : "Mark done"}
+          className={`flex h-8 w-8 items-center justify-center rounded-md border-2 text-lg font-bold ${done ? "border-green-600 bg-green-600 text-white" : "border-slate-400 bg-white text-transparent hover:border-green-600 hover:text-green-600"}`}
+        >
+          ✓
+        </button>
+      </form>
+      {when && <div className="w-16 shrink-0 text-sm font-bold leading-tight text-slate-700">{when}</div>}
+      <div className="min-w-0 flex-1">
+        <div className={`font-semibold ${done ? "text-slate-500 line-through" : ""}`}>{r.title}</div>
+        <div className="truncate text-sm text-slate-500">{detail}</div>
+      </div>
+      {!done && (
+        <form action={deleteReminder.bind(null, r.id)}>
+          <button aria-label="Delete reminder" className="px-2 text-xl text-slate-400 hover:text-red-600">×</button>
+        </form>
+      )}
     </li>
   );
 }

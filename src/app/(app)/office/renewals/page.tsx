@@ -45,7 +45,7 @@ function Fields({ id, clients, r }: { id: string; clients: Client[]; r?: Renewal
   return (
     <div className="grid grid-cols-2 gap-2">
       <div className="col-span-2">
-        <label className="label" htmlFor={`client-${id}`}>Client</label>
+        <label className="label label-who" htmlFor={`client-${id}`}>Client</label>
         <select className="input" id={`client-${id}`} name="client_id" defaultValue={r?.client_id ?? ""}>
           <option value="">Swiftnet (our own)</option>
           {clients.map((c) => (
@@ -54,7 +54,7 @@ function Fields({ id, clients, r }: { id: string; clients: Client[]; r?: Renewal
         </select>
       </div>
       <div>
-        <label className="label" htmlFor={`kind-${id}`}>Type</label>
+        <label className="label label-device" htmlFor={`kind-${id}`}>Type</label>
         <select className="input" id={`kind-${id}`} name="kind" defaultValue={r?.kind ?? RENEWAL_KINDS[0]}>
           {RENEWAL_KINDS.map((k) => (
             <option key={k}>{k}</option>
@@ -62,15 +62,15 @@ function Fields({ id, clients, r }: { id: string; clients: Client[]; r?: Renewal
         </select>
       </div>
       <div>
-        <label className="label" htmlFor={`due-${id}`}>Due date</label>
+        <label className="label label-when" htmlFor={`due-${id}`}>Due date</label>
         <input className="input" type="date" id={`due-${id}`} name="due_on" defaultValue={r?.due_on} required />
       </div>
       <div className="col-span-2">
-        <label className="label" htmlFor={`name-${id}`}>What renews</label>
+        <label className="label label-device" htmlFor={`name-${id}`}>What renews</label>
         <input className="input" id={`name-${id}`} name="name" defaultValue={r?.name} placeholder="e.g. clientsite.com, Microsoft 365 (10 users), Dell server warranty" required />
       </div>
       <div>
-        <label className="label" htmlFor={`repeat-${id}`}>Repeats</label>
+        <label className="label label-when" htmlFor={`repeat-${id}`}>Repeats</label>
         <select className="input" id={`repeat-${id}`} name="repeat_months" defaultValue={String(r?.repeat_months ?? 12)}>
           {RENEWAL_REPEATS.map(([m, label]) => (
             <option key={m} value={m}>{label}</option>
@@ -78,11 +78,11 @@ function Fields({ id, clients, r }: { id: string; clients: Client[]; r?: Renewal
         </select>
       </div>
       <div>
-        <label className="label" htmlFor={`cost-${id}`}>Cost ($)</label>
+        <label className="label label-money" htmlFor={`cost-${id}`}>Cost ($)</label>
         <input className="input" inputMode="decimal" id={`cost-${id}`} name="cost" defaultValue={r?.cost_cents ? (r.cost_cents / 100).toFixed(2) : ""} />
       </div>
       <div className="col-span-2">
-        <label className="label" htmlFor={`notes-${id}`}>Notes</label>
+        <label className="label label-issue" htmlFor={`notes-${id}`}>Notes</label>
         <input className="input" id={`notes-${id}`} name="notes" defaultValue={r?.notes} placeholder="Where it's registered, account, license key location…" />
       </div>
     </div>

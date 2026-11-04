@@ -36,7 +36,7 @@ export function ClientPicker({
   if (clients.length === 0) {
     return (
       <div>
-        <span className="label">Client</span>
+        <span className="label label-who">Client</span>
         <p className="text-sm text-slate-600">
           {serviceCall ? "There are no contract clients yet." : "There are no hourly clients yet."}{" "}
           <Link href="/clients" className="font-semibold text-brand">Add one on the Clients page</Link> first.
@@ -59,7 +59,7 @@ export function ClientPicker({
         onInvalid={() => setOpen(true)}
         className="pointer-events-none absolute bottom-0 left-1/2 h-px w-px opacity-0"
       />
-      <span className="label">
+      <span className="label label-who">
         Client <span className="font-bold text-red-600">*</span>
       </span>
       <button

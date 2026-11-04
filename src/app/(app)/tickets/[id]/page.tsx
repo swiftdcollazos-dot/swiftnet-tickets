@@ -231,7 +231,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
             <summary className="cursor-pointer text-sm font-semibold text-brand">Add time manually</summary>
             <form action={addTimeEntry.bind(null, ticket.id)} className="mt-3 grid grid-cols-3 gap-2">
               <div className="col-span-3">
-                <label className="label" htmlFor="entry_tech">Technician</label>
+                <label className="label label-who" htmlFor="entry_tech">Technician</label>
                 <select className="input" id="entry_tech" name="technician_id" defaultValue={user.id}>
                   {technicians.map((t) => (
                     <option key={t.id} value={t.id}>{t.name}</option>
@@ -239,15 +239,15 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
                 </select>
               </div>
               <div>
-                <label className="label" htmlFor="date">Date</label>
+                <label className="label label-when" htmlFor="date">Date</label>
                 <input className="input" type="date" id="date" name="date" defaultValue={todayLocal()} required />
               </div>
               <div>
-                <label className="label" htmlFor="time_in">Time in</label>
+                <label className="label label-labor" htmlFor="time_in">Time in</label>
                 <input className="input" type="time" id="time_in" name="time_in" required />
               </div>
               <div>
-                <label className="label" htmlFor="time_out">Time out</label>
+                <label className="label label-labor" htmlFor="time_out">Time out</label>
                 <input className="input" type="time" id="time_out" name="time_out" required />
               </div>
               <RequiredNote className="col-span-3" />
@@ -264,7 +264,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
       >
         {jobItems.length > 0 && (
           <div className="mb-4">
-            <p className="label">Bought for this job (from expenses)</p>
+            <p className="label label-money">Bought for this job (from expenses)</p>
             <ul className="divide-y divide-slate-100 text-sm">
               {jobItems.map((it) => (
                 <li key={it.id} className="flex items-center justify-between gap-3 py-1.5">
@@ -303,19 +303,19 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
             <summary className="cursor-pointer text-sm font-semibold text-brand">Add a part</summary>
             <form action={addPart.bind(null, ticket.id)} className="mt-3 grid grid-cols-4 gap-2">
               <div>
-                <label className="label" htmlFor="qty">Qty</label>
+                <label className="label label-device" htmlFor="qty">Qty</label>
                 <input className="input" inputMode="decimal" id="qty" name="qty" defaultValue="1" />
               </div>
               <div className="col-span-3">
-                <label className="label" htmlFor="description">Description</label>
+                <label className="label label-device" htmlFor="description">Description</label>
                 <input className="input" id="description" name="description" required />
               </div>
               <div className="col-span-2">
-                <label className="label" htmlFor="part_number">Part #</label>
+                <label className="label label-device" htmlFor="part_number">Part #</label>
                 <input className="input" id="part_number" name="part_number" />
               </div>
               <div className="col-span-2">
-                <label className="label" htmlFor="price">Price each ($)</label>
+                <label className="label label-money" htmlFor="price">Price each ($)</label>
                 <input className="input" inputMode="decimal" id="price" name="price" required />
               </div>
               <RequiredNote className="col-span-4" />

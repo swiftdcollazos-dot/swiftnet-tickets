@@ -218,11 +218,11 @@ async function ReportBody({ searchParams }: { searchParams: PageProps<"/reports"
         </div>
         <form className="flex flex-wrap items-end gap-2" action="/reports">
           <label className="text-sm">
-            <span className="label">From</span>
+            <span className="label label-when">From</span>
             <input className="input" type="date" name="from" defaultValue={from} />
           </label>
           <label className="text-sm">
-            <span className="label">To</span>
+            <span className="label label-when">To</span>
             <input className="input" type="date" name="to" defaultValue={to} />
           </label>
           <button className="btn">Show</button>

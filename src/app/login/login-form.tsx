@@ -9,11 +9,11 @@ export function LoginForm() {
   return (
     <form action={action} className="card space-y-4">
       <div>
-        <label className="label" htmlFor="email">Email</label>
+        <label className="label label-who" htmlFor="email">Email</label>
         <input className="input" id="email" name="email" key={state?.email} defaultValue={state?.email} type="email" autoComplete="email" required />
       </div>
       <div>
-        <label className="label" htmlFor="password">Password</label>
+        <label className="label label-issue" htmlFor="password">Password</label>
         <input className="input" id="password" name="password" type="password" autoComplete="current-password" required />
       </div>
       {state && <p className="text-sm text-red-600">{state.error}</p>}

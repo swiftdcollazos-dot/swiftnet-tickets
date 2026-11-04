@@ -279,37 +279,48 @@ export function ExpenseForm({
 
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="label" htmlFor="spent_on">Date</label>
+          <label className="label label-when" htmlFor="spent_on">Date</label>
           <input className="input" type="date" id="spent_on" name="spent_on" value={values.spent_on} onChange={set("spent_on")} required />
         </div>
         <div>
-          <label className="label" htmlFor="amount">Total ($)</label>
-          <input className="input" inputMode="decimal" id="amount" name="amount" value={values.amount} onChange={set("amount")} required />
-        </div>
-        <div className="col-span-2">
-          <label className="label" htmlFor="vendor">Purchased from</label>
-          <input className="input" id="vendor" name="vendor" value={values.vendor} onChange={set("vendor")} placeholder="Store or company" required />
-        </div>
-        <div>
-          <label className="label" htmlFor="category">Category</label>
+          <label className="label label-device" htmlFor="category">Category</label>
           <select className="input" id="category" name="category" value={values.category} onChange={set("category")}>
             {EXPENSE_CATEGORIES.map((c) => (
               <option key={c}>{c}</option>
             ))}
           </select>
         </div>
-        <div>
-          <label className="label" htmlFor="payment_method">Paid with</label>
-          <select className="input" id="payment_method" name="payment_method" value={values.payment_method} onChange={set("payment_method")} required>
-            <option value="" disabled>Pick one…</option>
-            {PAYMENT_METHODS.map((m) => (
-              <option key={m}>{m}</option>
-            ))}
-          </select>
+        {/* How much and how it was paid, set apart so it stands out. */}
+        <div className="col-span-2 grid grid-cols-2 gap-2 rounded-xl border-2 border-sky-200 bg-gradient-to-br from-sky-50 via-cyan-50 to-emerald-50 p-3">
+          <p className="col-span-2 text-sm font-bold text-sky-700">💵 Payment</p>
+          <div>
+            <label className="label label-money" htmlFor="amount">Total ($)</label>
+            <input className="input" inputMode="decimal" id="amount" name="amount" value={values.amount} onChange={set("amount")} required />
+          </div>
+          <div>
+            <label className="label label-money" htmlFor="payment_method">Paid with</label>
+            <select className="input" id="payment_method" name="payment_method" value={values.payment_method} onChange={set("payment_method")} required>
+              <option value="" disabled>Pick one…</option>
+              {PAYMENT_METHODS.map((m) => (
+                <option key={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+          {values.category === PAYROLL_CATEGORY && (
+            <div className="col-span-2 rounded-lg bg-white/70 p-3">
+              <label className="label label-money" htmlFor="guilders">Paid in guilders? Amount in NAf</label>
+              <input className="input" inputMode="decimal" id="guilders" placeholder="NAf" value={guilders} onChange={(e) => onGuilders(e.target.value)} />
+              <p className="mt-1 text-xs text-slate-500">The dollar total fills in at {PAYROLL_GUILDERS_PER_DOLLAR} guilders per $1.</p>
+            </div>
+          )}
+        </div>
+        <div className="col-span-2">
+          <label className="label label-who" htmlFor="vendor">Purchased from</label>
+          <input className="input" id="vendor" name="vendor" value={values.vendor} onChange={set("vendor")} placeholder="Store or company" required />
         </div>
         {values.category === VEHICLE_CATEGORY && (
           <div className="col-span-2">
-            <label className="label" htmlFor="vehicle">Vehicle</label>
+            <label className="label label-device" htmlFor="vehicle">Vehicle</label>
             <select className="input" id="vehicle" name="vehicle" value={values.vehicle} onChange={set("vehicle")}>
               <option value="">—</option>
               {VEHICLES.map((v) => (
@@ -318,15 +329,8 @@ export function ExpenseForm({
             </select>
           </div>
         )}
-        {values.category === PAYROLL_CATEGORY && (
-          <div className="col-span-2 rounded-lg bg-slate-50 p-3">
-            <label className="label" htmlFor="guilders">Paid in guilders? Amount in NAf</label>
-            <input className="input" inputMode="decimal" id="guilders" placeholder="NAf" value={guilders} onChange={(e) => onGuilders(e.target.value)} />
-            <p className="mt-1 text-xs text-slate-500">The dollar total fills in at {PAYROLL_GUILDERS_PER_DOLLAR} guilders per $1.</p>
-          </div>
-        )}
         <div className="col-span-2">
-          <label className="label" htmlFor="description">What was bought</label>
+          <label className="label label-device" htmlFor="description">What was bought</label>
           <textarea className="input" id="description" name="description" rows={2} value={values.description} onChange={set("description")} />
         </div>
       </div>
@@ -334,7 +338,7 @@ export function ExpenseForm({
       {/* Each item on the invoice can be charged to its own customer, with its own markup. */}
       <div className="space-y-2 rounded-lg bg-slate-50 p-3">
         <div className="flex items-center justify-between">
-          <p className="label mb-0">Items · charge to customers</p>
+          <p className="label label-labor mb-0">Items · charge to customers</p>
           {items.length > 0 && (
             <p className={`text-xs ${Math.abs(itemsTotal - cost) < 0.005 ? "text-slate-500" : "font-semibold text-amber-700"}`}>
               ${itemsTotal.toFixed(2)} of ${cost.toFixed(2)}

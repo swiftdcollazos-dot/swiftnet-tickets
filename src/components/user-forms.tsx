@@ -19,15 +19,15 @@ function Fields({ prefix, user, newUser }: { prefix: string; user?: User; newUse
     <>
       <RequiredNote className="sm:col-span-2" />
       <div>
-        <label className="label" htmlFor={`${prefix}-name`}>Name</label>
+        <label className="label label-who" htmlFor={`${prefix}-name`}>Name</label>
         <input className="input" id={`${prefix}-name`} name="full_name" defaultValue={user?.full_name ?? ""} required />
       </div>
       <div>
-        <label className="label" htmlFor={`${prefix}-email`}>Email (used to sign in)</label>
+        <label className="label label-who" htmlFor={`${prefix}-email`}>Email (used to sign in)</label>
         <input className="input" id={`${prefix}-email`} name="email" type="email" autoComplete="off" defaultValue={user?.email ?? ""} required />
       </div>
       <div className="sm:col-span-2">
-        <label className="label" htmlFor={`${prefix}-password`}>{newUser ? "Password" : "New password"}</label>
+        <label className="label label-issue" htmlFor={`${prefix}-password`}>{newUser ? "Password" : "New password"}</label>
         <input
           className="input"
           id={`${prefix}-password`}
@@ -40,7 +40,7 @@ function Fields({ prefix, user, newUser }: { prefix: string; user?: User; newUse
         />
       </div>
       <fieldset className="space-y-2 sm:col-span-2">
-        <legend className="label">This person can</legend>
+        <legend className="label label-labor">This person can</legend>
         <Check name="can_create_jobs" checked={user?.permissions.createJobs ?? true} label="Create service tickets and service calls" />
         <Check name="can_use_timers" checked={user?.permissions.timers ?? true} label="Run timers and add or remove time" />
         <Check name="can_manage_settings" checked={user?.permissions.settings ?? true} label="Open Settings and manage users" />

@@ -22,7 +22,7 @@ export function ClientTypeFields(props: {
         <input type="hidden" name={props.typeName} value={type} />
       ) : (
         <div>
-          <label className="label" htmlFor={typeId}>
+          <label className="label label-device" htmlFor={typeId}>
             Client type
           </label>
           <select
@@ -42,7 +42,7 @@ export function ClientTypeFields(props: {
       )}
       {type === "contract" && (
         <div>
-          <label className="label" htmlFor={feeId}>
+          <label className="label label-money" htmlFor={feeId}>
             Monthly fee ($)
           </label>
           <input

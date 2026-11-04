@@ -124,7 +124,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
           </div>
           {/* On phones these links move to the bottom menu. */}
           <div className="hidden items-center sm:order-2 sm:flex sm:w-auto sm:justify-end sm:gap-4">
-            <Link href="/dashboard">Dashboard</Link>
+            <Link href="/dashboard">Today</Link>
             <Link href="/" className="inline-flex items-center">
               Work Tickets
               <Suspense fallback={null}>

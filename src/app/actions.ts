@@ -115,6 +115,9 @@ function ticketFields(form: FormData) {
     repeats: form.has("repeats") ? (text(form, "repeats") in REPEATS ? text(form, "repeats") : "") : undefined,
     // Only the job page's details form has "Assigned to".
     technician_id: form.get("technician_id") ? text(form, "technician_id") : undefined,
+    // The day (and optional time) the job is planned, for the Today screen. Empty = not scheduled.
+    scheduled_for: form.has("scheduled_for") ? text(form, "scheduled_for") || null : undefined,
+    scheduled_time: form.has("scheduled_time") ? text(form, "scheduled_time") || null : undefined,
   };
 }
 
@@ -212,8 +215,10 @@ export async function setStatus(ticketId: string, status: TicketStatus) {
   const { error } =
     status === "paid"
       ? await supabase.from("tickets").update({ status, paid_on: todayLocal() }).eq("id", ticketId).neq("status", "paid")
-      : await supabase.from("tickets").update({ status, paid_on: null }).eq("id", ticketId);
+      : await supabase.from("tickets").update({ status, paid_on: null, ...(status === "open" ? { completed_at: null } : {}) }).eq("id", ticketId);
   if (error) fail(error.message);
+  // Remember when it was finished, for "Done today"; a job already finished keeps its time.
+  if (status !== "open") await supabase.from("tickets").update({ completed_at: new Date().toISOString() }).eq("id", ticketId).is("completed_at", null);
   revalidatePath(`/tickets/${ticketId}`);
   revalidatePath("/", "layout"); // pending count in the header
 }
@@ -234,7 +239,7 @@ export async function closeTicket(ticketId: string) {
     .eq("ticket_id", ticketId)
     .is("ended_at", null);
   if (timerError) fail(timerError.message);
-  const { error } = await supabase.from("tickets").update({ status: "completed" }).eq("id", ticketId);
+  const { error } = await supabase.from("tickets").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", ticketId);
   if (error) fail(error.message);
   revalidatePath(`/tickets/${ticketId}`);
   revalidatePath("/", "layout"); // running-timers bar

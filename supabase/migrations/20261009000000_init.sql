@@ -283,3 +283,10 @@ alter table public.expenses add column if not exists card_slip text;
 -- The day a job was marked paid, for the TOT on payments received. Older paid jobs use their job date.
 alter table public.tickets add column if not exists paid_on date;
 update public.tickets set paid_on = ticket_date where status = 'paid' and paid_on is null;
+-- The day (and optional time) a job is planned for. Empty = not scheduled.
+alter table public.tickets add column if not exists scheduled_for date;
+alter table public.tickets add column if not exists scheduled_time time;
+-- When a job was marked completed, for "Done today".
+alter table public.tickets add column if not exists completed_at timestamptz;
+create index if not exists tickets_scheduled_for_idx on public.tickets (scheduled_for) where status = 'open';
+create index if not exists tickets_completed_at_idx on public.tickets (completed_at);

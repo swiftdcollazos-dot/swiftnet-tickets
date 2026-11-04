@@ -70,6 +70,8 @@ export function TicketFields({ ticket, today, withContactedBy = true, project = 
         </div>
       )}
 
+      {technicians && <ScheduleFields ticket={ticket} />}
+
       {!project && (
         <>
           <div>
@@ -125,5 +127,21 @@ function ProjectTypes({ kind }: { kind?: string }) {
         ))}
       </div>
     </fieldset>
+  );
+}
+
+/** When the job is planned. It shows on that day's Today screen; with a time, the technician gets a reminder before. */
+function ScheduleFields({ ticket }: { ticket?: Partial<Ticket> }) {
+  return (
+    <div className="grid grid-cols-[1fr_8rem] gap-3">
+      <div>
+        <label className="label" htmlFor="scheduled_for">Scheduled for</label>
+        <input className="input" type="date" id="scheduled_for" name="scheduled_for" defaultValue={ticket?.scheduled_for ?? ""} />
+      </div>
+      <div>
+        <label className="label" htmlFor="scheduled_time">Time <span className="font-normal normal-case text-slate-400">(optional)</span></label>
+        <input className="input" type="time" id="scheduled_time" name="scheduled_time" defaultValue={ticket?.scheduled_time?.slice(0, 5) ?? ""} />
+      </div>
+    </div>
   );
 }

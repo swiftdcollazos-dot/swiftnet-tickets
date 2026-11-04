@@ -151,6 +151,12 @@ export type Ticket = {
   service_location: string;
   /** "weekly" or "monthly" for a standing job that stays open; "" for a normal one. */
   repeats: string;
+  /** The day the job is planned for ("2026-11-04"), shown on the Today screen. Null = not scheduled. */
+  scheduled_for: string | null;
+  /** Optional time of day ("14:30:00"); the assigned technician is reminded 45 minutes before. */
+  scheduled_time: string | null;
+  /** When the job was marked completed. */
+  completed_at: string | null;
 };
 
 /** Where the work was done, chosen next to the signature. "" means not chosen yet. */

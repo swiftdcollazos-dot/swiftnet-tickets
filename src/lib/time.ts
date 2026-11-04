@@ -23,3 +23,27 @@ export function formatTime(value: string | Date | null): string {
   if (!value) return "";
   return new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, hour: "numeric", minute: "2-digit" }).format(new Date(value));
 }
+
+/** The day `days` after "2026-10-09" (or before, when negative), as "2026-10-12". */
+export function addDays(date: string, days: number): string {
+  const d = new Date(`${date}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Midnight at the start of a Saint Martin day, as a UTC ISO timestamp. */
+export function dayStartIso(date: string): string {
+  return localToIso(date, "00:00");
+}
+
+/** A time of day stored as "14:30:00" (or "14:30"), shown as "2:30 PM". */
+export function formatClock(value: string | null): string {
+  if (!value) return "";
+  const [h, m] = value.split(":").map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}
+
+/** "Tuesday, Nov 4" for a plain date. */
+export function formatDayHeading(date: string): string {
+  return new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, weekday: "long", month: "short", day: "numeric" }).format(new Date(`${date}T12:00:00${OFFSET}`));
+}

@@ -5,7 +5,7 @@ import { permissions } from "@/lib/owner";
 import { redirect } from "next/navigation";
 import { formatMoney } from "@/lib/billing";
 import { formatDate, todayLocal } from "@/lib/time";
-import { saveExpense } from "@/app/actions";
+import { saveExpense, setExpensePaid } from "@/app/actions";
 import { ExpenseForm } from "@/components/expense-form";
 import { jobOptions } from "@/lib/job-options";
 import { Loading } from "@/components/loading";
@@ -48,7 +48,7 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
   const month = typeof params.month === "string" && /^\d{4}-\d{2}$/.test(params.month) ? params.month : today.slice(0, 7);
   let query = supabase
     .from("expenses")
-    .select("id, spent_on, vendor, category, description, amount_cents, tax_cents, payment_method, vehicle, created_by, expense_items(amount_cents, markup_pct, charged, bill_client_id, ticket_id, clients(name), tickets(number))")
+    .select("id, spent_on, vendor, category, description, amount_cents, tax_cents, payment_method, vehicle, created_by, paid_on, expense_items(amount_cents, markup_pct, charged, bill_client_id, ticket_id, clients(name), tickets(number))")
     .order("spent_on", { ascending: false })
     .order("created_at", { ascending: false });
   if (!all) query = query.gte("spent_on", `${month}-01`).lt("spent_on", `${shiftMonth(month, 1)}-01`);
@@ -166,9 +166,11 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
               </div>
             )}
             <ul className="space-y-2">
-              {rows.map((e) => (
+              {rows.map((e) => {
+                const payable = PAID_DIRECT_METHODS.includes(e.payment_method);
+                return (
                 <li key={e.id}>
-                  <Link href={`/expenses/${e.id}`} className="card flex items-center justify-between gap-3 hover:bg-slate-50">
+                  <Link href={`/expenses/${e.id}`} className={`card flex items-center justify-between gap-3 hover:bg-slate-50 ${payable ? "rounded-b-none" : ""}`}>
                     <span className="min-w-0">
                       <span className="block truncate font-semibold">{e.vendor}</span>
                       <span className="block truncate text-sm text-slate-500">
@@ -186,21 +188,26 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
                     <span className="flex shrink-0 flex-col items-end gap-1">
                       <span className="font-bold">{formatMoney(e.amount_cents)}</span>
                       {e.payment_method && (
-                        <span className="flex items-center gap-1">
-                          {PAID_DIRECT_METHODS.includes(e.payment_method) && (
-                            <span title="Paid straight to the seller from the account or debit card" className="rounded-full bg-green-600 px-2 py-0.5 text-xs font-bold text-white">
-                              ✓ Paid
-                            </span>
-                          )}
-                          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ${PAYMENT_COLORS[e.payment_method] ?? "bg-slate-100 text-slate-700 ring-slate-300"}`}>
-                            {e.payment_method}
-                          </span>
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ${PAYMENT_COLORS[e.payment_method] ?? "bg-slate-100 text-slate-700 ring-slate-300"}`}>
+                          {e.payment_method}
                         </span>
                       )}
                     </span>
                   </Link>
+                  {payable && (
+                    // Tick to record that this was paid; tap again to undo.
+                    <form action={setExpensePaid.bind(null, e.id, !e.paid_on)}>
+                      <button
+                        className={`flex w-full items-center gap-2 rounded-b-xl border border-t-0 px-4 py-2 text-left text-sm font-semibold ${e.paid_on ? "border-green-300 bg-green-50 text-green-800" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+                      >
+                        <span className={`flex h-5 w-5 items-center justify-center rounded border-2 text-xs ${e.paid_on ? "border-green-600 bg-green-600 text-white" : "border-slate-400 bg-white"}`}>{e.paid_on ? "✓" : ""}</span>
+                        {e.paid_on ? `Paid ${formatDate(e.paid_on)}` : "Mark as paid"}
+                      </button>
+                    </form>
+                  )}
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </section>
         ))

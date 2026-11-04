@@ -238,7 +238,7 @@ export const PAYMENT_METHODS = [
   "Bank transfer",
 ] as const;
 
-/** Money that already left our account or debit card straight to the seller, so nothing is owed on it later. */
+/** Ways of paying whose expenses get a "Mark as paid" tick on the Expenses list. */
 export const PAID_DIRECT_METHODS = ["Swiftnet IT account", "Debit Card David US", "Debit Card David SXM", "Debit Card Daniel SXM"];
 
 /** A color per way of paying, so the expense list shows at a glance what was used. Others get gray. */
@@ -277,6 +277,8 @@ export type Expense = {
   bill_client_id: string | null;
   markup_pct: number;
   charged: boolean;
+  /** The day it was ticked as paid on the Expenses list. Null = not yet. */
+  paid_on: string | null;
   created_at: string;
 };
 

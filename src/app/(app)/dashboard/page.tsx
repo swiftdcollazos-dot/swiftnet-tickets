@@ -42,9 +42,9 @@ const FIELDS =
 async function Today({ searchParams }: { searchParams: PageProps<"/dashboard">["searchParams"] }) {
   const { supabase, user } = await requireUser();
   const today = todayLocal();
-  // Each person sees their own day; only the owner can switch to everyone's.
+  // Each person sees their own day; only the owner can switch to another technician's.
   const owner = isOwner(user.email);
-  const everyone = owner && (await searchParams).who === "all";
+  const asked = owner ? (await searchParams).who : undefined;
 
   const [open, done, reminders, { data: profiles }] = await Promise.all([
     supabase.from("tickets").select(FIELDS).eq("status", "open"),
@@ -62,26 +62,31 @@ async function Today({ searchParams }: { searchParams: PageProps<"/dashboard">["
   if (reminders.error) throw new Error(reminders.error.message);
   const names = new Map((profiles ?? []).map((p) => [p.id, p.full_name as string]));
   const jobs = [...(open.data ?? []), ...(done.data ?? [])] as unknown as Job[];
-  const who = everyone ? null : user.id;
+  const people = (profiles ?? []).map((p) => ({ id: p.id as string, name: p.full_name as string }));
+  const who = typeof asked === "string" && names.has(asked) ? asked : user.id;
   const day = planDay(jobs, today, who);
   const notes = planReminders((reminders.data ?? []) as Reminder[], today, who);
   const rows = (list: Job[], frame: string, showDate = false) =>
-    list.map((j) => <JobRow key={j.id} job={j} frame={frame} showDate={showDate} who={everyone ? names.get(j.technician_id ?? "") : undefined} names={names} />);
+    list.map((j) => <JobRow key={j.id} job={j} frame={frame} showDate={showDate} names={names} />);
   const reminderRows = (list: Reminder[], frame: string, showDate = false) =>
-    list.map((r) => <ReminderRow key={r.id} reminder={r} frame={frame} showDate={showDate} names={names} everyone={everyone} />);
+    list.map((r) => <ReminderRow key={r.id} reminder={r} frame={frame} showDate={showDate} names={names} />);
   const count = { overdue: day.overdue.length + notes.overdue.length, today: day.today.length + notes.today.length, done: day.done.length + notes.done.length, upcoming: day.upcoming.length + notes.upcoming.length };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h1 className="h1">Today</h1>
-          <p className="text-sm text-slate-500">{formatDayHeading(today)}</p>
+          <h1 className="h1">{names.get(who) ?? "Today"}</h1>
+          <p className="text-sm text-slate-500">Today · {formatDayHeading(today)}</p>
         </div>
-        {owner && (
+        {owner && people.length > 1 && (
+          // The owner picks whose day to see, by name.
           <div className="flex overflow-hidden rounded-lg border border-slate-300 text-sm font-semibold">
-            <Link href="/dashboard" className={`px-3 py-1.5 ${everyone ? "bg-white text-slate-600" : "bg-brand text-white"}`}>Mine</Link>
-            <Link href="/dashboard?who=all" className={`px-3 py-1.5 ${everyone ? "bg-brand text-white" : "bg-white text-slate-600"}`}>Everyone</Link>
+            {people.map((p) => (
+              <Link key={p.id} href={p.id === user.id ? "/dashboard" : `/dashboard?who=${p.id}`} className={`px-3 py-1.5 ${p.id === who ? "bg-brand text-white" : "bg-white text-slate-600"}`}>
+                {p.name.split(" ")[0]}
+              </Link>
+            ))}
           </div>
         )}
       </div>
@@ -92,7 +97,7 @@ async function Today({ searchParams }: { searchParams: PageProps<"/dashboard">["
         <Stat label="Done today" value={count.done} color="text-green-600" />
       </div>
 
-      <NewReminder today={today} me={user.id} people={(profiles ?? []).map((p) => ({ id: p.id, name: p.full_name as string }))} />
+      <NewReminder today={today} me={who} people={people} />
 
       {count.overdue > 0 && (
         <Section title="Overdue" count={count.overdue}>
@@ -151,7 +156,7 @@ function Section({ title, count, empty, folded, children }: { title: string; cou
   );
 }
 
-function JobRow({ job: j, frame, showDate, who, names }: { job: Job; frame: string; showDate: boolean; who?: string; names: Map<string, string> }) {
+function JobRow({ job: j, frame, showDate, names }: { job: Job; frame: string; showDate: boolean; names: Map<string, string> }) {
   const running = j.time_entries.find((e) => !e.ended_at);
   const logged = j.time_entries.filter((e) => e.ended_at).reduce((m, e) => m + entryMinutes({ startedAt: e.started_at, endedAt: e.ended_at }), 0);
   const when = [showDate && j.scheduled_for ? formatDate(j.scheduled_for) : "", formatClock(j.scheduled_time)].filter(Boolean).join(" · ");
@@ -167,7 +172,6 @@ function JobRow({ job: j, frame, showDate, who, names }: { job: Job; frame: stri
           </div>
           <div className="truncate text-sm text-slate-500">
             {detail}
-            {who ? ` · ${who}` : ""}
           </div>
         </div>
         <div className="shrink-0 text-right text-sm">
@@ -230,10 +234,10 @@ function NewReminder({ today, me, people }: { today: string; me: string; people:
 }
 
 /** A reminder with a tick box. Ticked ones (done today) can be unticked. */
-function ReminderRow({ reminder: r, frame, showDate, names, everyone }: { reminder: Reminder; frame: string; showDate: boolean; names: Map<string, string>; everyone: boolean }) {
+function ReminderRow({ reminder: r, frame, showDate, names }: { reminder: Reminder; frame: string; showDate: boolean; names: Map<string, string> }) {
   const when = [showDate ? formatDate(r.due_date) : "", formatClock(r.due_time)].filter(Boolean).join(" · ");
   const done = Boolean(r.done_at);
-  const forWhom = r.assigned_to ? (everyone ? names.get(r.assigned_to) : "") : "Everyone";
+  const forWhom = r.assigned_to ? "" : "Everyone";
   const detail = ["🔔 Reminder", r.repeats ? `🔁 ${REPEATS[r.repeats]?.toLowerCase()}` : "", forWhom, done && r.done_by ? `done by ${names.get(r.done_by) ?? ""}` : ""].filter(Boolean).join(" · ");
   return (
     <li className={`card flex items-center gap-3 border-2 ${frame}`}>

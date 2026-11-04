@@ -123,7 +123,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
 
       {closed ? (
         <div className="card flex flex-wrap items-center gap-2 border-green-300 bg-green-50">
-          {ticket.status === "paid" && !call && <PaidStamp className="w-20" />}
+          {ticket.status === "paid" && <PaidStamp className="w-20" />}
           <span className="flex-1 basis-full font-semibold text-green-800 sm:basis-0">
             ✓ {STATUS_LABELS[ticket.status]}. This {label.toLowerCase()} can no longer be edited.
           </span>

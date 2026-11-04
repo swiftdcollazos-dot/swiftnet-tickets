@@ -113,7 +113,7 @@ async function PrintTicket({ params }: { params: PageProps<"/print/[id]">["param
         )}
 
         <section className="mb-8 flex items-center justify-end">
-          {ticket.status === "paid" && !call && <PaidStamp className="mr-auto ml-8 w-36" />}
+          {ticket.status === "paid" && <PaidStamp className="mr-auto ml-8 w-36" />}
           <table className="w-72">
             <tbody>
               {client.internal ? (

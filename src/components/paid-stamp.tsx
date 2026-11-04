@@ -1,4 +1,4 @@
-/** Red rubber-stamp "PAID / THANK YOU" seal for paid service tickets and special projects. */
+/** Red rubber-stamp "PAID / THANK YOU" seal for paid service tickets, special projects, and service calls whose contract month is paid. */
 export function PaidStamp({ className = "w-24" }: { className?: string }) {
   const red = "#d61f1f";
   return (

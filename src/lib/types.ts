@@ -220,6 +220,7 @@ export const EXPENSE_CATEGORIES = [
   "Shipping",
   "Mobile phone",
   "Internet access",
+  "Utilities",
   "Payroll",
   "Taxes",
   "Meals",
@@ -255,6 +256,8 @@ export const PAYMENT_COLORS: Record<string, string> = {
 /** Company vehicles, picked on "Fuel and vehicle" expenses. */
 export const VEHICLES = ["Jeepo", "Gladiator", "Swift"] as const;
 export const VEHICLE_CATEGORY = "Fuel and vehicle";
+/** Utility bills (power, water) get the billing period printed on the invoice. */
+export const UTILITIES_CATEGORY = "Utilities";
 /** Payroll is usually paid in guilders; the form converts at this rate. */
 /** TOT (turnover tax): this percent of the money received from paid jobs and contract fees. */
 export const TOT_RATE_PCT = 5;
@@ -272,6 +275,9 @@ export type Expense = {
   tax_cents: number;
   payment_method: string;
   vehicle: string;
+  /** The billing period on a utility bill. Null when not entered. */
+  period_from: string | null;
+  period_to: string | null;
   receipt: string | null;
   card_slip: string | null;
   bill_client_id: string | null;

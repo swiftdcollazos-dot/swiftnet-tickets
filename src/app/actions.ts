@@ -14,7 +14,7 @@ import { nextReminderDate } from "@/lib/schedule";
 import { isOwner, permissions, type Permissions } from "@/lib/owner";
 import { scanReceiptImage, type ScannedReceipt } from "@/lib/receipt-scan";
 import { TOT_CATEGORY, TOT_VENDOR, totFor } from "@/lib/tot";
-import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENEWAL_KINDS, REPEATS, VEHICLE_CATEGORY, VEHICLES, RENEWAL_REPEATS, TOT_RATE_PCT, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
+import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENEWAL_KINDS, REPEATS, UTILITIES_CATEGORY, VEHICLE_CATEGORY, VEHICLES, RENEWAL_REPEATS, TOT_RATE_PCT, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 const STATUSES: TicketStatus[] = ["open", "completed", "sent", "paid"];
@@ -627,6 +627,10 @@ function expenseFields(form: FormData) {
   const receipt = text(form, "receipt");
   const slip = text(form, "card_slip");
   const spentOn = text(form, "spent_on");
+  const day = (key: string) => {
+    const value = text(form, key);
+    return category === UTILITIES_CATEGORY && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+  };
   return {
     spent_on: /^\d{4}-\d{2}-\d{2}$/.test(spentOn) ? spentOn : todayLocal(),
     vendor: text(form, "vendor"),
@@ -636,6 +640,8 @@ function expenseFields(form: FormData) {
     tax_cents: parseMoney(text(form, "tax")),
     payment_method: (PAYMENT_METHODS as readonly string[]).includes(method) ? method : "",
     vehicle: category === VEHICLE_CATEGORY && (VEHICLES as readonly string[]).includes(vehicle) ? vehicle : "",
+    period_from: day("period_from"),
+    period_to: day("period_to"),
     receipt: isReceipt(receipt) ? receipt : null,
     card_slip: isReceipt(slip) ? slip : null,
   };

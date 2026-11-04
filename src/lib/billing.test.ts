@@ -34,7 +34,7 @@ describe("computeTotals", () => {
     expect(t.totalCents).toBe(13500);
   });
 
-  it("bills two technicians working at the same time once, but records both", () => {
+  it("bills every technician's time, even when they overlap", () => {
     const t = computeTotals(
       [
         { startedAt: at("09:00"), endedAt: at("10:00") }, // David
@@ -45,9 +45,9 @@ describe("computeTotals", () => {
       rules,
     );
     expect(t.workedMinutes).toBe(150);
-    expect(t.jobMinutes).toBe(120);
-    expect(t.billableMinutes).toBe(120);
-    expect(t.laborCents).toBe(18000);
+    expect(t.jobMinutes).toBe(150);
+    expect(t.billableMinutes).toBe(150);
+    expect(t.laborCents).toBe(22500);
   });
 
   it("adds up several visits and parts, then subtracts the deposit", () => {
@@ -88,6 +88,21 @@ describe("computeTotals", () => {
       { ...rules, taxRatePct: 5, taxLabor: true },
     );
     expect(t.taxCents).toBe(950);
+  });
+
+  it("adds time entered by hand on top of a running timer", () => {
+    const t = computeTotals(
+      [
+        { startedAt: at("09:00"), endedAt: null }, // timer still running
+        { startedAt: at("09:00"), endedAt: at("10:00") }, // an hour added by hand
+      ],
+      [],
+      rules,
+      0,
+      new Date(at("09:30")),
+    );
+    expect(t.jobMinutes).toBe(90);
+    expect(t.billableMinutes).toBe(90);
   });
 
   it("counts a running timer up to now", () => {

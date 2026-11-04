@@ -14,7 +14,7 @@ export type PartLine = { qty: number; unitPriceCents: number };
 export type TicketTotals = {
   /** Every technician's time added up, for the company's own records. */
   workedMinutes: number;
-  /** Time the job was being worked on by anyone; overlapping timers count once. This is what the client pays for. */
+  /** The time the client pays for: every entry, timer or added by hand, even when two overlap. */
   jobMinutes: number;
   billableMinutes: number;
   laborCents: number;
@@ -30,24 +30,6 @@ export function entryMinutes(entry: TimeEntry, now: Date = new Date()): number {
   const start = new Date(entry.startedAt).getTime();
   const end = entry.endedAt ? new Date(entry.endedAt).getTime() : now.getTime();
   return Math.max(0, (end - start) / 60000);
-}
-
-/** Minutes covered by at least one entry, so two technicians working at the same time count once. */
-export function jobMinutes(entries: TimeEntry[], now: Date = new Date()): number {
-  const spans = entries
-    .map((e) => [new Date(e.startedAt).getTime(), e.endedAt ? new Date(e.endedAt).getTime() : now.getTime()])
-    .filter(([start, end]) => end > start)
-    .sort((a, b) => a[0] - b[0]);
-  let total = 0;
-  let [curStart, curEnd] = spans[0] ?? [0, 0];
-  for (const [start, end] of spans.slice(1)) {
-    if (start > curEnd) {
-      total += curEnd - curStart;
-      [curStart, curEnd] = [start, end];
-    } else curEnd = Math.max(curEnd, end);
-  }
-  total += curEnd - curStart;
-  return total / 60000;
 }
 
 /** Rounds worked time up to the rounding increment, then applies the minimum. */
@@ -68,7 +50,8 @@ export function computeTotals(
   now: Date = new Date(),
 ): TicketTotals {
   const workedMinutes = entries.reduce((sum, e) => sum + entryMinutes(e, now), 0);
-  const clientMinutes = jobMinutes(entries, now);
+  // Every entry is billed, including time added by hand that overlaps a timer or another technician.
+  const clientMinutes = workedMinutes;
   const billable = billableMinutes(clientMinutes, rules);
   const laborCents = Math.round((billable / 60) * rules.hourlyRateCents);
   const materialsCents = parts.reduce(

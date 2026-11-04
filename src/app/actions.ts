@@ -314,6 +314,7 @@ export async function addTimeEntry(ticketId: string, form: FormData) {
   });
   if (error) fail(error.message);
   revalidatePath(`/tickets/${ticketId}`);
+  revalidatePath("/", "layout"); // job lists and totals elsewhere
 }
 
 export async function deleteTimeEntry(ticketId: string, entryId: string) {

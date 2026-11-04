@@ -239,7 +239,7 @@ export const PAYMENT_METHODS = [
 ] as const;
 
 /** Ways of paying whose expenses get a "Mark as paid" tick on the Expenses list. */
-export const PAID_DIRECT_METHODS = ["Swiftnet IT account", "Debit Card David US", "Debit Card David SXM", "Debit Card Daniel SXM"];
+export const PAID_DIRECT_METHODS = ["Swiftnet IT account", "Debit Card David US", "Debit Card David SXM", "Debit Card Daniel SXM", "Cash"];
 
 /** A color per way of paying, so the expense list shows at a glance what was used. Others get gray. */
 export const PAYMENT_COLORS: Record<string, string> = {

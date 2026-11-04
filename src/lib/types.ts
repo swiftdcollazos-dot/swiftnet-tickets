@@ -238,6 +238,9 @@ export const PAYMENT_METHODS = [
   "Bank transfer",
 ] as const;
 
+/** Money that already left our account or debit card straight to the seller, so nothing is owed on it later. */
+export const PAID_DIRECT_METHODS = ["Swiftnet IT account", "Debit Card David US", "Debit Card David SXM", "Debit Card Daniel SXM"];
+
 /** A color per way of paying, so the expense list shows at a glance what was used. Others get gray. */
 export const PAYMENT_COLORS: Record<string, string> = {
   "Swiftnet IT account": "bg-blue-100 text-blue-800 ring-blue-300",

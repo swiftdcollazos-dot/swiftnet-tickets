@@ -62,6 +62,10 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
     perTech.set(key, (perTech.get(key) ?? 0) + entryMinutes({ startedAt: e.started_at, endedAt: e.ended_at }));
   }
   const closed = ticket.status !== "open";
+  // A service call's time is covered by the contract, but parts and items on it are charged,
+  // so those calls can be sent to the customer and marked paid like a service ticket.
+  const chargedCall = call && !client.internal && totals.balanceDueCents > 0;
+  const billable = !call || chargedCall;
   // Some users can edit the job but not run timers or change its time.
   const noTime = closed || !permissions(user).timers;
   const money = (c: number) => formatMoney(c, settings.currency);
@@ -127,17 +131,22 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
           <span className="flex-1 basis-full font-semibold text-green-800 sm:basis-0">
             ✓ {STATUS_LABELS[ticket.status]}. This {label.toLowerCase()} can no longer be edited.
           </span>
-          {ticket.status === "completed" && !call && (
+          {chargedCall && ticket.status !== "paid" && (
+            <span className="basis-full text-sm text-slate-600">
+              {money(totals.balanceDueCents)} in parts and items is charged to the customer on this service call.
+            </span>
+          )}
+          {ticket.status === "completed" && billable && (
             <form action={setStatus.bind(null, ticket.id, "sent")}>
               <button className="btn bg-violet-600">Sent to customer</button>
             </form>
           )}
-          {(ticket.status === "completed" || ticket.status === "sent") && !call && (
+          {(ticket.status === "completed" || ticket.status === "sent") && billable && (
             <form action={setStatus.bind(null, ticket.id, "paid")}>
               <button className="btn">Mark as paid</button>
             </form>
           )}
-          {call && ticket.status !== "paid" && (
+          {call && !chargedCall && ticket.status !== "paid" && (
             <span className="basis-full text-sm text-slate-600">Marked paid when this month&apos;s contract payment is recorded in Office &gt; Contract payments.</span>
           )}
           <form action={setStatus.bind(null, ticket.id, "open")}>

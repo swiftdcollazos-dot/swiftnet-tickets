@@ -22,6 +22,7 @@ export const SERVICE_TYPES = [
   "IT training",
   "Email creation",
   "Email password reset",
+  "Email troubleshooting",
   "User password reset",
 ] as const;
 

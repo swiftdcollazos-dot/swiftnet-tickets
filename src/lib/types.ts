@@ -160,6 +160,13 @@ export type Ticket = {
   completed_at: string | null;
 };
 
+/**
+ * The ticket columns that job lists and money totals need. Lists ask for these instead of every column, so they don't
+ * download each job's signature picture and long notes just to show a row.
+ */
+export const TICKET_SUMMARY_COLUMNS =
+  "id, number, status, ticket_date, kind, is_estimate, paid_on, item_to_service, make, model, machine_name, is_project, repeats, deposit_cents, hourly_rate_cents, tax_labor";
+
 /** Where the work was done, chosen next to the signature. "" means not chosen yet. */
 export const SERVICE_LOCATIONS = { remote: "Remote", onsite: "On-site" } as const;
 export type ServiceLocation = keyof typeof SERVICE_LOCATIONS;

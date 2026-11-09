@@ -294,7 +294,9 @@ export async function stopTimer(ticketId: string, entryId: string) {
 /** For time that wasn't tracked with the timer: date, time in, time out. */
 /** Which timers are running right now, as a short string that changes whenever one starts or stops. */
 export async function runningTimersKey(): Promise<string> {
-  const { supabase } = await requireUser();
+  // Asked every few seconds, so it skips the extra sign-in round trip: the database only shows timers to signed-in
+  // staff, and a signed-out visitor gets an empty list, which refreshes the page and lands them on /login.
+  const supabase = await createClient();
   const { data } = await supabase.from("time_entries").select("id").is("ended_at", null).order("id");
   return (data ?? []).map((e) => e.id).join(",");
 }

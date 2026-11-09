@@ -52,13 +52,17 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/expenses">
     .order("spent_on", { ascending: false })
     .order("created_at", { ascending: false });
   if (!all) query = query.gte("spent_on", `${month}-01`).lt("spent_on", `${shiftMonth(month, 1)}-01`);
-  const { data, error } = await query;
+  // The expenses, client list, job list and names all load at the same time.
+  const [{ data, error }, { data: clientRows }, jobs, { data: profiles }] = await Promise.all([
+    query,
+    supabase.from("clients").select("id, name").order("name"),
+    jobOptions(supabase),
+    owner ? supabase.from("profiles").select("id, full_name") : Promise.resolve({ data: [] as { id: string; full_name: string }[] }),
+  ]);
   if (error) throw new Error(error.message);
   type Charge = { amount_cents: number; markup_pct: number; charged: boolean; bill_client_id: string | null; ticket_id: string | null; clients: { name: string } | null; tickets: { number: number } | null };
   type Row = Omit<Expense, "receipt" | "card_slip" | "created_at"> & { created_by: string | null; expense_items: Charge[] };
   const expenses = (data ?? []) as unknown as Row[];
-  const [{ data: clientRows }, jobs] = await Promise.all([supabase.from("clients").select("id, name").order("name"), jobOptions(supabase)]);
-  const { data: profiles } = owner ? await supabase.from("profiles").select("id, full_name") : { data: [] };
   const names = new Map((profiles ?? []).map((p) => [p.id as string, p.full_name as string]));
   // Whoever sees everyone's expenses gets the name of the person who added each one.
   const reporter = (id: string | null) => (owner && id ? names.get(id) : undefined);

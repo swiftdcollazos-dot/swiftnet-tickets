@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/supabase/server";
 import { permissions } from "@/lib/owner";
 import { contractStartMonth, formatMoney } from "@/lib/billing";
 import { formatDate, todayLocal } from "@/lib/time";
-import { setContractPaid } from "@/app/actions";
+import { setContractPaid, setContractPaidOn } from "@/app/actions";
 import { Loading } from "@/components/loading";
 
 export default function ContractsPage(props: PageProps<"/office/contracts">) {
@@ -32,7 +32,8 @@ async function Contracts({ searchParams }: { searchParams: PageProps<"/office/co
   const { supabase, user } = await requireUser();
   if (!permissions(user).office) redirect("/dashboard");
   const params = await searchParams;
-  const month = typeof params.month === "string" && /^\d{4}-\d{2}$/.test(params.month) ? params.month : todayLocal().slice(0, 7);
+  const today = todayLocal();
+  const month = typeof params.month === "string" && /^\d{4}-\d{2}$/.test(params.month) ? params.month : today.slice(0, 7);
 
   const [{ data: clients, error }, { data: payments }] = await Promise.all([
     supabase.from("clients").select("id, name, monthly_fee_cents, created_at").eq("client_type", "contract").gt("monthly_fee_cents", 0).order("name"),
@@ -81,8 +82,18 @@ async function Contracts({ searchParams }: { searchParams: PageProps<"/office/co
                   {formatMoney(r.paid?.amount_cents ?? r.fee)} / month
                   {r.paid ? ` · paid ${formatDate(r.paid.paid_on)}` : ""}
                 </span>
+                {r.paid && (
+                  <form action={setContractPaidOn.bind(null, r.id, month)} className="mt-1 flex items-center gap-1.5">
+                    <label className="text-xs text-slate-500" htmlFor={`paid-on-${r.id}`}>Received</label>
+                    <input className="input w-auto px-2 py-1 text-xs" type="date" id={`paid-on-${r.id}`} name="paid_on" defaultValue={r.paid.paid_on} required />
+                    <button className="btn-light px-2 py-1 text-xs">Save</button>
+                  </form>
+                )}
               </span>
-              <form action={setContractPaid.bind(null, r.id, month, r.fee, !r.paid)}>
+              <form action={setContractPaid.bind(null, r.id, month, r.fee, !r.paid)} className="flex shrink-0 flex-col items-end gap-1">
+                {!r.paid && (
+                  <input className="input w-auto px-2 py-1 text-xs" type="date" name="paid_on" aria-label="Day it was paid" defaultValue={today} max={today} required />
+                )}
                 <button
                   className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-bold ${r.paid ? "bg-green-100 text-green-800" : "border border-slate-300 bg-white text-slate-700"}`}
                 >
@@ -93,7 +104,7 @@ async function Contracts({ searchParams }: { searchParams: PageProps<"/office/co
           ))}
         </ul>
       )}
-      <p className="text-xs text-slate-500">Tap ✓ Paid again to undo. The fee comes from the client&apos;s monthly fee in Clients.</p>
+      <p className="text-xs text-slate-500">Tap ✓ Paid again to undo. The fee comes from the client&apos;s monthly fee in Clients. The Received day decides which month&apos;s TOT the fee counts in, so change it if you marked it paid later than the money came in.</p>
     </div>
   );
 }

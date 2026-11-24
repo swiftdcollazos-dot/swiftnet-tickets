@@ -12,8 +12,8 @@ type Row = Ticket & {
 export type Tot = { jobsCents: number; feesCents: number; totCents: number };
 
 /**
- * TOT on the money received between two dates: jobs by the day they were marked paid, plus contract fees marked paid.
- * Service calls are paid through the contract fees, and Swiftnet IT's own jobs bring in no money.
+ * TOT on all the money received between two dates: paid jobs (labor, parts and items, including parts charged on
+ * service calls) by the day they were paid, plus contract fees by the day they were paid. Swiftnet IT's own jobs bring in no money.
  */
 export async function totFor(supabase: SupabaseClient, from: string, to: string): Promise<Tot> {
   const [{ data: jobs, error }, { data: fees, error: feesError }] = await Promise.all([
@@ -27,7 +27,8 @@ export async function totFor(supabase: SupabaseClient, from: string, to: string)
   ]);
   if (error || feesError) throw new Error((error ?? feesError)!.message);
   const jobsCents = ((jobs ?? []) as unknown as Row[])
-    .filter((t) => !t.clients.internal && (t.is_project || t.clients.client_type !== "contract"))
+    // Service calls charge no time, so a paid call adds only the parts and items charged on it.
+    .filter((t) => !t.clients.internal)
     .reduce((s, t) => {
       const entries = t.time_entries.map((e) => ({ startedAt: e.started_at, endedAt: e.ended_at }));
       const parts = [...t.ticket_parts.map((p) => ({ qty: Number(p.qty), unitPriceCents: p.unit_price_cents })), ...jobItemParts(t.expense_items)];

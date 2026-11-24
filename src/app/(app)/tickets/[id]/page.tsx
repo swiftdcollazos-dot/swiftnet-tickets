@@ -132,7 +132,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
           <span className="flex-1 basis-full font-semibold text-green-800 sm:basis-0">
             ✓ {STATUS_LABELS[ticket.status]}. This {label.toLowerCase()} can no longer be edited.
           </span>
-          {ticket.status === "paid" && !call && !client.internal && ticket.paid_on && (
+          {ticket.status === "paid" && (!call || totals.balanceDueCents > 0) && !client.internal && ticket.paid_on && (
             <form action={setPaidOn.bind(null, ticket.id)} className="flex basis-full flex-wrap items-center gap-2 text-sm">
               <label className="text-slate-600" htmlFor="paid_on">Paid on</label>
               <input className="input w-auto py-1" type="date" id="paid_on" name="paid_on" defaultValue={ticket.paid_on} required />

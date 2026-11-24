@@ -32,7 +32,8 @@ async function Contracts({ searchParams }: { searchParams: PageProps<"/office/co
   const { supabase, user } = await requireUser();
   if (!permissions(user).office) redirect("/dashboard");
   const params = await searchParams;
-  const month = typeof params.month === "string" && /^\d{4}-\d{2}$/.test(params.month) ? params.month : todayLocal().slice(0, 7);
+  const today = todayLocal();
+  const month = typeof params.month === "string" && /^\d{4}-\d{2}$/.test(params.month) ? params.month : today.slice(0, 7);
 
   const [{ data: clients, error }, { data: payments }] = await Promise.all([
     supabase.from("clients").select("id, name, monthly_fee_cents, created_at").eq("client_type", "contract").gt("monthly_fee_cents", 0).order("name"),
@@ -89,7 +90,10 @@ async function Contracts({ searchParams }: { searchParams: PageProps<"/office/co
                   </form>
                 )}
               </span>
-              <form action={setContractPaid.bind(null, r.id, month, r.fee, !r.paid)}>
+              <form action={setContractPaid.bind(null, r.id, month, r.fee, !r.paid)} className="flex shrink-0 flex-col items-end gap-1">
+                {!r.paid && (
+                  <input className="input w-auto px-2 py-1 text-xs" type="date" name="paid_on" aria-label="Day it was paid" defaultValue={today} max={today} required />
+                )}
                 <button
                   className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-bold ${r.paid ? "bg-green-100 text-green-800" : "border border-slate-300 bg-white text-slate-700"}`}
                 >

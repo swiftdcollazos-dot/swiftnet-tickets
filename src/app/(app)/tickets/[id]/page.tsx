@@ -151,8 +151,10 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
             </form>
           )}
           {(ticket.status === "completed" || ticket.status === "sent") && billable && (
-            <form action={setStatus.bind(null, ticket.id, "paid")}>
+            <form action={setStatus.bind(null, ticket.id, "paid")} className="flex flex-wrap items-center gap-2">
               <button className="btn">Mark as paid</button>
+              <label className="text-sm text-slate-600" htmlFor="mark_paid_on">on</label>
+              <input className="input w-auto py-1" type="date" id="mark_paid_on" name="paid_on" defaultValue={todayLocal()} max={todayLocal()} required />
             </form>
           )}
           {call && !chargedCall && ticket.status !== "paid" && (

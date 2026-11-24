@@ -221,13 +221,21 @@ export async function setPaidOn(ticketId: string, formData: FormData) {
   revalidatePath("/reports");
 }
 
-export async function setStatus(ticketId: string, status: TicketStatus) {
+/** The day picked next to a Mark paid button, or today when none was sent. */
+function paidOnFrom(formData?: FormData): string {
+  const picked = formData?.get("paid_on");
+  if (picked == null || picked === "") return todayLocal();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(picked))) fail("Pick the day it was paid.");
+  return String(picked);
+}
+
+export async function setStatus(ticketId: string, status: TicketStatus, formData?: FormData) {
   if (!STATUSES.includes(status)) fail("Unknown status.");
   const { supabase } = await requireUser();
-  // Remember the day it was paid, for the TOT on Reports; a job already paid keeps its day.
+  // Remember the day it was paid (today, or the day picked), for the TOT; a job already paid keeps its day.
   const { error } =
     status === "paid"
-      ? await supabase.from("tickets").update({ status, paid_on: todayLocal() }).eq("id", ticketId).neq("status", "paid")
+      ? await supabase.from("tickets").update({ status, paid_on: paidOnFrom(formData) }).eq("id", ticketId).neq("status", "paid")
       : await supabase.from("tickets").update({ status, paid_on: null, ...(status === "open" ? { completed_at: null } : {}) }).eq("id", ticketId);
   if (error) fail(error.message);
   // Remember when it was finished, for "Done today"; a job already finished keeps its time.
@@ -859,11 +867,12 @@ export async function recordTot(monthStart: string) {
 }
 
 /** Office > Contract payments: marks a contract client's fee for a month as paid, or not paid. */
-export async function setContractPaid(clientId: string, month: string, amountCents: number, paid: boolean) {
+export async function setContractPaid(clientId: string, month: string, amountCents: number, paid: boolean, formData?: FormData) {
   const { supabase } = await requireOffice();
   if (!/^\d{4}-\d{2}$/.test(month)) fail("Invalid month.");
+  const paidOn = paidOnFrom(formData);
   const { error } = paid
-    ? await supabase.from("contract_payments").upsert({ client_id: clientId, month, amount_cents: amountCents, paid_on: todayLocal() })
+    ? await supabase.from("contract_payments").upsert({ client_id: clientId, month, amount_cents: amountCents, paid_on: paidOn })
     : await supabase.from("contract_payments").delete().eq("client_id", clientId).eq("month", month);
   if (error) fail(error.message);
   // The monthly fee pays for that month's closed service calls (standing jobs stay open).
@@ -871,7 +880,7 @@ export async function setContractPaid(clientId: string, month: string, amountCen
   const nextMonth = new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 7);
   const { error: callsError } = await supabase
     .from("tickets")
-    .update({ status: paid ? "paid" : "completed", paid_on: paid ? todayLocal() : null })
+    .update({ status: paid ? "paid" : "completed", paid_on: paid ? paidOn : null })
     .eq("client_id", clientId)
     .eq("is_project", false)
     .in("status", paid ? ["completed", "sent"] : ["paid"])

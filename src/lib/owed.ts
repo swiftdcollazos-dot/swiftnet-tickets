@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { computeTotals, notBilled } from "@/lib/billing";
-import { billingType, jobItemParts, recordLabel, rulesOf, type ClientType, type Ticket } from "@/lib/types";
+import { billingType, jobItemParts, recordLabel, rulesOf, TICKET_SUMMARY_COLUMNS, type ClientType, type Ticket } from "@/lib/types";
 
 type Row = Ticket & {
   clients: { name: string; client_type: ClientType; internal: boolean };
@@ -15,7 +15,7 @@ export type OwedJob = { id: string; number: number; client: string; label: strin
 export async function moneyOwed(supabase: SupabaseClient, today: string): Promise<OwedJob[]> {
   const { data, error } = await supabase
     .from("tickets")
-    .select("*, clients!inner(name, client_type, internal), time_entries(started_at, ended_at), ticket_parts(qty, unit_price_cents), expense_items(amount_cents, markup_pct)")
+    .select(`${TICKET_SUMMARY_COLUMNS}, clients!inner(name, client_type, internal), time_entries(started_at, ended_at), ticket_parts(qty, unit_price_cents), expense_items(amount_cents, markup_pct)`)
     .in("status", ["completed", "sent"])
     .eq("is_estimate", false);
   if (error) throw new Error(error.message);

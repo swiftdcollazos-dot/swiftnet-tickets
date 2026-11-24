@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { computeTotals } from "@/lib/billing";
-import { billingType, jobItemParts, rulesOf, TOT_RATE_PCT, type ClientType, type Ticket } from "@/lib/types";
+import { billingType, jobItemParts, rulesOf, TICKET_SUMMARY_COLUMNS, TOT_RATE_PCT, type ClientType, type Ticket } from "@/lib/types";
 
 type Row = Ticket & {
   clients: { client_type: ClientType; internal: boolean };
@@ -19,7 +19,7 @@ export async function totFor(supabase: SupabaseClient, from: string, to: string)
   const [{ data: jobs, error }, { data: fees, error: feesError }] = await Promise.all([
     supabase
       .from("tickets")
-      .select("*, clients!inner(client_type, internal), time_entries(started_at, ended_at), ticket_parts(qty, unit_price_cents), expense_items(amount_cents, markup_pct)")
+      .select(`${TICKET_SUMMARY_COLUMNS}, clients!inner(client_type, internal), time_entries(started_at, ended_at), ticket_parts(qty, unit_price_cents), expense_items(amount_cents, markup_pct)`)
       .eq("status", "paid")
       .gte("paid_on", from)
       .lte("paid_on", to),

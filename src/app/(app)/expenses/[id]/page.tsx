@@ -35,11 +35,12 @@ async function EditExpense({ params }: { params: PageProps<"/expenses/[id]">["pa
     supabase.from("clients").select("id, name").order("name"),
   ]);
   if (!data) redirect("/expenses");
-  const jobs = await jobOptions(supabase, ((items ?? []) as ExpenseItem[]).map((it) => it.ticket_id).filter((t): t is string => !!t));
   const expense = data as Expense & { created_by: string | null };
-  const { data: addedBy } = expense.created_by
-    ? await supabase.from("profiles").select("full_name").eq("id", expense.created_by).maybeSingle()
-    : { data: null };
+  // The job list and who added the expense load at the same time.
+  const [jobs, { data: addedBy }] = await Promise.all([
+    jobOptions(supabase, ((items ?? []) as ExpenseItem[]).map((it) => it.ticket_id).filter((t): t is string => !!t)),
+    expense.created_by ? supabase.from("profiles").select("full_name").eq("id", expense.created_by).maybeSingle() : Promise.resolve({ data: null }),
+  ]);
 
   return (
     <div className="space-y-4">

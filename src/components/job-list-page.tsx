@@ -3,12 +3,20 @@ import { Fragment } from "react";
 import { requireUser } from "@/lib/supabase/server";
 import { computeTotals, formatMinutes, formatMoney, notBilled } from "@/lib/billing";
 import { formatDate, todayLocal } from "@/lib/time";
-import { REPEATS, REPEAT_DAYS, STATUS_LABELS, billingType, jobItemParts, kindLabel, rulesOf, type TicketStatus } from "@/lib/types";
+import { REPEATS, REPEAT_DAYS, STATUS_LABELS, TICKET_SUMMARY_COLUMNS, billingType, jobItemParts, kindLabel, rulesOf, type ClientType, type Ticket, type TicketStatus } from "@/lib/types";
 import { Loading } from "@/components/loading";
 import { CountBadge } from "@/components/pending-badge";
 import { PaidStamp } from "@/components/paid-stamp";
 import { pendingCounts } from "@/lib/pending";
 import { permissions } from "@/lib/owner";
+
+/** One job in the list: its summary columns plus what's needed to work out its total. */
+type Row = Ticket & {
+  clients: { name: string; client_type: ClientType; internal: boolean } | null;
+  time_entries: { started_at: string; ended_at: string | null }[];
+  ticket_parts: { qty: number; unit_price_cents: number }[];
+  expense_items: { amount_cents: number; markup_pct: number }[];
+};
 
 const STATUS_STYLES: Record<TicketStatus, string> = {
   open: "bg-amber-100 text-amber-800",
@@ -68,7 +76,7 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
 
   let query = supabase
     .from("tickets")
-    .select("*, clients!inner(name, client_type, internal), time_entries(started_at, ended_at), ticket_parts(qty, unit_price_cents), expense_items(amount_cents, markup_pct)")
+    .select(`${TICKET_SUMMARY_COLUMNS}, clients!inner(name, client_type, internal), time_entries(started_at, ended_at), ticket_parts(qty, unit_price_cents), expense_items(amount_cents, markup_pct)`)
     .eq("is_project", tab.view === "projects")
     // Open jobs first (status order: open, closed, sent, paid), newest first within each.
     .order("status")
@@ -85,7 +93,7 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
 
   const needle = q && !/^\d+$/.test(q) ? q.toLowerCase() : "";
   const today = todayLocal();
-  const rows = (tickets ?? []).filter(
+  const rows = ((tickets ?? []) as unknown as Row[]).filter(
     (t) =>
       !needle ||
       [t.clients?.name, t.item_to_service, t.make, t.model, t.machine_name]

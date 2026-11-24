@@ -10,6 +10,7 @@ import {
   setServiceLocation,
   deletePart,
   deleteTimeEntry,
+  setPaidOn,
   setStatus,
   startTimer,
   stopTimer,
@@ -131,6 +132,14 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
           <span className="flex-1 basis-full font-semibold text-green-800 sm:basis-0">
             ✓ {STATUS_LABELS[ticket.status]}. This {label.toLowerCase()} can no longer be edited.
           </span>
+          {ticket.status === "paid" && !call && !client.internal && ticket.paid_on && (
+            <form action={setPaidOn.bind(null, ticket.id)} className="flex basis-full flex-wrap items-center gap-2 text-sm">
+              <label className="text-slate-600" htmlFor="paid_on">Paid on</label>
+              <input className="input w-auto py-1" type="date" id="paid_on" name="paid_on" defaultValue={ticket.paid_on} required />
+              <button className="btn-light py-1">Save</button>
+              <span className="basis-full text-xs text-slate-500">The day the money came in. It decides which month&apos;s TOT this job counts in.</span>
+            </form>
+          )}
           {chargedCall && ticket.status !== "paid" && (
             <span className="basis-full text-sm text-slate-600">
               {money(totals.balanceDueCents)} in parts and items is charged to the customer on this service call.

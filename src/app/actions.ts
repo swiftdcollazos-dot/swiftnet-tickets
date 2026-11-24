@@ -209,6 +209,18 @@ export async function changeTicketClient(ticketId: string, move: boolean, form: 
   revalidatePath("/", "layout");
 }
 
+/** A paid job: changes the day the money was received, which decides the month its TOT falls in. */
+export async function setPaidOn(ticketId: string, formData: FormData) {
+  const { supabase } = await requireUser();
+  const paidOn = String(formData.get("paid_on") ?? "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(paidOn)) fail("Pick the day it was paid.");
+  const { error } = await supabase.from("tickets").update({ paid_on: paidOn }).eq("id", ticketId).eq("status", "paid");
+  if (error) fail(error.message);
+  revalidatePath(`/tickets/${ticketId}`);
+  revalidatePath("/office");
+  revalidatePath("/reports");
+}
+
 export async function setStatus(ticketId: string, status: TicketStatus) {
   if (!STATUSES.includes(status)) fail("Unknown status.");
   const { supabase } = await requireUser();
@@ -869,6 +881,18 @@ export async function setContractPaid(clientId: string, month: string, amountCen
   revalidatePath("/", "layout");
   revalidatePath("/office/contracts");
   revalidatePath("/office");
+}
+
+/** Office > Contract payments: changes the day a contract fee was received, which decides the month its TOT falls in. */
+export async function setContractPaidOn(clientId: string, month: string, formData: FormData) {
+  const { supabase } = await requireOffice();
+  const paidOn = String(formData.get("paid_on") ?? "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(paidOn)) fail("Pick the day it was paid.");
+  const { error } = await supabase.from("contract_payments").update({ paid_on: paidOn }).eq("client_id", clientId).eq("month", month);
+  if (error) fail(error.message);
+  revalidatePath("/office/contracts");
+  revalidatePath("/office");
+  revalidatePath("/reports");
 }
 
 // ---------- Reminders ----------

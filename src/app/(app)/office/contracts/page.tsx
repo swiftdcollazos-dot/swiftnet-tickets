@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/supabase/server";
 import { permissions } from "@/lib/owner";
 import { contractStartMonth, formatMoney } from "@/lib/billing";
 import { formatDate, todayLocal } from "@/lib/time";
-import { setContractPaid } from "@/app/actions";
+import { setContractPaid, setContractPaidOn } from "@/app/actions";
 import { Loading } from "@/components/loading";
 
 export default function ContractsPage(props: PageProps<"/office/contracts">) {
@@ -81,6 +81,13 @@ async function Contracts({ searchParams }: { searchParams: PageProps<"/office/co
                   {formatMoney(r.paid?.amount_cents ?? r.fee)} / month
                   {r.paid ? ` · paid ${formatDate(r.paid.paid_on)}` : ""}
                 </span>
+                {r.paid && (
+                  <form action={setContractPaidOn.bind(null, r.id, month)} className="mt-1 flex items-center gap-1.5">
+                    <label className="text-xs text-slate-500" htmlFor={`paid-on-${r.id}`}>Received</label>
+                    <input className="input w-auto px-2 py-1 text-xs" type="date" id={`paid-on-${r.id}`} name="paid_on" defaultValue={r.paid.paid_on} required />
+                    <button className="btn-light px-2 py-1 text-xs">Save</button>
+                  </form>
+                )}
               </span>
               <form action={setContractPaid.bind(null, r.id, month, r.fee, !r.paid)}>
                 <button
@@ -93,7 +100,7 @@ async function Contracts({ searchParams }: { searchParams: PageProps<"/office/co
           ))}
         </ul>
       )}
-      <p className="text-xs text-slate-500">Tap ✓ Paid again to undo. The fee comes from the client&apos;s monthly fee in Clients.</p>
+      <p className="text-xs text-slate-500">Tap ✓ Paid again to undo. The fee comes from the client&apos;s monthly fee in Clients. The Received day decides which month&apos;s TOT the fee counts in, so change it if you marked it paid later than the money came in.</p>
     </div>
   );
 }

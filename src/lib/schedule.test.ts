@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextReminderDate, planDay, planReminders, type Reminder, type ScheduleJob } from "./schedule";
+import { nextRepeatDate, nextReminderDate, planDay, planReminders, type Reminder, type ScheduleJob } from "./schedule";
 
 const job = (id: string, over: Partial<ScheduleJob> = {}): ScheduleJob => ({
   id, technician_id: "me", status: "open", repeats: "", scheduled_for: null, scheduled_time: null, completed_at: null, time_entries: [], ...over,
@@ -58,6 +58,33 @@ describe("Today screen", () => {
     expect(ids(day.unscheduled)).toEqual([]);
     expect(ids(day.upcoming)).toEqual([]);
   });
+
+  it("shows a yearly job under Coming up from its alarm, and on its day under Today", () => {
+    const yearly = (id: string, date: string, alert = 30) => job(id, { repeats: "yearly", scheduled_for: date, alert_days: alert });
+    const day = planDay(
+      [yearly("in-alarm", "2026-12-01"), yearly("too-early", "2026-12-10"), yearly("no-alarm", "2026-12-01", 0), yearly("on-the-day", TODAY)],
+      TODAY, null,
+    );
+    expect(ids(day.upcoming)).toEqual(["in-alarm"]);
+    expect(ids(day.today)).toEqual(["on-the-day"]);
+  });
+
+  it("keeps weekly and monthly jobs as before when the alarm is as long as the repeat", () => {
+    const visit = [{ started_at: "2026-10-20T14:00:00Z", ended_at: "2026-10-20T15:00:00Z" }];
+    const day = planDay([job("monthly", { repeats: "monthly", alert_days: 30, time_entries: visit })], TODAY, null);
+    expect(ids(day.upcoming)).toEqual([]); // next visit Nov 19, more than a week away
+  });
+
+  it("brings a yearly job back a year after the visit, counting a visit made within the alarm", () => {
+    const visit = (date: string) => [{ started_at: `${date}T14:00:00Z`, ended_at: `${date}T15:00:00Z` }];
+    const yearly = { repeats: "yearly", scheduled_for: "2026-12-01", alert_days: 30 };
+    expect(nextRepeatDate(yearly, undefined, TODAY)).toBe("2026-12-01");
+    expect(nextRepeatDate(yearly, "2026-11-20", TODAY)).toBe("2027-11-20"); // done 11 days early
+    expect(nextRepeatDate(yearly, "2026-10-01", TODAY)).toBe("2026-12-01"); // an unrelated visit before the alarm
+    expect(nextRepeatDate({ ...yearly, scheduled_for: null }, "2024-02-29", TODAY)).toBe("2025-02-28");
+    const day = planDay([job("done-early", { ...yearly, time_entries: visit("2026-11-20") })], TODAY, null);
+    expect(ids(day.upcoming)).toEqual([]);
+  });
 });
 
 describe("Reminders", () => {
@@ -74,10 +101,20 @@ describe("Reminders", () => {
     expect(ids(day.upcoming)).toEqual(["next"]);
   });
 
+  it("shows a reminder with an alarm under Coming up ahead of its day", () => {
+    const day = planReminders(
+      [r("renew", { due_date: "2026-12-01", repeats: "yearly", alert_days: 30 }), r("quiet", { due_date: "2026-12-01", repeats: "yearly", alert_days: 0 }), r("weekly", { due_date: "2026-11-20", repeats: "weekly", alert_days: 30 })],
+      TODAY, null,
+    );
+    expect(ids(day.upcoming)).toEqual(["renew"]);
+  });
+
   it("brings repeating reminders back a week or a month later", () => {
     expect(nextReminderDate("2026-11-04", "weekly")).toBe("2026-11-11");
     expect(nextReminderDate("2026-01-31", "monthly")).toBe("2026-02-28");
     expect(nextReminderDate("2026-12-15", "monthly")).toBe("2027-01-15");
+    expect(nextReminderDate("2026-11-04", "yearly")).toBe("2027-11-04");
+    expect(nextReminderDate("2028-02-29", "yearly")).toBe("2029-02-28");
     expect(nextReminderDate("2026-11-04", "")).toBe("");
   });
 });

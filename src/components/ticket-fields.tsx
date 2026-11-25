@@ -1,5 +1,5 @@
 import { DictationTextarea } from "@/components/dictation-textarea";
-import { PROJECT_TYPES, REPEATS, SERVICE_TYPES, kindLabel, projectKinds, type Ticket } from "@/lib/types";
+import { ALERT_OPTIONS, DEFAULT_ALERT_DAYS, PROJECT_TYPES, REPEATS, SERVICE_TYPES, kindLabel, projectKinds, type Ticket } from "@/lib/types";
 
 export function ContactedByField({ value }: { value?: string }) {
   return (
@@ -19,14 +19,21 @@ export function TicketFields({ ticket, today, withContactedBy = true, project = 
   return (
     <div className="space-y-4">
       {call && (
-        <div>
-          <label className="label label-when" htmlFor="repeats">Repeats</label>
-          <select className="input" id="repeats" name="repeats" defaultValue={ticket?.repeats ?? ""}>
-            <option value="">No, a one-time call</option>
-            {Object.entries(REPEATS).map(([value, label]) => (
-              <option key={value} value={value}>{label} (stays open, time adds to the contract)</option>
-            ))}
-          </select>
+        <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
+          <div>
+            <label className="label label-when" htmlFor="repeats">Repeats</label>
+            <select className="input" id="repeats" name="repeats" defaultValue={ticket?.repeats ?? ""}>
+              <option value="">No, a one-time call</option>
+              {Object.entries(REPEATS).map(([value, label]) => (
+                <option key={value} value={value}>{label} (stays open, time adds to the contract)</option>
+              ))}
+            </select>
+          </div>
+          <AlarmField value={ticket?.alert_days} />
+          <p className="-mt-1 text-xs text-slate-500 sm:col-span-2">
+            For a repeat: set its date under Schedule › Scheduled for. The alarm puts it under “Coming up” on Today and sends a notification
+            that far ahead. It only counts when it&apos;s shorter than the repeat (so it&apos;s for yearly, or monthly with a week or two).
+          </p>
         </div>
       )}
       {project && (
@@ -112,6 +119,20 @@ export function TicketFields({ ticket, today, withContactedBy = true, project = 
         <label className="label label-labor" htmlFor="labor_performed">Labor performed</label>
         <DictationTextarea rows={4} id="labor_performed" name="labor_performed" defaultValue={ticket?.labor_performed ?? ""} />
       </div>
+    </div>
+  );
+}
+
+/** How far ahead of its date a repeat or reminder shows up; a month by default. */
+export function AlarmField({ value, id = "alert_days" }: { value?: number | null; id?: string }) {
+  return (
+    <div>
+      <label className="label label-when" htmlFor={id}>Alarm</label>
+      <select className="input" id={id} name="alert_days" defaultValue={String(value ?? DEFAULT_ALERT_DAYS)}>
+        {ALERT_OPTIONS.map(([days, label]) => (
+          <option key={days} value={days}>{label}</option>
+        ))}
+      </select>
     </div>
   );
 }

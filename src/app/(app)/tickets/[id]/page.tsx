@@ -20,7 +20,7 @@ import {
 import { entryMinutes, formatHours, formatMinutes, formatMoney } from "@/lib/billing";
 import { loadTicket } from "@/lib/ticket-data";
 import { formatDate, formatTime, todayLocal } from "@/lib/time";
-import { REPEATS, REPEAT_DAYS, SERVICE_LOCATIONS, STATUS_LABELS, recordLabel, resaleCents, type Client, type ServiceLocation } from "@/lib/types";
+import { ALERT_OPTIONS, REPEATS, SERVICE_LOCATIONS, STATUS_LABELS, recordLabel, resaleCents, type Client, type ServiceLocation } from "@/lib/types";
 import { requireUser } from "@/lib/supabase/server";
 import { ClientPicker } from "@/components/client-picker";
 import { LiveTimer } from "@/components/live-timer";
@@ -30,6 +30,7 @@ import { PaidStamp } from "@/components/paid-stamp";
 import { Loading } from "@/components/loading";
 import { SignaturePad } from "@/components/signature-pad";
 import { TicketFields } from "@/components/ticket-fields";
+import { effectiveAlert, inAlarm, lastVisitDay, nextRepeatDate } from "@/lib/schedule";
 import { DeleteTicketButton } from "@/components/delete-ticket-button";
 import { isOwner, permissions } from "@/lib/owner";
 
@@ -124,7 +125,7 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
         <Link href={`/print/${ticket.id}`} className="btn-light">Print / PDF</Link>
       </div>
 
-      {ticket.repeats && <RepeatBanner repeats={ticket.repeats} entries={entries} />}
+      {ticket.repeats && <RepeatBanner job={ticket} entries={entries} />}
 
       {closed ? (
         <div className="card flex flex-wrap items-center gap-2 border-green-300 bg-green-50">
@@ -446,19 +447,29 @@ async function TicketDetail({ params }: { params: PageProps<"/tickets/[id]">["pa
   );
 }
 
-/** A standing job: how often it repeats, when it was last worked, and this month's time. */
-function RepeatBanner({ repeats, entries }: { repeats: string; entries: { started_at: string; ended_at: string | null }[] }) {
+/** A standing job: how often it repeats, when it was last worked and is next due, its alarm, and this month's time. */
+function RepeatBanner({ job, entries }: { job: { repeats: string; scheduled_for: string | null; alert_days?: number | null }; entries: { started_at: string; ended_at: string | null }[] }) {
+  const { repeats } = job;
   const today = todayLocal();
-  const last = entries.reduce<string | null>((max, e) => (!max || e.started_at > max ? e.started_at : max), null);
-  const lastDay = last ? todayLocal(new Date(last)) : null;
+  const lastDay = lastVisitDay(entries) ?? null;
   const daysAgo = lastDay ? Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${lastDay}T00:00:00Z`)) / 86_400_000) : null;
-  const due = daysAgo === null || daysAgo >= (REPEAT_DAYS[repeats] ?? 7);
+  const next = nextRepeatDate(job, lastDay, today);
+  const due = next <= today;
+  const alertDays = effectiveAlert(repeats, job.alert_days);
+  const alarm = inAlarm(next, alertDays, today);
+  const alertLabel = ALERT_OPTIONS.find(([d]) => d === alertDays)?.[1].toLowerCase() ?? `${alertDays} days before`;
   const monthMinutes = entries
     .filter((e) => todayLocal(new Date(e.started_at)).slice(0, 7) === today.slice(0, 7))
     .reduce((sum, e) => sum + entryMinutes({ startedAt: e.started_at, endedAt: e.ended_at }), 0);
   return (
-    <div className={`card border-2 ${due ? "border-amber-400 bg-amber-50" : "border-sky-300 bg-sky-50"}`}>
+    <div className={`card border-2 ${due ? "border-amber-400 bg-amber-50" : alarm ? "border-orange-400 bg-orange-50" : "border-sky-300 bg-sky-50"}`}>
       <p className="font-bold">🔁 Repeats {REPEATS[repeats]?.toLowerCase()}</p>
+      {!due && (
+        <p className="text-sm font-semibold text-slate-800">
+          Next: {formatDate(next)}
+          {alertDays > 0 ? ` · 🔔 alarm ${alertLabel}${alarm ? " (on now)" : ""}` : " · no alarm"}
+        </p>
+      )}
       <p className="text-sm text-slate-700">
         {lastDay ? `Last worked ${formatDate(lastDay)}${daysAgo ? ` (${daysAgo} ${daysAgo === 1 ? "day" : "days"} ago)` : " (today)"}` : "Not worked yet"}
         {due && " · due now"} · {formatMinutes(monthMinutes)} this month

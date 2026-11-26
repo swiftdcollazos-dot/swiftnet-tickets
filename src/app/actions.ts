@@ -14,7 +14,7 @@ import { nextReminderDate } from "@/lib/schedule";
 import { isOwner, permissions, type Permissions } from "@/lib/owner";
 import { scanReceiptImage, type ScannedReceipt } from "@/lib/receipt-scan";
 import { TOT_CATEGORY, TOT_VENDOR, totFor } from "@/lib/tot";
-import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENEWAL_KINDS, REPEATS, UTILITIES_CATEGORY, VEHICLE_CATEGORY, VEHICLES, RENEWAL_REPEATS, TOT_RATE_PCT, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
+import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENEWAL_KINDS, REPEATS, alertValue, UTILITIES_CATEGORY, VEHICLE_CATEGORY, VEHICLES, RENEWAL_REPEATS, TOT_RATE_PCT, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 const STATUSES: TicketStatus[] = ["open", "completed", "sent", "paid"];
@@ -114,6 +114,8 @@ function ticketFields(form: FormData) {
     labor_performed: text(form, "labor_performed"),
     // Only service calls have "Repeats".
     repeats: form.has("repeats") ? (text(form, "repeats") in REPEATS ? text(form, "repeats") : "") : undefined,
+    // How far ahead a repeat shows on Today and sends an alarm.
+    alert_days: form.has("alert_days") ? alertValue(text(form, "alert_days")) : undefined,
     // Only the job page's details form has "Assigned to".
     technician_id: form.get("technician_id") ? text(form, "technician_id") : undefined,
     // The day (and optional time) the job is planned, for the Today screen. Empty = not scheduled.
@@ -918,6 +920,7 @@ export async function createReminder(form: FormData) {
     assigned_to: text(form, "assigned_to") === "everyone" ? null : text(form, "assigned_to") || user.id,
     ticket_id: text(form, "ticket_id") || null,
     repeats: repeats in REPEATS ? repeats : "",
+    alert_days: alertValue(text(form, "alert_days")),
     created_by: user.id,
   });
   if (error) fail(error.message);
@@ -932,7 +935,7 @@ export async function completeReminder(id: string) {
     .update({ done_at: new Date().toISOString(), done_by: user.id })
     .eq("id", id)
     .is("done_at", null)
-    .select("title, due_date, due_time, assigned_to, client_id, ticket_id, repeats, created_by")
+    .select("title, due_date, due_time, assigned_to, client_id, ticket_id, repeats, alert_days, created_by")
     .maybeSingle();
   if (error) fail(error.message);
   const next = r ? nextReminderDate(r.due_date, r.repeats) : "";

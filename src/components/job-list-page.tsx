@@ -3,12 +3,13 @@ import { Fragment } from "react";
 import { requireUser } from "@/lib/supabase/server";
 import { computeTotals, formatMinutes, formatMoney, notBilled } from "@/lib/billing";
 import { formatDate, todayLocal } from "@/lib/time";
-import { REPEATS, REPEAT_DAYS, STATUS_LABELS, billingType, jobItemParts, kindLabel, rulesOf, type TicketStatus } from "@/lib/types";
+import { REPEATS, STATUS_LABELS, billingType, jobItemParts, kindLabel, rulesOf, type TicketStatus } from "@/lib/types";
 import { Loading } from "@/components/loading";
 import { CountBadge } from "@/components/pending-badge";
 import { PaidStamp } from "@/components/paid-stamp";
 import { pendingCounts } from "@/lib/pending";
 import { permissions } from "@/lib/owner";
+import { effectiveAlert, inAlarm, lastVisitDay, nextRepeatDate } from "@/lib/schedule";
 
 const STATUS_STYLES: Record<TicketStatus, string> = {
   open: "bg-amber-100 text-amber-800",
@@ -126,7 +127,7 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
         {tab.newPath && canCreate && <Link href={tab.newPath} className="btn w-full sm:w-auto">+ New {label}</Link>}
       </div>
       {calls && <p className="-mt-2 mb-4 text-sm text-slate-500">For contract clients. Time is tracked, not charged.</p>}
-      {repeating && <p className="-mt-2 mb-4 text-sm text-slate-500">Weekly or monthly jobs for contract clients. They stay open; each visit&apos;s time adds to the contract.</p>}
+      {repeating && <p className="-mt-2 mb-4 text-sm text-slate-500">Weekly, monthly or yearly jobs for contract clients. They stay open; each visit&apos;s time adds to the contract.</p>}
       {completed && <p className="-mt-2 mb-4 text-sm text-slate-500">{DONE_NOTE[tab.view]}</p>}
       <form className="mb-4 flex gap-2">
         {(calls || repeating || completed) && <input type="hidden" name="view" value={tab.view} />}
@@ -161,9 +162,10 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
             const isCall = t.clients?.client_type === "contract";
             // Completed: a heading where each group (tickets, then calls) starts.
             const groupStart = completed && (i === 0 || isCall !== (rows[i - 1].clients?.client_type === "contract"));
-            const lastWorked = t.time_entries.reduce((max: string, e: { started_at: string }) => (e.started_at > max ? e.started_at : max), "");
-            const daysSince = lastWorked ? (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${todayLocal(new Date(lastWorked))}T00:00:00Z`)) / 86_400_000 : Infinity;
-            const due = t.repeats && daysSince >= (REPEAT_DAYS[t.repeats] ?? 7);
+            // A standing job: due on its next date, and flagged early while its alarm is on.
+            const next = t.repeats ? nextRepeatDate(t, lastVisitDay(t.time_entries), today) : "";
+            const due = Boolean(next) && next <= today;
+            const alarm = Boolean(next) && inAlarm(next, effectiveAlert(t.repeats, t.alert_days), today);
             return (
               <Fragment key={t.id}>
               {groupStart && (
@@ -177,8 +179,8 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
                       <span className="truncate font-semibold">{t.clients?.name}</span>
                       {running && <span className="rounded bg-red-100 px-1.5 text-xs font-semibold text-red-700">● timer</span>}
                       {t.repeats && (
-                        <span className={`shrink-0 rounded px-1.5 text-xs font-semibold ${due ? "bg-amber-100 text-amber-800" : "bg-sky-100 text-sky-800"}`}>
-                          {due ? "Due" : REPEATS[t.repeats]}
+                        <span className={`shrink-0 rounded px-1.5 text-xs font-semibold ${due ? "bg-amber-100 text-amber-800" : alarm ? "bg-orange-100 text-orange-800" : "bg-sky-100 text-sky-800"}`}>
+                          {due ? "Due" : alarm ? `🔔 ${formatDate(next).replace(/, \d{4}$/, "")}` : REPEATS[t.repeats]}
                         </span>
                       )}
                       {completed && (
@@ -189,7 +191,7 @@ export async function JobListPage({ searchParams, projects = false }: { searchPa
                     </div>
                     {t.is_project && t.item_to_service && <div className="truncate font-semibold text-purple-700">{t.item_to_service}</div>}
                     <div className="truncate text-sm text-slate-500">
-                      {[formatDate(t.ticket_date), kindLabel(t.kind)].filter(Boolean).join(" · ")}
+                      {[formatDate(t.ticket_date), kindLabel(t.kind), next && !due ? `next ${formatDate(next)}` : ""].filter(Boolean).join(" · ")}
                       {!t.is_project && t.item_to_service ? ` · ${t.item_to_service}` : ""}
                     </div>
                   </div>

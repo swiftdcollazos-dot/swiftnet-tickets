@@ -1,4 +1,4 @@
-import { REPEAT_DAYS } from "./types";
+import { ALERT_OPTIONS, REPEAT_DAYS } from "./types";
 import { addDays, addMonths, TIME_ZONE, todayLocal } from "./time";
 
 /** An open or just-finished job, as the Today screen needs it. */
@@ -7,6 +7,8 @@ export type ScheduleJob = {
   technician_id: string | null;
   status: string;
   repeats: string;
+  /** Days before the next date that a standing job shows under "Coming up" and sends an alarm. */
+  alert_days?: number | null;
   scheduled_for: string | null;
   scheduled_time: string | null;
   completed_at: string | null;
@@ -17,13 +19,52 @@ export type Day<T> = { overdue: T[]; today: T[]; unscheduled: T[]; upcoming: T[]
 
 /** How many days ahead "Coming up" looks. */
 export const UPCOMING_DAYS = 7;
+/** How far ahead to load reminders, so ones with an alarm show early enough. */
+export const LOOKAHEAD_DAYS = Math.max(UPCOMING_DAYS, ...ALERT_OPTIONS.map(([days]) => days));
+
+/**
+ * The alarm that applies: on a repeat it has to be shorter than the repeat itself, so weekly and monthly jobs left on
+ * the default of a month behave as they always have. One-time reminders keep theirs.
+ */
+export function effectiveAlert(repeats: string, alertDays: number | null | undefined): number {
+  const days = alertDays ?? 0;
+  if (!repeats) return days;
+  return days < (REPEAT_DAYS[repeats] ?? 7) ? days : 0;
+}
+
+/** True from the day the alarm starts until the day before `date`. */
+export function inAlarm(date: string, alertDays: number, today: string): boolean {
+  return alertDays > 0 && date > today && addDays(date, -alertDays) <= today;
+}
+
+/**
+ * When a standing job is next due. The scheduled date wins until someone visits on or after it (or within its alarm,
+ * for a visit done a little early); then the next visit is one interval after the last one. A yearly job comes back on
+ * the same day next year. No date and no visit yet = due today.
+ */
+export function nextRepeatDate(
+  job: { repeats: string; scheduled_for: string | null; alert_days?: number | null },
+  lastVisit: string | null | undefined,
+  today: string,
+): string {
+  const byVisit = !lastVisit ? today : job.repeats === "yearly" ? addMonths(lastVisit, 12) : addDays(lastVisit, REPEAT_DAYS[job.repeats] ?? 7);
+  if (!job.scheduled_for) return byVisit;
+  const early = addDays(job.scheduled_for, -effectiveAlert(job.repeats, job.alert_days));
+  return !lastVisit || lastVisit < early ? job.scheduled_for : byVisit;
+}
+
+/** The last day anyone logged time on a job, in Saint Martin time. */
+export function lastVisitDay(entries: { started_at: string }[]): string | undefined {
+  return entries.map((e) => todayLocal(new Date(e.started_at))).sort().at(-1);
+}
 
 /**
  * Sorts jobs into the Today screen's sections.
  * - One-time jobs go by their scheduled date: before today is overdue, today is today, the next week is coming up,
  *   and no date at all is "not scheduled". Completed today is done.
- * - Standing (repeating) jobs never close: they are due when the week or month since the last visit has passed, or on
- *   the date they were scheduled for (until someone visits), and count as done once someone logs time on them today.
+ * - Standing (repeating) jobs never close: they are due when the week, month or year since the last visit has passed, or
+ *   on the date they were scheduled for (until someone visits), and count as done once someone logs time on them today.
+ *   With an alarm, they show under "Coming up" that many days before.
  * `who` keeps only that technician's jobs (plus jobs nobody is assigned to); null keeps everyone's.
  */
 export function planDay<T extends ScheduleJob>(jobs: T[], today: string, who: string | null): Day<T> {
@@ -36,14 +77,11 @@ export function planDay<T extends ScheduleJob>(jobs: T[], today: string, who: st
       continue;
     }
     if (job.repeats) {
-      const days = job.time_entries.map((e) => todayLocal(new Date(e.started_at))).sort();
-      const last = days.at(-1);
-      // The scheduled date wins until someone visits on or after it; then the next visit is one interval later.
-      const byVisit = last ? addDays(last, REPEAT_DAYS[job.repeats] ?? 7) : today;
-      const next = job.scheduled_for && (!last || last < job.scheduled_for) ? job.scheduled_for : byVisit;
+      const last = lastVisitDay(job.time_entries);
+      const next = nextRepeatDate(job, last, today);
       if (last === today) day.done.push(job);
       else if (next <= today) day.today.push(job);
-      else if (next <= horizon) day.upcoming.push(job);
+      else if (next <= horizon || inAlarm(next, effectiveAlert(job.repeats, job.alert_days), today)) day.upcoming.push(job);
       continue;
     }
     const date = job.scheduled_for;
@@ -69,13 +107,15 @@ export type Reminder = {
   due_time: string | null;
   assigned_to: string | null;
   repeats: string;
+  /** Days before its day that it shows under "Coming up" and sends an alarm. */
+  alert_days?: number | null;
   done_at: string | null;
   done_by: string | null;
 };
 
 /**
  * Sorts reminders into the same sections as jobs: past their day and not ticked off is overdue, and ticked off today
- * is done. `who` keeps that person's reminders and the ones for everyone; null keeps all.
+ * is done. One with an alarm shows under "Coming up" that many days ahead. `who` keeps that person's reminders and the ones for everyone; null keeps all.
  */
 export function planReminders<T extends Reminder>(reminders: T[], today: string, who: string | null): Omit<Day<T>, "unscheduled"> {
   const day: Omit<Day<T>, "unscheduled"> = { overdue: [], today: [], upcoming: [], done: [] };
@@ -86,7 +126,7 @@ export function planReminders<T extends Reminder>(reminders: T[], today: string,
       if (todayLocal(new Date(r.done_at)) === today) day.done.push(r);
     } else if (r.due_date < today) day.overdue.push(r);
     else if (r.due_date === today) day.today.push(r);
-    else if (r.due_date <= horizon) day.upcoming.push(r);
+    else if (r.due_date <= horizon || inAlarm(r.due_date, effectiveAlert(r.repeats, r.alert_days), today)) day.upcoming.push(r);
   }
   const order = (a: T, b: T) => a.due_date.localeCompare(b.due_date) || (a.due_time ?? "99").localeCompare(b.due_time ?? "99");
   day.overdue.sort(order);
@@ -99,6 +139,7 @@ export function planReminders<T extends Reminder>(reminders: T[], today: string,
 export function nextReminderDate(dueDate: string, repeats: string): string {
   if (repeats === "weekly") return addDays(dueDate, 7);
   if (repeats === "monthly") return addMonths(dueDate, 1);
+  if (repeats === "yearly") return addMonths(dueDate, 12);
   return "";
 }
 

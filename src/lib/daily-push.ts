@@ -1,13 +1,15 @@
 import { createAdminClient } from "./supabase/admin";
 import { sendMessage } from "./push";
-import { clockLocal, isDueSoon, MORNING_HOUR, planDay, planReminders, summaryLine, UPCOMING_DAYS, type Reminder, type ScheduleJob } from "./schedule";
-import { addDays, dayStartIso, formatClock, todayLocal } from "./time";
+import { clockLocal, effectiveAlert, isDueSoon, lastVisitDay, LOOKAHEAD_DAYS, MORNING_HOUR, nextRepeatDate, planDay, planReminders, summaryLine, type Reminder, type ScheduleJob } from "./schedule";
+import { addDays, dayStartIso, formatClock, formatDate, todayLocal } from "./time";
+import { REPEATS } from "./types";
 
 type Job = ScheduleJob & { number: number; clients: { name: string } | null };
 
 /**
  * Runs every few minutes from the scheduler. Sends each person's morning summary once a day after 8 AM, and a heads-up
- * 45 minutes before each job or reminder with a set time. A log of what was sent keeps each message to one.
+ * 45 minutes before each job or reminder with a set time, and an alarm on the morning a repeat or reminder's alarm starts
+ * (a month ahead, say). A log of what was sent keeps each message to one.
  */
 export async function runScheduledPushes(now = new Date()): Promise<string[]> {
   const admin = createAdminClient();
@@ -24,13 +26,13 @@ export async function runScheduledPushes(now = new Date()): Promise<string[]> {
   const [jobsResult, remindersResult, { data: people }] = await Promise.all([
     admin
       .from("tickets")
-      .select("id, number, technician_id, status, repeats, scheduled_for, scheduled_time, completed_at, clients(name), time_entries(started_at, ended_at)")
+      .select("id, number, technician_id, status, repeats, alert_days, scheduled_for, scheduled_time, completed_at, clients(name), time_entries(started_at, ended_at)")
       .eq("status", "open"),
     admin
       .from("reminders")
-      .select("id, title, due_date, due_time, assigned_to, repeats, done_at, done_by")
+      .select("id, title, due_date, due_time, assigned_to, repeats, alert_days, done_at, done_by")
       .is("done_at", null)
-      .lte("due_date", addDays(today, UPCOMING_DAYS)),
+      .lte("due_date", addDays(today, LOOKAHEAD_DAYS)),
     admin.from("push_subscriptions").select("user_id"),
   ]);
   if (jobsResult.error) throw new Error(jobsResult.error.message);
@@ -48,6 +50,26 @@ export async function runScheduledPushes(now = new Date()): Promise<string[]> {
       if (!line || !(await claim(`morning:${today}:${userId}`))) continue;
       const n = await sendMessage(userId, { title: "Good morning ☀️", body: line, url: "/dashboard" });
       done.push(`morning summary to ${userId}: ${n} device(s)`);
+    }
+
+    // Alarms: sent once, on the morning a repeat's or reminder's alarm starts. Unassigned ones go to everyone.
+    for (const j of jobs) {
+      const alert = effectiveAlert(j.repeats, j.alert_days);
+      if (!j.repeats || !alert) continue;
+      const next = nextRepeatDate(j, lastVisitDay(j.time_entries), today);
+      if (addDays(next, -alert) !== today || !(await claim(`alarm:job:${j.id}:${next}`))) continue;
+      const n = await sendMessage(j.technician_id, {
+        title: `🔔 Coming up ${formatDate(next)}`,
+        body: `#${j.number} · ${j.clients?.name ?? ""} · repeats ${REPEATS[j.repeats]?.toLowerCase() ?? ""}`,
+        url: `/tickets/${j.id}`,
+      });
+      done.push(`alarm for job #${j.number}: ${n} device(s)`);
+    }
+    for (const r of reminders) {
+      const alert = effectiveAlert(r.repeats, r.alert_days);
+      if (!alert || addDays(r.due_date, -alert) !== today || !(await claim(`alarm:reminder:${r.id}:${r.due_date}`))) continue;
+      const n = await sendMessage(r.assigned_to, { title: `🔔 Reminder on ${formatDate(r.due_date)}`, body: r.title, url: "/dashboard" });
+      done.push(`alarm for reminder "${r.title}": ${n} device(s)`);
     }
   }
 

@@ -304,7 +304,7 @@ create table if not exists public.reminders (
   assigned_to uuid references public.profiles (id) on delete set null,
   client_id   uuid references public.clients (id) on delete set null,
   ticket_id   uuid references public.tickets (id) on delete cascade,
-  repeats     text not null default '',  -- 'weekly' or 'monthly': ticking one off adds the next
+  repeats     text not null default '',  -- 'weekly', 'monthly' or 'yearly': ticking one off adds the next
   done_at     timestamptz,
   done_by     uuid references public.profiles (id) on delete set null,
   created_by  uuid references public.profiles (id) on delete set null,
@@ -325,3 +325,8 @@ alter table public.push_log enable row level security;
 
 -- The day an expense was ticked as paid on the Expenses list.
 alter table public.expenses add column if not exists paid_on date;
+
+-- Yearly repeats and alarms: how many days before its date a repeat or reminder shows under "Coming up" on Today and
+-- sends a notification. Defaults to a month; weekly and monthly ones ignore an alarm as long as the repeat itself.
+alter table public.tickets add column if not exists alert_days integer not null default 30;
+alter table public.reminders add column if not exists alert_days integer not null default 30;

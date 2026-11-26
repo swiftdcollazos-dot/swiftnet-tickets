@@ -115,9 +115,25 @@ export type Client = {
 };
 
 /** How often a standing service call repeats. */
-export const REPEATS: Record<string, string> = { weekly: "Every week", monthly: "Every month" };
+export const REPEATS: Record<string, string> = { weekly: "Every week", monthly: "Every month", yearly: "Every year" };
 /** Days after which a standing job is due again. */
-export const REPEAT_DAYS: Record<string, number> = { weekly: 7, monthly: 30 };
+export const REPEAT_DAYS: Record<string, number> = { weekly: 7, monthly: 30, yearly: 365 };
+
+/** How far ahead of its date a repeat or reminder shows on Today (and sends a notification), in days. */
+export const ALERT_OPTIONS: [number, string][] = [
+  [0, "No alarm"],
+  [7, "1 week before"],
+  [14, "2 weeks before"],
+  [30, "1 month before"],
+  [60, "2 months before"],
+  [90, "3 months before"],
+];
+export const DEFAULT_ALERT_DAYS = 30;
+/** Cleans a submitted alarm to one of the options. */
+export function alertValue(raw: string): number {
+  const n = Number(raw);
+  return ALERT_OPTIONS.some(([d]) => d === n) ? n : DEFAULT_ALERT_DAYS;
+}
 
 export type Ticket = {
   id: string;
@@ -150,8 +166,10 @@ export type Ticket = {
   signed_name: string | null;
   signed_at: string | null;
   service_location: string;
-  /** "weekly" or "monthly" for a standing job that stays open; "" for a normal one. */
+  /** "weekly", "monthly" or "yearly" for a standing job that stays open; "" for a normal one. */
   repeats: string;
+  /** For a standing job: how many days before its next date it shows on Today and sends an alarm. */
+  alert_days: number;
   /** The day the job is planned for ("2026-11-04"), shown on the Today screen. Null = not scheduled. */
   scheduled_for: string | null;
   /** Optional time of day ("14:30:00"); the assigned technician is reminded 45 minutes before. */

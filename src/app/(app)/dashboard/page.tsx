@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/supabase/server";
 import { isOwner } from "@/lib/owner";
 import { entryMinutes, formatMinutes } from "@/lib/billing";
 import { addDays, dayStartIso, formatClock, formatDate, formatDayHeading, todayLocal } from "@/lib/time";
-import { planDay, planReminders, UPCOMING_DAYS, type Reminder, type ScheduleJob } from "@/lib/schedule";
+import { lastVisitDay, LOOKAHEAD_DAYS, nextRepeatDate, planDay, planReminders, UPCOMING_DAYS, type Reminder, type ScheduleJob } from "@/lib/schedule";
 import { REPEATS, recordLabel } from "@/lib/types";
 import { completeReminder, createReminder, deleteReminder, reopenReminder } from "@/app/actions";
 import { VAPID_PUBLIC_KEY } from "@/lib/vapid";
@@ -12,6 +12,7 @@ import { AutoRefresh } from "@/components/auto-refresh";
 import { LiveTimer } from "@/components/live-timer";
 import { Loading } from "@/components/loading";
 import { NotificationsPrompt } from "@/components/notifications-toggle";
+import { AlarmField } from "@/components/ticket-fields";
 
 /** The Today screen: the first thing seen in the morning. What's overdue, what's on for today, and what got done. */
 export default function TodayPage(props: PageProps<"/dashboard">) {
@@ -37,7 +38,7 @@ type Job = Omit<ScheduleJob, "time_entries"> & {
 };
 
 const FIELDS =
-  "id, number, ticket_date, item_to_service, machine_name, is_project, status, repeats, technician_id, scheduled_for, scheduled_time, completed_at, clients!inner(name, client_type), time_entries(started_at, ended_at, technician_id)";
+  "id, number, ticket_date, item_to_service, machine_name, is_project, status, repeats, alert_days, technician_id, scheduled_for, scheduled_time, completed_at, clients!inner(name, client_type), time_entries(started_at, ended_at, technician_id)";
 
 async function Today({ searchParams }: { searchParams: PageProps<"/dashboard">["searchParams"] }) {
   const { supabase, user } = await requireUser();
@@ -49,12 +50,12 @@ async function Today({ searchParams }: { searchParams: PageProps<"/dashboard">["
   const [open, done, reminders, { data: profiles }] = await Promise.all([
     supabase.from("tickets").select(FIELDS).eq("status", "open"),
     supabase.from("tickets").select(FIELDS).neq("status", "open").gte("completed_at", dayStartIso(today)),
-    // Open reminders up to a week ahead, and the ones ticked off today.
+    // Open reminders as far ahead as an alarm reaches, and the ones ticked off today.
     supabase
       .from("reminders")
-      .select("id, title, due_date, due_time, assigned_to, repeats, done_at, done_by")
+      .select("id, title, due_date, due_time, assigned_to, repeats, alert_days, done_at, done_by")
       .or(`done_at.is.null,done_at.gte.${dayStartIso(today)}`)
-      .lte("due_date", addDays(today, UPCOMING_DAYS)),
+      .lte("due_date", addDays(today, LOOKAHEAD_DAYS)),
     supabase.from("profiles").select("id, full_name").order("full_name"),
   ]);
   if (open.error) throw new Error(open.error.message);
@@ -113,7 +114,7 @@ async function Today({ searchParams }: { searchParams: PageProps<"/dashboard">["
         {rows(day.done, "border-green-500 bg-green-50/50")}
         {reminderRows(notes.done, "border-green-500 bg-green-50/50")}
       </Section>
-      <Section title={`Coming up (next ${UPCOMING_DAYS} days)`} count={count.upcoming} folded>
+      <Section title={`Coming up (next ${UPCOMING_DAYS} days, plus alarms)`} count={count.upcoming} folded>
         {rows(day.upcoming, "border-slate-300", true)}
         {reminderRows(notes.upcoming, "border-slate-300", true)}
       </Section>
@@ -159,7 +160,9 @@ function Section({ title, count, empty, folded, children }: { title: string; cou
 function JobRow({ job: j, frame, showDate, names }: { job: Job; frame: string; showDate: boolean; names: Map<string, string> }) {
   const running = j.time_entries.find((e) => !e.ended_at);
   const logged = j.time_entries.filter((e) => e.ended_at).reduce((m, e) => m + entryMinutes({ startedAt: e.started_at, endedAt: e.ended_at }), 0);
-  const when = [showDate && j.scheduled_for ? formatDate(j.scheduled_for) : "", formatClock(j.scheduled_time)].filter(Boolean).join(" · ");
+  // A standing job shows its next date, which moves on after each visit.
+  const date = j.repeats && j.status === "open" ? nextRepeatDate(j, lastVisitDay(j.time_entries), todayLocal()) : j.scheduled_for;
+  const when = [showDate && date ? formatDate(date) : "", formatClock(j.scheduled_time)].filter(Boolean).join(" · ");
   const detail = [j.repeats ? "🔁 Repeats" : recordLabel(j.clients.client_type as "hourly" | "contract", j.is_project), j.item_to_service, j.machine_name].filter(Boolean).join(" · ");
   return (
     <li>
@@ -226,6 +229,10 @@ function NewReminder({ today, me, people }: { today: string; me: string; people:
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
+        </div>
+        <div className="col-span-2">
+          <AlarmField id="reminder_alert_days" />
+          <p className="mt-1 text-xs text-slate-500">Shows under “Coming up” and sends a notification this far ahead of the day.</p>
         </div>
         <button className="btn col-span-2">Add reminder</button>
       </form>

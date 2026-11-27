@@ -12,6 +12,7 @@ export type ScannedStatement = {
   credits: number;
   new_balance: number;
   minimum_due: number;
+  miles_earned: number;
   lines: { posted_on: string; reference: string; merchant: string; amount: number; category: string; notes: string }[];
 };
 
@@ -29,6 +30,7 @@ const SCHEMA = {
     credits: { type: "number", description: "Total credits (payments and refunds) printed on the statement, as a positive number." },
     new_balance: money,
     minimum_due: { type: "number", description: "Minimum payment due." },
+    miles_earned: { type: "integer", description: "Airline miles printed on the statement, e.g. 'Miles earned on previous month statement: 5149'. 0 if none are shown." },
     lines: {
       type: "array",
       description: "Every transaction line, in order. Leave out lines that only add detail to the line above, such as a foreign currency amount; put that in the line's notes instead.",
@@ -46,7 +48,7 @@ const SCHEMA = {
       },
     },
   },
-  required: ["is_statement", "card_name", "statement_date", "due_date", "credit_limit", "previous_balance", "charges", "credits", "new_balance", "minimum_due", "lines"],
+  required: ["is_statement", "card_name", "statement_date", "due_date", "credit_limit", "previous_balance", "charges", "credits", "new_balance", "minimum_due", "miles_earned", "lines"],
   additionalProperties: false,
 };
 

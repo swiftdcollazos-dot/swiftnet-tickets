@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveCardStatement, scanCardStatement, setCardLineCategory, type CardStatementInput } from "@/app/actions";
-import { CARD_CATEGORIES, PAYMENT_CATEGORY, categorize, monthForStatementDate } from "@/lib/card";
+import { CARD_CATEGORIES, PAYMENT_CATEGORY, monthForStatementDate, pickCategory, type Learned, type CardLine, type CardStatement } from "@/lib/card";
 import { pdfToJpeg } from "@/lib/pdf-to-image";
 
 const PDF_MAX_BYTES = 2_000_000;
@@ -25,17 +25,29 @@ function readAsDataUrl(file: File): Promise<string> {
   });
 }
 
-/** Add a month: upload the bank's statement PDF to fill everything in, or type it in. Saving the same month again replaces it. */
-export function StatementForm({ cardName }: { cardName: string }) {
+const cents2 = (c: number) => (c ? (c / 100).toFixed(2) : "");
+
+/**
+ * Add a month: upload the bank's statement PDF to fill everything in, or type it in. Saving the same month again replaces it.
+ * With `edit`, it opens a saved statement to change anything, lines and categories included.
+ */
+export function StatementForm({ cardName, edit, learned = {} }: { cardName: string; edit?: { statement: CardStatement; lines: CardLine[] }; learned?: Learned }) {
   const router = useRouter();
   const file = useRef<HTMLInputElement>(null);
+  const id = edit ? edit.statement.id : "new";
   const [busy, setBusy] = useState<"" | "reading" | "saving">("");
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const st = edit?.statement;
   const [v, setV] = useState({
-    card_name: cardName, statement_month: "", statement_date: "", due_date: "", credit_limit: "",
-    previous_balance: "", charges: "", credits: "", new_balance: "", minimum_due: "",
+    card_name: st?.card_name ?? cardName, statement_month: st?.statement_month ?? "", statement_date: st?.statement_date ?? "",
+    due_date: st?.due_date ?? "", credit_limit: cents2(st?.credit_limit_cents ?? 0), previous_balance: cents2(st?.previous_balance_cents ?? 0),
+    charges: cents2(st?.charges_cents ?? 0), credits: cents2(st?.credits_cents ?? 0), new_balance: cents2(st?.new_balance_cents ?? 0),
+    minimum_due: cents2(st?.minimum_due_cents ?? 0),
+    miles_earned: st?.miles_earned != null ? String(st.miles_earned) : "",
   });
-  const [lines, setLines] = useState<Line[]>([]);
+  const [lines, setLines] = useState<Line[]>(() =>
+    (edit?.lines ?? []).map((l) => blankLine({ posted_on: l.posted_on, reference: l.reference, merchant: l.merchant, amount: (l.amount_cents / 100).toFixed(2), category: l.category, notes: l.notes })),
+  );
   const set = (key: keyof typeof v) => (e: { target: { value: string } }) =>
     setV((old) => {
       const next = { ...old, [key]: e.target.value };
@@ -47,7 +59,7 @@ export function StatementForm({ cardName }: { cardName: string }) {
       if (l.key !== key) return l;
       const next = { ...l, [field]: e.target.value };
       // A new merchant or a sign change picks the category again, until it's picked by hand.
-      if ((field === "merchant" || field === "amount") && l.category === categorize(l.merchant, toCents(l.amount))) next.category = categorize(next.merchant, toCents(next.amount));
+      if ((field === "merchant" || field === "amount") && l.category === pickCategory(l.merchant, toCents(l.amount), learned)) next.category = pickCategory(next.merchant, toCents(next.amount), learned);
       return next;
     }));
 
@@ -81,6 +93,7 @@ export function StatementForm({ cardName }: { cardName: string }) {
         credits: money(r.credits),
         new_balance: money(r.new_balance),
         minimum_due: money(r.minimum_due),
+        miles_earned: r.miles_earned ? String(r.miles_earned) : "",
       });
       setLines(r.lines.map((l) => blankLine({ ...l, amount: l.amount.toFixed(2) })));
       setMessage({ ok: true, text: `Read ${r.lines.length} lines from the statement. Please check them, then Save.` });
@@ -95,12 +108,15 @@ export function StatementForm({ cardName }: { cardName: string }) {
   async function save() {
     setBusy("saving");
     setMessage(null);
-    const r = await saveCardStatement({ ...v, lines: lines.map((l) => ({ posted_on: l.posted_on, reference: l.reference, merchant: l.merchant, amount: l.amount, category: l.category, notes: l.notes })) });
+    const r = await saveCardStatement({ ...v, lines: lines.map((l) => ({ posted_on: l.posted_on, reference: l.reference, merchant: l.merchant, amount: l.amount, category: l.category, notes: l.notes })) }, edit ? edit.statement.id : null);
     setBusy("");
     if ("error" in r) setMessage({ ok: false, text: r.error });
-    else {
+    else if (edit) {
+      setMessage({ ok: true, text: "Changes saved." });
+      router.refresh();
+    } else {
       setLines([]);
-      setV((old) => ({ ...old, statement_month: "", statement_date: "", due_date: "", previous_balance: "", charges: "", credits: "", new_balance: "", minimum_due: "" }));
+      setV((old) => ({ ...old, statement_month: "", statement_date: "", due_date: "", previous_balance: "", charges: "", credits: "", new_balance: "", minimum_due: "", miles_earned: "" }));
       setMessage({ ok: true, text: "Saved." });
       router.refresh();
     }
@@ -112,8 +128,8 @@ export function StatementForm({ cardName }: { cardName: string }) {
 
   const field = (key: keyof typeof v, label: string, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
     <div>
-      <label className="label label-money" htmlFor={`st-${key}`}>{label}</label>
-      <input className="input" id={`st-${key}`} value={v[key]} onChange={set(key)} inputMode="decimal" {...props} />
+      <label className="label label-money" htmlFor={`st-${id}-${key}`}>{label}</label>
+      <input className="input" id={`st-${id}-${key}`} value={v[key]} onChange={set(key)} inputMode="decimal" {...props} />
     </div>
   );
 
@@ -127,16 +143,16 @@ export function StatementForm({ cardName }: { cardName: string }) {
 
       <div className="grid grid-cols-2 gap-2">
         <div className="col-span-2">
-          <label className="label label-who" htmlFor="st-card">Card</label>
-          <input className="input" id="st-card" value={v.card_name} onChange={set("card_name")} placeholder="e.g. WIB card ending 9123" />
+          <label className="label label-who" htmlFor={`st-${id}-card`}>Card</label>
+          <input className="input" id={`st-${id}-card`} value={v.card_name} onChange={set("card_name")} placeholder="e.g. WIB card ending 9123" />
         </div>
         <div>
-          <label className="label label-when" htmlFor="st-statement_date">Statement date</label>
-          <input className="input" type="date" id="st-statement_date" value={v.statement_date} onChange={set("statement_date")} />
+          <label className="label label-when" htmlFor={`st-${id}-statement_date`}>Statement date</label>
+          <input className="input" type="date" id={`st-${id}-statement_date`} value={v.statement_date} onChange={set("statement_date")} />
         </div>
         <div>
-          <label className="label label-when" htmlFor="st-statement_month">Spending for</label>
-          <input className="input" type="month" id="st-statement_month" value={v.statement_month} onChange={set("statement_month")} />
+          <label className="label label-when" htmlFor={`st-${id}-statement_month`}>Spending for</label>
+          <input className="input" type="month" id={`st-${id}-statement_month`} value={v.statement_month} onChange={set("statement_month")} />
         </div>
         {field("previous_balance", "Previous balance ($)")}
         {field("new_balance", "New balance ($)")}
@@ -144,10 +160,11 @@ export function StatementForm({ cardName }: { cardName: string }) {
         {field("credits", "Total credits ($)", { placeholder: lines.length ? (lineCredits / 100).toFixed(2) : "" })}
         {field("minimum_due", "Minimum payment ($)")}
         <div>
-          <label className="label label-when" htmlFor="st-due_date">Payment due</label>
-          <input className="input" type="date" id="st-due_date" value={v.due_date} onChange={set("due_date")} />
+          <label className="label label-when" htmlFor={`st-${id}-due_date`}>Payment due</label>
+          <input className="input" type="date" id={`st-${id}-due_date`} value={v.due_date} onChange={set("due_date")} />
         </div>
         {field("credit_limit", "Credit limit ($)")}
+        {field("miles_earned", "AAdvantage miles", { inputMode: "numeric", placeholder: "as printed" })}
       </div>
 
       <div>
@@ -175,7 +192,7 @@ export function StatementForm({ cardName }: { cardName: string }) {
       </div>
 
       {message && <p className={`text-sm ${message.ok ? "text-green-700" : "text-red-700"}`}>{message.text}</p>}
-      <button type="button" className="btn w-full" disabled={!!busy} onClick={save}>{busy === "saving" ? "Saving…" : "Save statement"}</button>
+      <button type="button" className="btn w-full" disabled={!!busy} onClick={save}>{busy === "saving" ? "Saving…" : edit ? "Save changes" : "Save statement"}</button>
     </div>
   );
 }

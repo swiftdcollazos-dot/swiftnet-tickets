@@ -8,7 +8,7 @@ import { deleteCardStatement } from "@/app/actions";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Loading } from "@/components/loading";
 import { CategorySelect, StatementForm } from "@/components/card-forms";
-import { PAYMENT_CATEGORY, byCategory, monthLabel, possibleDuplicates, type CardLine, type CardStatement } from "@/lib/card";
+import { PAYMENT_CATEGORY, byCategory, learnFrom, type Learned, monthLabel, possibleDuplicates, type CardLine, type CardStatement } from "@/lib/card";
 
 // Reading an uploaded statement can take a while.
 export const maxDuration = 120;
@@ -34,6 +34,8 @@ const BAR: Record<string, string> = {
   "Company lunch": "bg-orange-500",
   "Company dinner": "bg-rose-600",
   Entertainment: "bg-pink-500",
+  "Customer incentives": "bg-cyan-600",
+  "Research and development": "bg-lime-600",
   "Local purchases": "bg-green-600",
   Other: "bg-slate-400",
 };
@@ -54,7 +56,7 @@ function LineRow({ l }: { l: CardLine }) {
   );
 }
 
-function Statement({ s, lines, open }: { s: CardStatement; lines: CardLine[]; open: boolean }) {
+function Statement({ s, lines, open, learned }: { s: CardStatement; lines: CardLine[]; open: boolean; learned: Learned }) {
   const categories = byCategory(lines);
   const payments = lines.filter((l) => l.category === PAYMENT_CATEGORY);
   const flags = possibleDuplicates(lines);
@@ -84,6 +86,12 @@ function Statement({ s, lines, open }: { s: CardStatement; lines: CardLine[]; op
           <Stat label="New balance" value={formatMoney(s.new_balance_cents)} />
           <Stat label={s.due_date ? `Minimum due ${formatDate(s.due_date)}` : "Minimum due"} value={formatMoney(s.minimum_due_cents)} tone="text-red-700" />
         </div>
+        {s.miles_earned != null && (
+          <p className="text-sm">
+            ✈️ <span className="font-semibold">{s.miles_earned.toLocaleString("en-US")} AAdvantage miles</span>{" "}
+            <span className="text-slate-500">printed on this statement (earned on the previous one)</span>
+          </p>
+        )}
         {s.credit_limit_cents > 0 && (
           <div>
             <div className="h-2 overflow-hidden rounded-full bg-slate-100">
@@ -150,6 +158,14 @@ function Statement({ s, lines, open }: { s: CardStatement; lines: CardLine[]; op
           </section>
         )}
 
+        <details className="rounded-lg border border-slate-200 p-3">
+          <summary className="cursor-pointer font-semibold">✏️ Edit this statement</summary>
+          <p className="mt-1 text-xs text-slate-500">Change the totals, any line or its category, add or remove lines, or upload the PDF again to re-read it.</p>
+          <div className="mt-3">
+            <StatementForm cardName={s.card_name} edit={{ statement: s, lines }} learned={learned} />
+          </div>
+        </details>
+
         <ConfirmButton action={deleteCardStatement.bind(null, s.id)} question={`Delete the ${monthLabel(s.statement_month)} statement?`} className="btn-danger w-full">
           Delete this statement
         </ConfirmButton>
@@ -183,6 +199,7 @@ async function CardUsage() {
   }
   const statements = (st ?? []) as CardStatement[];
   const lines = (tx ?? []) as CardLine[];
+  const learned = learnFrom(lines);
   const linesFor = (id: string) => lines.filter((l) => l.statement_id === id);
 
   return (
@@ -197,6 +214,7 @@ async function CardUsage() {
                 <th className="py-1 text-right font-normal">Charged</th>
                 <th className="py-1 text-right font-normal">Paid</th>
                 <th className="py-1 text-right font-normal">Balance</th>
+                <th className="py-1 text-right font-normal">Miles</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -206,6 +224,7 @@ async function CardUsage() {
                   <td className="py-1.5 text-right tabular-nums">{formatMoney(s.charges_cents)}</td>
                   <td className="py-1.5 text-right tabular-nums text-green-700">{formatMoney(s.credits_cents)}</td>
                   <td className="py-1.5 text-right tabular-nums">{formatMoney(s.new_balance_cents)}</td>
+                  <td className="py-1.5 text-right tabular-nums">{s.miles_earned != null ? s.miles_earned.toLocaleString("en-US") : "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -215,7 +234,7 @@ async function CardUsage() {
 
       {statements.length === 0 && <p className="card text-center text-slate-500">No statements yet. Add one below.</p>}
       <div className="space-y-3">
-        {statements.map((s, i) => <Statement key={s.id} s={s} lines={linesFor(s.id)} open={i === 0} />)}
+        {statements.map((s, i) => <Statement key={s.id} s={s} lines={linesFor(s.id)} open={i === 0} learned={learned} />)}
       </div>
 
       <details className="card group" open={statements.length === 0}>
@@ -224,7 +243,7 @@ async function CardUsage() {
           <span className="text-sm text-slate-500 transition-transform group-open:rotate-180">▼</span>
         </summary>
         <div className="mt-3">
-          <StatementForm cardName={statements[0]?.card_name ?? ""} />
+          <StatementForm cardName={statements[0]?.card_name ?? ""} learned={learned} />
         </div>
       </details>
     </div>

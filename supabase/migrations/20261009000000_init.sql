@@ -371,3 +371,6 @@ drop policy if exists "owner or office" on public.card_transactions;
 create policy "owner or office" on public.card_transactions for all to authenticated
   using (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com' or auth.jwt() -> 'app_metadata' ->> 'can_see_office' = 'true')
   with check (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com' or auth.jwt() -> 'app_metadata' ->> 'can_see_office' = 'true');
+
+-- AAdvantage miles as printed on each card statement.
+alter table public.card_statements add column if not exists miles_earned integer;

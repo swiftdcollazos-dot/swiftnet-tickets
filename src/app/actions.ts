@@ -15,7 +15,7 @@ import { isOwner, permissions, type Permissions } from "@/lib/owner";
 import { scanReceiptImage, type ScannedReceipt } from "@/lib/receipt-scan";
 import { TOT_CATEGORY, TOT_VENDOR, totFor } from "@/lib/tot";
 import { scanStatementFile, type ScannedStatement } from "@/lib/statement-scan";
-import { CARD_CATEGORIES, PAYMENT_CATEGORY } from "@/lib/card";
+import { CARD_CATEGORIES, PAYMENT_CATEGORY, learnFrom, pickCategory } from "@/lib/card";
 import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENEWAL_KINDS, REPEATS, alertValue, UTILITIES_CATEGORY, VEHICLE_CATEGORY, VEHICLES, RENEWAL_REPEATS, TOT_RATE_PCT, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
@@ -851,10 +851,15 @@ export async function deleteRenewal(id: string) {
 
 /** Reads a statement PDF or photo and returns what to fill in. Nothing is saved. */
 export async function scanCardStatement(dataUrl: string): Promise<ScannedStatement | { error: string }> {
-  await requireOffice();
+  const { supabase } = await requireOffice();
   if (!isReceipt(dataUrl)) return { error: "That file couldn't be used. Please try another." };
   try {
-    return await scanStatementFile(dataUrl);
+    const scanned = await scanStatementFile(dataUrl);
+    if ("error" in scanned) return scanned;
+    // Categories picked by hand on earlier statements win over the built-in guesses.
+    const { data: past } = await supabase.from("card_transactions").select("merchant, category, amount_cents").order("posted_on");
+    const learned = learnFrom(past ?? []);
+    return { ...scanned, lines: scanned.lines.map((l) => ({ ...l, category: pickCategory(l.merchant, Math.round(l.amount * 100), learned) })) };
   } catch (e) {
     console.error("scanCardStatement", e);
     const detail = e instanceof Error ? e.message : String(e);
@@ -873,6 +878,7 @@ export type CardStatementInput = {
   credits: string;
   new_balance: string;
   minimum_due: string;
+  miles_earned: string;
   lines: { posted_on: string; reference: string; merchant: string; amount: string; category: string; notes: string }[];
 };
 
@@ -880,7 +886,7 @@ const isDay = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 const cardCategory = (c: string) => (c === PAYMENT_CATEGORY || (CARD_CATEGORIES as readonly string[]).includes(c) ? c : "Other");
 
 /** Saves a month's statement and its lines. Saving the same card and month again replaces it. Returns an error to show. */
-export async function saveCardStatement(input: CardStatementInput): Promise<{ error: string } | { id: string }> {
+export async function saveCardStatement(input: CardStatementInput, editId: string | null = null): Promise<{ error: string } | { id: string }> {
   const { supabase } = await requireOffice();
   const month = String(input.statement_month ?? "").trim();
   if (!/^\d{4}-\d{2}$/.test(month)) return { error: "Pick the month the statement is for." };
@@ -909,8 +915,12 @@ export async function saveCardStatement(input: CardStatementInput): Promise<{ er
     credits_cents: input.credits ? Math.abs(parseMoney(input.credits)) : lineCredits,
     new_balance_cents: parseMoney(input.new_balance),
     minimum_due_cents: parseMoney(input.minimum_due),
+    miles_earned: String(input.miles_earned ?? "").trim() ? Math.max(0, Math.round(Number(String(input.miles_earned).replace(/[,\s]/g, "")) || 0)) : null,
   };
-  const { data: existing } = await supabase.from("card_statements").select("id").eq("card_name", fields.card_name).eq("statement_month", month).maybeSingle();
+  const { data: same } = await supabase.from("card_statements").select("id").eq("card_name", fields.card_name).eq("statement_month", month).maybeSingle();
+  // Editing a saved statement updates it; a new one with the same card and month replaces that month.
+  if (editId && same && same.id !== editId) return { error: "There's already a statement for that card and month. Delete one of them first." };
+  const existing = editId ? { id: editId } : same;
   const saved = existing
     ? await supabase.from("card_statements").update(fields).eq("id", existing.id).select("id").single()
     : await supabase.from("card_statements").insert(fields).select("id").single();

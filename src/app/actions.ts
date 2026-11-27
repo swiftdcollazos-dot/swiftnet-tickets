@@ -857,7 +857,8 @@ export async function scanCardStatement(dataUrl: string): Promise<ScannedStateme
     return await scanStatementFile(dataUrl);
   } catch (e) {
     console.error("scanCardStatement", e);
-    return { error: "Reading the statement didn't work this time. Please try again or enter it by hand." };
+    const detail = e instanceof Error ? e.message : String(e);
+    return { error: `Reading the statement didn't work this time. Please try again or enter it by hand. (${detail.slice(0, 300)})` };
   }
 }
 

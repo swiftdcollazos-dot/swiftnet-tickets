@@ -46,6 +46,7 @@ const BAR: Record<string, string> = {
   "Health insurance": "bg-emerald-600",
   "Car insurance": "bg-indigo-400",
   "Automobile parts": "bg-zinc-500",
+  "To review": "bg-red-500",
   "Local purchases": "bg-green-600",
   Other: "bg-slate-400",
 };
@@ -194,6 +195,7 @@ const ICON: Record<WarningKind | "ok", string> = {
   spending: "M3 17l6-6 4 4 8-8 M15 7h6v6",
   limit: "M12 4L2 20h20z M12 10v4 M12 17h.01",
   empty: "M6 3h9l4 4v14H6z M14 3v5h5",
+  review: "M5 21V4 M5 4h11l-2 4 2 4H5",
   ok: "M5 12l5 5 9-10",
 };
 

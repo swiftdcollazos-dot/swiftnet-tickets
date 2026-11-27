@@ -25,6 +25,11 @@ describe("statementWarnings", () => {
     expect(w.some((t) => t.startsWith("Foreign currency: DLO*Starlink"))).toBe(true);
     expect(w.some((t) => t.includes("no category yet"))).toBe(true);
   });
+  it("shows lines marked To review first, and never learns that category", () => {
+    const w = statementWarnings(st({ charges_cents: 5000 }), [at("ODD SHOP", 5000), at("THANK YOU FOR YOUR PAYMENT", -10000)].map((l) => (l.merchant === "ODD SHOP" ? { ...l, category: "To review" } : l)));
+    expect(w[0]).toMatchObject({ kind: "review", label: "1 to review" });
+    expect(learnFrom([{ merchant: "ODD SHOP", category: "To review", amount_cents: 5000 }])).toEqual({});
+  });
   it("flags a month well above average", () => {
     expect(statementWarnings(st({ charges_cents: 30000, new_balance_cents: 30000, credits_cents: 10000, previous_balance_cents: 10000 }), [], [10000, 10000]).some((x) => x.text.startsWith("Spending is 200% above"))).toBe(true);
   });

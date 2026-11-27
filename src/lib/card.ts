@@ -20,8 +20,12 @@ export const CARD_CATEGORIES = [
   "Car insurance",
   "Automobile parts",
   "Local purchases",
+  "To review",
   "Other",
 ] as const;
+
+/** A line marked to look at again. It shows as a warning on the month, and is never learned for next time. */
+export const REVIEW_CATEGORY = "To review";
 export type CardCategory = (typeof CARD_CATEGORIES)[number];
 /** Payments to the card and refunds. They're shown apart from spending. */
 export const PAYMENT_CATEGORY = "Payment";
@@ -93,7 +97,7 @@ export type Learned = Record<string, string>;
 export function learnFrom(lines: { merchant: string; category: string; amount_cents: number }[]): Learned {
   const learned: Learned = {};
   for (const l of lines) {
-    if (l.amount_cents <= 0 || l.category === PAYMENT_CATEGORY) continue;
+    if (l.amount_cents <= 0 || l.category === PAYMENT_CATEGORY || l.category === REVIEW_CATEGORY) continue;
     const key = merchantPattern(l.merchant);
     if (key) learned[key] = l.category;
   }
@@ -164,7 +168,7 @@ export function monthForStatementDate(date: string): string {
   return new Date(Date.UTC(y, d && d > 20 ? m - 1 : m - 2, 1)).toISOString().slice(0, 7);
 }
 
-export type WarningKind = "math" | "double" | "subscription" | "fee" | "foreign" | "large" | "uncategorized" | "spending" | "limit" | "empty";
+export type WarningKind = "math" | "double" | "subscription" | "fee" | "foreign" | "large" | "uncategorized" | "spending" | "limit" | "empty" | "review";
 /** `label` is the short badge shown on the collapsed month; `text` is the full detail. */
 export type Warning = { level: "alert" | "check"; kind: WarningKind; label: string; text: string };
 
@@ -223,6 +227,17 @@ export function statementWarnings(s: CardStatement, lines: CardLine[], otherMont
     out.push({ level: "check", kind: "foreign", label: `Foreign ${merchantKey(l.merchant).toUpperCase()}`, text: `Foreign currency: ${l.merchant} ${usd(l.amount_cents)}${l.notes ? ` (${l.notes})` : ""}. Check the rate and any fee.` });
   }
   for (const l of charges.filter((l) => l.amount_cents >= LARGE_CHARGE_CENTS)) out.push({ level: "check", kind: "large", label: `Large ${usd(l.amount_cents)}`, text: `Large charge: ${l.merchant} ${usd(l.amount_cents)} on ${shortDay(l.posted_on)}.` });
+
+  // Lines marked "To review" by hand come first: they were picked on purpose.
+  const review = lines.filter((l) => l.category === REVIEW_CATEGORY);
+  if (review.length) {
+    out.unshift({
+      level: "alert",
+      kind: "review",
+      label: `${review.length} to review`,
+      text: `Marked to review: ${review.map((l) => `${l.merchant} ${usd(l.amount_cents)} on ${shortDay(l.posted_on)}`).join("; ")}.`,
+    });
+  }
 
   const other = charges.filter((l) => l.category === "Other");
   if (other.length) out.push({ level: "check", kind: "uncategorized", label: `${other.length} uncategorized`, text: `${other.length} ${other.length === 1 ? "charge has" : "charges have"} no category yet (${usd(other.reduce((t, l) => t + l.amount_cents, 0))}).` });

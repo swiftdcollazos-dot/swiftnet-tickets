@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveCardStatement, scanCardStatement, setCardLineCategory, type CardStatementInput } from "@/app/actions";
-import { CARD_CATEGORIES, PAYMENT_CATEGORY, categorize, monthForStatementDate, type CardLine, type CardStatement } from "@/lib/card";
+import { CARD_CATEGORIES, PAYMENT_CATEGORY, monthForStatementDate, pickCategory, type Learned, type CardLine, type CardStatement } from "@/lib/card";
 import { pdfToJpeg } from "@/lib/pdf-to-image";
 
 const PDF_MAX_BYTES = 2_000_000;
@@ -31,7 +31,7 @@ const cents2 = (c: number) => (c ? (c / 100).toFixed(2) : "");
  * Add a month: upload the bank's statement PDF to fill everything in, or type it in. Saving the same month again replaces it.
  * With `edit`, it opens a saved statement to change anything, lines and categories included.
  */
-export function StatementForm({ cardName, edit }: { cardName: string; edit?: { statement: CardStatement; lines: CardLine[] } }) {
+export function StatementForm({ cardName, edit, learned = {} }: { cardName: string; edit?: { statement: CardStatement; lines: CardLine[] }; learned?: Learned }) {
   const router = useRouter();
   const file = useRef<HTMLInputElement>(null);
   const id = edit ? edit.statement.id : "new";
@@ -58,7 +58,7 @@ export function StatementForm({ cardName, edit }: { cardName: string; edit?: { s
       if (l.key !== key) return l;
       const next = { ...l, [field]: e.target.value };
       // A new merchant or a sign change picks the category again, until it's picked by hand.
-      if ((field === "merchant" || field === "amount") && l.category === categorize(l.merchant, toCents(l.amount))) next.category = categorize(next.merchant, toCents(next.amount));
+      if ((field === "merchant" || field === "amount") && l.category === pickCategory(l.merchant, toCents(l.amount), learned)) next.category = pickCategory(next.merchant, toCents(next.amount), learned);
       return next;
     }));
 

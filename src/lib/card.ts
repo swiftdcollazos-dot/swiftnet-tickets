@@ -66,6 +66,39 @@ export function categorize(merchant: string, amountCents = 1): string {
   return "Other";
 }
 
+/**
+ * A merchant name without its order numbers and codes, so "AMAZON MKTPL*590RD8T50 SEATTLE WA" and
+ * "AMAZON MKTPL*1L35A7EC3 SEATTLE WA" are the same merchant.
+ */
+export function merchantPattern(merchant: string): string {
+  return merchant
+    .toLowerCase()
+    .split(/\s+/)
+    .map((w) => w.split("*")[0])
+    .filter((w) => w && !/\d/.test(w))
+    .join(" ");
+}
+
+/** What was learned from saved statements: each merchant's category as last picked. Payments aren't learned. */
+export type Learned = Record<string, string>;
+
+/** Builds what was learned from saved lines, oldest first, so the latest choice for a merchant wins. */
+export function learnFrom(lines: { merchant: string; category: string; amount_cents: number }[]): Learned {
+  const learned: Learned = {};
+  for (const l of lines) {
+    if (l.amount_cents <= 0 || l.category === PAYMENT_CATEGORY) continue;
+    const key = merchantPattern(l.merchant);
+    if (key) learned[key] = l.category;
+  }
+  return learned;
+}
+
+/** The category for a line: the one picked before for the same merchant, otherwise the built-in guess. */
+export function pickCategory(merchant: string, amountCents: number, learned: Learned = {}): string {
+  if (amountCents < 0) return PAYMENT_CATEGORY;
+  return learned[merchantPattern(merchant)] ?? categorize(merchant, amountCents);
+}
+
 /** The first word of a merchant name, so "ASKGPT.APP LIMASSOL" and "ASKGPT AI CHAT" are the same company. */
 export function merchantKey(merchant: string): string {
   const first = merchant.trim().toLowerCase().match(/[a-z0-9]+/);

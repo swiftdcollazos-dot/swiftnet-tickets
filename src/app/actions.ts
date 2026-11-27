@@ -15,7 +15,7 @@ import { isOwner, permissions, type Permissions } from "@/lib/owner";
 import { scanReceiptImage, type ScannedReceipt } from "@/lib/receipt-scan";
 import { TOT_CATEGORY, TOT_VENDOR, totFor } from "@/lib/tot";
 import { scanStatementFile, type ScannedStatement } from "@/lib/statement-scan";
-import { CARD_CATEGORIES, PAYMENT_CATEGORY } from "@/lib/card";
+import { CARD_CATEGORIES, PAYMENT_CATEGORY, learnFrom, pickCategory } from "@/lib/card";
 import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENEWAL_KINDS, REPEATS, alertValue, UTILITIES_CATEGORY, VEHICLE_CATEGORY, VEHICLES, RENEWAL_REPEATS, TOT_RATE_PCT, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
@@ -851,10 +851,15 @@ export async function deleteRenewal(id: string) {
 
 /** Reads a statement PDF or photo and returns what to fill in. Nothing is saved. */
 export async function scanCardStatement(dataUrl: string): Promise<ScannedStatement | { error: string }> {
-  await requireOffice();
+  const { supabase } = await requireOffice();
   if (!isReceipt(dataUrl)) return { error: "That file couldn't be used. Please try another." };
   try {
-    return await scanStatementFile(dataUrl);
+    const scanned = await scanStatementFile(dataUrl);
+    if ("error" in scanned) return scanned;
+    // Categories picked by hand on earlier statements win over the built-in guesses.
+    const { data: past } = await supabase.from("card_transactions").select("merchant, category, amount_cents").order("posted_on");
+    const learned = learnFrom(past ?? []);
+    return { ...scanned, lines: scanned.lines.map((l) => ({ ...l, category: pickCategory(l.merchant, Math.round(l.amount * 100), learned) })) };
   } catch (e) {
     console.error("scanCardStatement", e);
     const detail = e instanceof Error ? e.message : String(e);

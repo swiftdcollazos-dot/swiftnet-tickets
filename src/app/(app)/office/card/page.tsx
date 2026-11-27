@@ -8,7 +8,7 @@ import { deleteCardStatement } from "@/app/actions";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Loading } from "@/components/loading";
 import { CategorySelect, StatementForm } from "@/components/card-forms";
-import { PAYMENT_CATEGORY, byCategory, monthLabel, possibleDuplicates, type CardLine, type CardStatement } from "@/lib/card";
+import { PAYMENT_CATEGORY, byCategory, learnFrom, type Learned, monthLabel, possibleDuplicates, type CardLine, type CardStatement } from "@/lib/card";
 
 // Reading an uploaded statement can take a while.
 export const maxDuration = 120;
@@ -56,7 +56,7 @@ function LineRow({ l }: { l: CardLine }) {
   );
 }
 
-function Statement({ s, lines, open }: { s: CardStatement; lines: CardLine[]; open: boolean }) {
+function Statement({ s, lines, open, learned }: { s: CardStatement; lines: CardLine[]; open: boolean; learned: Learned }) {
   const categories = byCategory(lines);
   const payments = lines.filter((l) => l.category === PAYMENT_CATEGORY);
   const flags = possibleDuplicates(lines);
@@ -156,7 +156,7 @@ function Statement({ s, lines, open }: { s: CardStatement; lines: CardLine[]; op
           <summary className="cursor-pointer font-semibold">✏️ Edit this statement</summary>
           <p className="mt-1 text-xs text-slate-500">Change the totals, any line or its category, add or remove lines, or upload the PDF again to re-read it.</p>
           <div className="mt-3">
-            <StatementForm cardName={s.card_name} edit={{ statement: s, lines }} />
+            <StatementForm cardName={s.card_name} edit={{ statement: s, lines }} learned={learned} />
           </div>
         </details>
 
@@ -193,6 +193,7 @@ async function CardUsage() {
   }
   const statements = (st ?? []) as CardStatement[];
   const lines = (tx ?? []) as CardLine[];
+  const learned = learnFrom(lines);
   const linesFor = (id: string) => lines.filter((l) => l.statement_id === id);
 
   return (
@@ -225,7 +226,7 @@ async function CardUsage() {
 
       {statements.length === 0 && <p className="card text-center text-slate-500">No statements yet. Add one below.</p>}
       <div className="space-y-3">
-        {statements.map((s, i) => <Statement key={s.id} s={s} lines={linesFor(s.id)} open={i === 0} />)}
+        {statements.map((s, i) => <Statement key={s.id} s={s} lines={linesFor(s.id)} open={i === 0} learned={learned} />)}
       </div>
 
       <details className="card group" open={statements.length === 0}>
@@ -234,7 +235,7 @@ async function CardUsage() {
           <span className="text-sm text-slate-500 transition-transform group-open:rotate-180">▼</span>
         </summary>
         <div className="mt-3">
-          <StatementForm cardName={statements[0]?.card_name ?? ""} />
+          <StatementForm cardName={statements[0]?.card_name ?? ""} learned={learned} />
         </div>
       </details>
     </div>

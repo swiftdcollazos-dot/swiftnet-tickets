@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { byCategory, categorize, merchantKey, monthForStatementDate, possibleDuplicates, type CardLine } from "./card";
+import { byCategory, categorize, learnFrom, merchantKey, merchantPattern, pickCategory, monthForStatementDate, possibleDuplicates, type CardLine } from "./card";
 
 const line = (merchant: string, cents: number, category = categorize(merchant, cents)): CardLine => ({
   id: merchant + cents, statement_id: "s", posted_on: "2026-10-01", reference: "", merchant, category, amount_cents: cents, notes: "",
@@ -45,4 +45,19 @@ describe("byCategory", () => {
 describe("monthForStatementDate", () => {
   it("a statement closing 5 Nov is October's", () => expect(monthForStatementDate("2026-11-05")).toBe("2026-10"));
   it("a statement closing 28 Oct is October's", () => expect(monthForStatementDate("2026-10-28")).toBe("2026-10"));
+});
+
+describe("learning from saved statements", () => {
+  it("ignores order numbers in merchant names", () => {
+    expect(merchantPattern("AMAZON MKTPL*590RD8T50 SEATTLE WA")).toBe(merchantPattern("AMAZON MKTPL*1L35A7EC3 SEATTLE WA"));
+  });
+  it("uses the category picked last time for the same merchant", () => {
+    const learned = learnFrom([
+      { merchant: "KOOYMAN ST MAARTEN CAYHILL SXM", category: "Parts and equipment", amount_cents: 9134 },
+      { merchant: "THANK YOU FOR YOUR PAYMENT", category: "Payment", amount_cents: -100 },
+    ]);
+    expect(pickCategory("KOOYMAN ST MAARTEN CAYHILL SXM", 5000, learned)).toBe("Parts and equipment");
+    expect(pickCategory("RISDON'S GAS STATION POINTE BLA SXM", 5000, learned)).toBe("Fuel");
+    expect(pickCategory("THANK YOU FOR YOUR PAYMENT", -100, learned)).toBe("Payment");
+  });
 });

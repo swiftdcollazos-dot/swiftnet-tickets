@@ -9,6 +9,9 @@ export const CARD_CATEGORIES = [
   "Travel",
   "Fuel",
   "Shipping",
+  "Company lunch",
+  "Company dinner",
+  "Entertainment",
   "Local purchases",
   "Other",
 ] as const;
@@ -49,10 +52,12 @@ const RULES: [RegExp, CardCategory | typeof PAYMENT_CATEGORY][] = [
   [/arajet|airline|airways|american air|jetblue|delta|united|winair|insel|caribbean air|copa|expedia|booking\.com|hotel|airbnb|hertz|avis|budget rent/i, "Travel"],
   [/gas station|risdon|\bgas\b|fuel|petrol|shell|texaco|esso|sol\b/i, "Fuel"],
   [/cargo|shipping|courier|fedex|ups\b|dhl|usps|aeropost|mail ?box/i, "Shipping"],
+  [/restaurant|resto\b|cafe|café|coffee|starbucks|bakery|bistro|grill|pizza|burger|kfc|mcdonald|subway|domino|sushi|bar & |\bbar\b|diner|kitchen|uber ?eats|doordash/i, "Company lunch"],
+  [/netflix|spotify|disney|hulu|hbo|max\.com|youtube|prime video|apple ?tv|playstation|xbox|nintendo|steam|cinema|movie|theater|theatre|ticketmaster|casino|concert|event/i, "Entertainment"],
   [/\bsxm\b|st maarten|sint maarten|philipsburg|kooyman|ace hardware/i, "Local purchases"],
 ];
 
-/** Picks a category from the merchant name on the statement. */
+/** Picks a category from the merchant name on the statement. Restaurants start as "Company lunch"; switch a dinner by hand. */
 export function categorize(merchant: string, amountCents = 1): string {
   if (amountCents < 0) return PAYMENT_CATEGORY;
   for (const [re, category] of RULES) if (re.test(merchant)) return category;

@@ -70,7 +70,8 @@ export function StatementForm({ cardName }: { cardName: string }) {
         return;
       }
       setV({
-        card_name: r.card_name || cardName,
+        // Keep the card's existing name so the same month is replaced, not added twice.
+        card_name: cardName || r.card_name,
         statement_month: monthForStatementDate(r.statement_date),
         statement_date: r.statement_date,
         due_date: r.due_date,

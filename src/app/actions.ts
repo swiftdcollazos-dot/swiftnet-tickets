@@ -867,7 +867,20 @@ export async function scanCardStatement(dataUrl: string): Promise<ScannedStateme
   }
 }
 
+/**
+ * Before reading a statement: has this exact file been saved already? Returns its month and card, or null.
+ * Works before setup/card-file-check.sql is run too (then it never finds one).
+ */
+export async function findScannedStatement(fileHash: string): Promise<{ statement_month: string; card_name: string } | null> {
+  const { supabase } = await requireOffice();
+  if (!/^[0-9a-f]{64}$/.test(fileHash)) return null;
+  const { data, error } = await supabase.from("card_statements").select("statement_month, card_name").eq("file_hash", fileHash).limit(1).maybeSingle();
+  return error || !data ? null : data;
+}
+
 export type CardStatementInput = {
+  /** SHA-256 of the uploaded file, so the same file is caught before it's read again. */
+  file_hash?: string;
   card_name: string;
   statement_month: string;
   statement_date: string;
@@ -921,9 +934,14 @@ export async function saveCardStatement(input: CardStatementInput, editId: strin
   // Editing a saved statement updates it; a new one with the same card and month replaces that month.
   if (editId && same && same.id !== editId) return { error: "There's already a statement for that card and month. Delete one of them first." };
   const existing = editId ? { id: editId } : same;
-  const saved = existing
-    ? await supabase.from("card_statements").update(fields).eq("id", existing.id).select("id").single()
-    : await supabase.from("card_statements").insert(fields).select("id").single();
+  const hash = /^[0-9a-f]{64}$/.test(input.file_hash ?? "") ? { file_hash: input.file_hash } : {};
+  const write = (f: typeof fields & { file_hash?: string }) =>
+    existing
+      ? supabase.from("card_statements").update(f).eq("id", existing.id).select("id").single()
+      : supabase.from("card_statements").insert(f).select("id").single();
+  let saved = await write({ ...fields, ...hash });
+  // Before setup/card-file-check.sql is run there's no file_hash column: save without it.
+  if (saved.error && /file_hash/.test(saved.error.message)) saved = await write(fields);
   if (saved.error) return { error: saved.error.message };
   const id = saved.data.id as string;
   const { error: delError } = await supabase.from("card_transactions").delete().eq("statement_id", id);

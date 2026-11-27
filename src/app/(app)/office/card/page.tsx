@@ -274,7 +274,7 @@ async function CardUsage() {
           <span className="text-sm text-slate-500" aria-label="Close">✕</span>
         </summary>
         <div className="mt-3">
-          <StatementForm cardName={statements.at(-1)?.card_name ?? ""} learned={learned} />
+          <StatementForm cardName={statements.at(-1)?.card_name ?? ""} learned={learned} saved={statements} />
         </div>
       </details>
       {statements.length > 1 && (

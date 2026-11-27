@@ -2,8 +2,8 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { saveCardStatement, scanCardStatement, setCardLineCategory, type CardStatementInput } from "@/app/actions";
-import { CARD_CATEGORIES, PAYMENT_CATEGORY, monthForStatementDate, pickCategory, type Learned, type CardLine, type CardStatement } from "@/lib/card";
+import { findScannedStatement, saveCardStatement, scanCardStatement, setCardLineCategory, type CardStatementInput } from "@/app/actions";
+import { CARD_CATEGORIES, PAYMENT_CATEGORY, monthForStatementDate, monthLabel, pickCategory, type Learned, type CardLine, type CardStatement } from "@/lib/card";
 import { pdfToJpeg } from "@/lib/pdf-to-image";
 
 const PDF_MAX_BYTES = 2_000_000;
@@ -25,19 +25,34 @@ function readAsDataUrl(file: File): Promise<string> {
   });
 }
 
+/** SHA-256 of a file, to recognise the same statement uploaded twice. */
+async function fileHash(f: File): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", await f.arrayBuffer());
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 const cents2 = (c: number) => (c ? (c / 100).toFixed(2) : "");
 
 /**
  * Add a month: upload the bank's statement PDF to fill everything in, or type it in. Saving the same month again replaces it.
  * With `edit`, it opens a saved statement to change anything, lines and categories included.
  */
-export function StatementForm({ cardName, edit, learned = {} }: { cardName: string; edit?: { statement: CardStatement; lines: CardLine[] }; learned?: Learned }) {
+export function StatementForm({ cardName, edit, learned = {}, saved = [] }: {
+  cardName: string;
+  edit?: { statement: CardStatement; lines: CardLine[] };
+  learned?: Learned;
+  /** The months already saved, to warn before one is replaced. */
+  saved?: { card_name: string; statement_month: string }[];
+}) {
   const router = useRouter();
   const file = useRef<HTMLInputElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const id = edit ? edit.statement.id : "new";
   const [busy, setBusy] = useState<"" | "reading" | "saving">("");
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [hash, setHash] = useState("");
+  // A file that was already scanned, held until "Scan it anyway".
+  const [repeat, setRepeat] = useState<File | null>(null);
   const st = edit?.statement;
   const [v, setV] = useState({
     card_name: st?.card_name ?? cardName, statement_month: st?.statement_month ?? "", statement_date: st?.statement_date ?? "",
@@ -64,11 +79,21 @@ export function StatementForm({ cardName, edit, learned = {} }: { cardName: stri
       return next;
     }));
 
-  async function onFile(f: File | undefined) {
+  async function onFile(f: File | undefined, anyway = false) {
     if (!f) return;
     setMessage(null);
+    setRepeat(null);
     setBusy("reading");
     try {
+      // Check the file wasn't saved before, before spending time reading it.
+      const h = await fileHash(f).catch(() => "");
+      setHash(h);
+      const before = h && !anyway ? await findScannedStatement(h) : null;
+      if (before) {
+        setRepeat(f);
+        setMessage({ ok: false, text: `This file was already scanned and saved as ${monthLabel(before.statement_month)}${before.card_name ? ` (${before.card_name})` : ""}. Nothing was read.` });
+        return;
+      }
       const isPdf = f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
       const dataUrl = isPdf && f.size <= PDF_MAX_BYTES
         ? (await readAsDataUrl(f)).replace(/^data:[^;]*;/, "data:application/pdf;")
@@ -109,7 +134,7 @@ export function StatementForm({ cardName, edit, learned = {} }: { cardName: stri
   async function save() {
     setBusy("saving");
     setMessage(null);
-    const r = await saveCardStatement({ ...v, lines: lines.map((l) => ({ posted_on: l.posted_on, reference: l.reference, merchant: l.merchant, amount: l.amount, category: l.category, notes: l.notes })) }, edit ? edit.statement.id : null);
+    const r = await saveCardStatement({ ...v, file_hash: hash || undefined, lines: lines.map((l) => ({ posted_on: l.posted_on, reference: l.reference, merchant: l.merchant, amount: l.amount, category: l.category, notes: l.notes })) }, edit ? edit.statement.id : null);
     setBusy("");
     if ("error" in r) setMessage({ ok: false, text: r.error });
     else if (edit) {
@@ -121,6 +146,7 @@ export function StatementForm({ cardName, edit, learned = {} }: { cardName: stri
       editBox?.parentElement?.closest("details")?.scrollIntoView({ behavior: "smooth", block: "start" });
     } else {
       setLines([]);
+      setHash("");
       setV((old) => ({ ...old, statement_month: "", statement_date: "", due_date: "", previous_balance: "", charges: "", credits: "", new_balance: "", minimum_due: "", miles_earned: "" }));
       setMessage({ ok: true, text: "Saved." });
       router.refresh();
@@ -130,6 +156,7 @@ export function StatementForm({ cardName, edit, learned = {} }: { cardName: stri
     }
   }
 
+  const replaces = !edit && !!v.statement_month && saved.some((x) => x.statement_month === v.statement_month && x.card_name.trim() === v.card_name.trim());
   const lineCharges = lines.reduce((s, l) => s + Math.max(0, toCents(l.amount)), 0);
   const lineCredits = -lines.reduce((s, l) => s + Math.min(0, toCents(l.amount)), 0);
   const mismatch = lines.length > 0 && ((v.charges && toCents(v.charges) !== lineCharges) || (v.credits && toCents(v.credits) !== lineCredits));
@@ -200,7 +227,17 @@ export function StatementForm({ cardName, edit, learned = {} }: { cardName: stri
       </div>
 
       {message && <p className={`text-sm ${message.ok ? "text-green-700" : "text-red-700"}`}>{message.text}</p>}
-      <button type="button" className="btn w-full" disabled={!!busy} onClick={save}>{busy === "saving" ? "Saving…" : edit ? "Save changes" : "Save statement"}</button>
+      {repeat && (
+        <button type="button" className="btn-light w-full" disabled={!!busy} onClick={() => onFile(repeat, true)}>Scan it anyway</button>
+      )}
+      {replaces && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-sm text-amber-900">
+          {monthLabel(v.statement_month)} is already saved for this card. Saving will replace it.
+        </p>
+      )}
+      <button type="button" className="btn w-full" disabled={!!busy} onClick={save}>
+        {busy === "saving" ? "Saving…" : edit ? "Save changes" : replaces ? `Replace ${monthLabel(v.statement_month)}` : "Save statement"}
+      </button>
     </div>
   );
 }

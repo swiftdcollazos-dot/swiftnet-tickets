@@ -11,7 +11,7 @@ import { Loading } from "@/components/loading";
 import { ConfirmButton } from "@/components/confirm-button";
 import { recordTot } from "@/app/actions";
 import { TOT_CATEGORY, TOT_VENDOR, totFor, type Tot } from "@/lib/tot";
-import { monthLabel, possibleDuplicates, type CardLine } from "@/lib/card";
+import { estimateMiles, monthLabel, possibleDuplicates, type CardLine } from "@/lib/card";
 
 export default function OfficePage() {
   return (
@@ -124,6 +124,7 @@ async function CardTile() {
           <p className="text-sm text-slate-500">
             charged in {monthLabel(latest.statement_month as string)} · balance {formatMoney(latest.new_balance_cents as number)} · minimum {formatMoney(latest.minimum_due_cents as number)}
           </p>
+          <p className="text-sm text-sky-700">✈️ about {estimateMiles(latest.charges_cents as number).toLocaleString("en-US")} AA miles</p>
           {flags > 0 && <p className="text-sm font-semibold text-amber-700">⚠️ {flags} possible duplicate {flags === 1 ? "subscription" : "subscriptions"}</p>}
         </>
       )}

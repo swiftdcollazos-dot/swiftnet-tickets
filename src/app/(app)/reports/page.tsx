@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/supabase/server";
 import { isOwner, permissions } from "@/lib/owner";
 import { computeTotals, contractStartMonth, entryMinutes, formatMoney, notBilled } from "@/lib/billing";
 import { formatDate, todayLocal } from "@/lib/time";
+import { estimateMiles } from "@/lib/card";
 import { billingType, jobItemParts, rulesOf, type ClientType, type Settings, type Ticket } from "@/lib/types";
 import { Loading } from "@/components/loading";
 
@@ -299,38 +300,46 @@ async function ReportBody({ searchParams }: { searchParams: PageProps<"/reports"
   );
 }
 
-/** AAdvantage miles from Office > Credit card usage. Hidden until the miles column exists or any are entered. */
+/**
+ * AAdvantage miles from Office > Credit card usage: expected from each month's charges (1 mile per $1), and the
+ * miles the bank printed. Statements count in the period by their statement date.
+ */
 async function MilesReport({ from, to }: { from: string; to: string }) {
   const { supabase } = await requireUser();
   const { data, error } = await supabase
     .from("card_statements")
     .select("statement_month, statement_date, card_name, charges_cents, miles_earned")
-    .not("miles_earned", "is", null)
     .order("statement_date", { ascending: false });
   if (error || !data?.length) return null;
-  const rows = data as { statement_month: string; statement_date: string; card_name: string; charges_cents: number; miles_earned: number }[];
-  const total = rows.reduce((s, r) => s + r.miles_earned, 0);
+  const rows = (data as { statement_month: string; statement_date: string; card_name: string; charges_cents: number; miles_earned: number | null }[]).map((r) => ({
+    ...r,
+    expected: estimateMiles(r.charges_cents),
+  }));
   const inRange = rows.filter((r) => r.statement_date >= from && r.statement_date <= to);
-  const rangeTotal = inRange.reduce((s, r) => s + r.miles_earned, 0);
+  const sum = (list: typeof rows, key: "expected" | "miles_earned") => list.reduce((s, r) => s + (r[key] ?? 0), 0);
   const miles = (n: number) => n.toLocaleString("en-US");
+  const monthName = (m: string) => new Date(`${m}-01T00:00:00Z`).toLocaleString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
   return (
     <>
       <div className="grid grid-cols-2 gap-2">
-        <Stat label="✈️ AA miles, this period" value={miles(rangeTotal)} note={`${inRange.length} ${inRange.length === 1 ? "statement" : "statements"} dated in these dates`} />
-        <Stat label="✈️ AA miles, all recorded" value={miles(total)} note={`from ${rows.length} ${rows.length === 1 ? "statement" : "statements"}`} />
+        <Stat label="✈️ AA miles, this period" value={miles(sum(inRange, "expected"))} note={`expected from ${usd(inRange.reduce((s, r) => s + r.charges_cents, 0))} in card charges`} />
+        <Stat label="✈️ AA miles, all months" value={miles(sum(rows, "expected"))} note={`${miles(sum(rows, "miles_earned"))} confirmed on statements so far`} />
       </div>
       <Table
-        title="AAdvantage miles by statement"
-        head={["Statement", "Card", "Miles"]}
-        rows={rows.slice(0, 12).map((r) => [formatDate(r.statement_date), r.card_name || "Card", miles(r.miles_earned)])}
-        foot={["Total", "", miles(total)]}
+        title="AAdvantage miles by month"
+        head={["Spending in", "Charged", "Expected", "Printed on statement"]}
+        rows={rows.slice(0, 12).map((r) => [monthName(r.statement_month), usd(r.charges_cents), miles(r.expected), r.miles_earned != null ? miles(r.miles_earned) : "—"])}
+        foot={["Total", usd(rows.reduce((s, r) => s + r.charges_cents, 0)), miles(sum(rows, "expected")), miles(sum(rows, "miles_earned"))]}
       />
       <p className="-mt-4 text-xs text-slate-500">
-        Miles as printed on each statement from Office &gt; Credit card usage. The bank prints the miles earned on the statement before, so they trail the spending by a month. Check your AAdvantage account for the live balance.
+        Expected miles are 1 per $1 charged on the card (Office &gt; Credit card usage). The bank prints the miles a month late, for the statement before, so the last column lags. Check your AAdvantage account for the live balance.
       </p>
     </>
   );
 }
+
+/** Card statements are in US dollars. */
+const usd = (cents: number) => formatMoney(cents);
 
 function Stat({ label, value, note }: { label: string; value: string; note: string }) {
   return (

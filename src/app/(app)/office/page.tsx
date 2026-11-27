@@ -11,6 +11,7 @@ import { Loading } from "@/components/loading";
 import { ConfirmButton } from "@/components/confirm-button";
 import { recordTot } from "@/app/actions";
 import { TOT_CATEGORY, TOT_VENDOR, totFor, type Tot } from "@/lib/tot";
+import { monthLabel, possibleDuplicates, type CardLine } from "@/lib/card";
 
 export default function OfficePage() {
   return (
@@ -89,8 +90,44 @@ async function Office() {
           due in the next 30 days{overdue ? ` · ${overdue} overdue` : ""}
         </p>
       </Link>
+      <Suspense fallback={<div className="card border-l-4 border-l-indigo-500"><p className="label">💳 Credit card usage</p></div>}>
+        <CardTile />
+      </Suspense>
       {owner && <TotTile today={today} />}
     </div>
+  );
+}
+
+/** The latest card statement: what was charged, the balance and minimum due. Kept separate from Expenses. */
+async function CardTile() {
+  const { supabase } = await requireUser();
+  const { data: latest, error } = await supabase
+    .from("card_statements")
+    .select("id, statement_month, charges_cents, new_balance_cents, minimum_due_cents")
+    .order("statement_month", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const { data: lines } = latest
+    ? await supabase.from("card_transactions").select("merchant, category, amount_cents").eq("statement_id", latest.id)
+    : { data: [] };
+  const flags = possibleDuplicates((lines ?? []) as CardLine[]).length;
+  return (
+    <Link href="/office/card" className="card block border-l-4 border-l-indigo-500 hover:bg-slate-50">
+      <p className="label">💳 Credit card usage</p>
+      {error ? (
+        <p className="text-sm text-slate-500">Run setup/credit-card-usage.sql in Supabase to turn this on.</p>
+      ) : !latest ? (
+        <p className="text-sm text-slate-500">No statements yet · upload one</p>
+      ) : (
+        <>
+          <p className="text-3xl font-bold">{formatMoney(latest.charges_cents as number)}</p>
+          <p className="text-sm text-slate-500">
+            charged in {monthLabel(latest.statement_month as string)} · balance {formatMoney(latest.new_balance_cents as number)} · minimum {formatMoney(latest.minimum_due_cents as number)}
+          </p>
+          {flags > 0 && <p className="text-sm font-semibold text-amber-700">⚠️ {flags} possible duplicate {flags === 1 ? "subscription" : "subscriptions"}</p>}
+        </>
+      )}
+    </Link>
   );
 }
 

@@ -17,6 +17,7 @@ export const CARD_CATEGORIES = [
   "Government taxes",
   "Health insurance",
   "Car insurance",
+  "Automobile parts",
   "Local purchases",
   "Other",
 ] as const;
@@ -160,4 +161,74 @@ export function monthForStatementDate(date: string): string {
   const [y, m, d] = date.split("-").map(Number);
   if (!y || !m) return "";
   return new Date(Date.UTC(y, d && d > 20 ? m - 1 : m - 2, 1)).toISOString().slice(0, 7);
+}
+
+export type Warning = { level: "alert" | "check"; text: string };
+
+const usd = (cents: number) => `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const shortDay = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const daysApart = (a: string, b: string) => Math.abs(Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 86_400_000;
+
+/** A charge this big is worth a second look. */
+export const LARGE_CHARGE_CENTS = 100_000;
+const FEE = /\bfee\b|interest|finance charge/i;
+const FOREIGN = /\b(COP|EUR|GBP|ANG|XCG|NAF|DOP|MXN|CAD|BRL|JPY|CNY)\b|billed as/i;
+
+/**
+ * Everything on a statement worth reviewing: totals that don't add up, double charges or subscriptions, fees and
+ * interest, foreign currency, large charges, uncategorized lines, and spending well above the other months.
+ * `otherMonths` are the charges of the other saved statements, to compare against.
+ */
+export function statementWarnings(s: CardStatement, lines: CardLine[], otherMonths: number[] = []): Warning[] {
+  const out: Warning[] = [];
+  const charges = lines.filter((l) => l.amount_cents > 0 && l.category !== PAYMENT_CATEGORY);
+
+  // The statement's own arithmetic, and the lines against the printed totals.
+  const expected = s.previous_balance_cents + s.charges_cents - s.credits_cents;
+  if ((s.previous_balance_cents || s.new_balance_cents) && Math.abs(expected - s.new_balance_cents) > 1) {
+    out.push({ level: "alert", text: `Balance doesn't add up: ${usd(s.previous_balance_cents)} + ${usd(s.charges_cents)} - ${usd(s.credits_cents)} = ${usd(expected)}, but the statement says ${usd(s.new_balance_cents)}. Possible interest or fees.` });
+  }
+  if (lines.length) {
+    const lineCharges = lines.filter((l) => l.amount_cents > 0).reduce((t, l) => t + l.amount_cents, 0);
+    const lineCredits = -lines.filter((l) => l.amount_cents < 0).reduce((t, l) => t + l.amount_cents, 0);
+    if (lineCharges !== s.charges_cents) out.push({ level: "alert", text: `The lines add up to ${usd(lineCharges)} in charges, but the statement says ${usd(s.charges_cents)}. A line may be missing or misread.` });
+    if (lineCredits !== s.credits_cents) out.push({ level: "alert", text: `The lines add up to ${usd(lineCredits)} in credits, but the statement says ${usd(s.credits_cents)}.` });
+  } else {
+    out.push({ level: "check", text: "No lines saved for this statement." });
+  }
+
+  // The same charge twice: same merchant and amount within 3 days.
+  const seen: CardLine[] = [];
+  for (const l of charges) {
+    const twin = seen.find((o) => o.amount_cents === l.amount_cents && merchantPattern(o.merchant) === merchantPattern(l.merchant) && daysApart(o.posted_on, l.posted_on) <= 3);
+    if (twin) out.push({ level: "alert", text: `Possible double charge: ${l.merchant} ${usd(l.amount_cents)} on ${shortDay(twin.posted_on)} and ${shortDay(l.posted_on)}.` });
+    seen.push(l);
+  }
+
+  for (const f of possibleDuplicates(lines)) {
+    const list = f.lines.map((l) => `${usd(l.amount_cents)} on ${shortDay(l.posted_on)}`).join(", ");
+    out.push({
+      level: f.differentNames ? "alert" : "check",
+      text: `${f.lines.length} subscription charges from ${f.key.toUpperCase()} (${list})${f.differentNames ? ", under different merchant names: you may be paying for two accounts" : ": check it isn't billed twice"}.`,
+    });
+  }
+
+  for (const l of charges.filter((l) => FEE.test(l.merchant))) out.push({ level: "alert", text: `Bank fee or interest: ${l.merchant} ${usd(l.amount_cents)}.` });
+  for (const l of charges.filter((l) => FOREIGN.test(l.notes) || FOREIGN.test(l.merchant))) {
+    out.push({ level: "check", text: `Foreign currency: ${l.merchant} ${usd(l.amount_cents)}${l.notes ? ` (${l.notes})` : ""}. Check the rate and any fee.` });
+  }
+  for (const l of charges.filter((l) => l.amount_cents >= LARGE_CHARGE_CENTS)) out.push({ level: "check", text: `Large charge: ${l.merchant} ${usd(l.amount_cents)} on ${shortDay(l.posted_on)}.` });
+
+  const other = charges.filter((l) => l.category === "Other");
+  if (other.length) out.push({ level: "check", text: `${other.length} ${other.length === 1 ? "charge has" : "charges have"} no category yet (${usd(other.reduce((t, l) => t + l.amount_cents, 0))}).` });
+
+  const others = otherMonths.filter((c) => c > 0);
+  if (others.length >= 2) {
+    const avg = others.reduce((t, c) => t + c, 0) / others.length;
+    if (s.charges_cents > avg * 1.5) out.push({ level: "check", text: `Spending is ${Math.round((s.charges_cents / avg - 1) * 100)}% above your average month (${usd(Math.round(avg))}).` });
+  }
+
+  if (s.credit_limit_cents && s.new_balance_cents > s.credit_limit_cents * 0.9) out.push({ level: "alert", text: `Balance is over 90% of the ${usd(s.credit_limit_cents)} limit.` });
+
+  return out;
 }

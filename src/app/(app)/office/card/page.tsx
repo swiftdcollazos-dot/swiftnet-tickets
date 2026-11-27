@@ -8,7 +8,7 @@ import { deleteCardStatement } from "@/app/actions";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Loading } from "@/components/loading";
 import { AddStatementButton, CategorySelect, StatementForm } from "@/components/card-forms";
-import { PAYMENT_CATEGORY, byCategory, estimateMiles, learnFrom, type Learned, monthLabel, possibleDuplicates, type CardLine, type CardStatement } from "@/lib/card";
+import { PAYMENT_CATEGORY, byCategory, estimateMiles, statementWarnings, learnFrom, type Learned, monthLabel, type CardLine, type CardStatement } from "@/lib/card";
 
 // Reading an uploaded statement can take a while.
 export const maxDuration = 120;
@@ -44,6 +44,7 @@ const BAR: Record<string, string> = {
   "Government taxes": "bg-stone-600",
   "Health insurance": "bg-emerald-600",
   "Car insurance": "bg-indigo-400",
+  "Automobile parts": "bg-zinc-500",
   "Local purchases": "bg-green-600",
   Other: "bg-slate-400",
 };
@@ -64,17 +65,19 @@ function LineRow({ l }: { l: CardLine }) {
   );
 }
 
-function Statement({ s, lines, open, learned }: { s: CardStatement; lines: CardLine[]; open: boolean; learned: Learned }) {
+function Statement({ s, lines, learned, otherMonths }: { s: CardStatement; lines: CardLine[]; learned: Learned; otherMonths: number[] }) {
   const categories = byCategory(lines);
   const payments = lines.filter((l) => l.category === PAYMENT_CATEGORY);
-  const flags = possibleDuplicates(lines);
+  const warnings = statementWarnings(s, lines, otherMonths);
+  const alerts = warnings.filter((w) => w.level === "alert").length;
   const spent = categories.reduce((sum, c) => sum + c.cents, 0);
   const top = categories[0]?.cents || 1;
   const usedPct = s.credit_limit_cents ? Math.min(100, Math.round((s.new_balance_cents / s.credit_limit_cents) * 100)) : 0;
 
   return (
-    <details className="card group" open={open}>
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+    <details className="card group">
+      <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+       <span className="flex items-center justify-between gap-3">
         <span className="min-w-0">
           <span className="block font-semibold">{monthLabel(s.statement_month)}</span>
           <span className="block truncate text-sm text-slate-500">
@@ -85,6 +88,26 @@ function Statement({ s, lines, open, learned }: { s: CardStatement; lines: CardL
           <span className="block text-lg font-bold">{formatMoney(s.charges_cents)}</span>
           <span className="block text-xs text-slate-500">charged</span>
         </span>
+       </span>
+        {/* What to review, shown even while the month is collapsed. */}
+        {warnings.length === 0 ? (
+          <span className="mt-2 block text-sm font-semibold text-green-700">✓ Nothing strange on this statement</span>
+        ) : (
+          <span className={`mt-3 block rounded-lg border p-3 text-sm ${alerts ? "border-red-200 bg-red-50 text-red-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+            <span className="block font-semibold">
+              ⚠️ {warnings.length} {warnings.length === 1 ? "thing" : "things"} to review
+            </span>
+            <span className="mt-1 block space-y-1">
+              {warnings.map((w, i) => (
+                <span key={i} className="flex gap-2">
+                  <span aria-hidden="true">{w.level === "alert" ? "🔴" : "🟡"}</span>
+                  <span>{w.text}</span>
+                </span>
+              ))}
+            </span>
+          </span>
+        )}
+        <span className="mt-2 block text-xs text-slate-500 group-open:hidden">Tap to see the charges ▼</span>
       </summary>
 
       <div className="mt-3 space-y-4 border-t border-slate-100 pt-3">
@@ -116,19 +139,6 @@ function Statement({ s, lines, open, learned }: { s: CardStatement; lines: CardL
           </div>
         )}
 
-        {flags.length > 0 && (
-          <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-            <p className="font-semibold">⚠️ Possible duplicate {flags.length === 1 ? "subscription" : "subscriptions"}</p>
-            <ul className="mt-1 list-disc pl-5">
-              {flags.map((f) => (
-                <li key={f.key}>
-                  {f.lines.length} charges from {f.key.toUpperCase()}: {f.lines.map((l) => `${formatMoney(l.amount_cents)} on ${formatDate(l.posted_on)}`).join(", ")}
-                  {f.differentNames ? " (billed under different merchant names, so they may be two separate accounts)" : ""}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
 
         <section>
           <h3 className="mb-2 font-semibold">Where it went</h3>
@@ -256,7 +266,9 @@ async function CardUsage() {
 
       {statements.length === 0 && <p className="card text-center text-slate-500">No statements yet. Add one below.</p>}
       <div className="space-y-3">
-        {statements.map((s, i) => <Statement key={s.id} s={s} lines={linesFor(s.id)} open={i === 0} learned={learned} />)}
+        {statements.map((s) => (
+          <Statement key={s.id} s={s} lines={linesFor(s.id)} learned={learned} otherMonths={statements.filter((o) => o.id !== s.id).map((o) => o.charges_cents)} />
+        ))}
       </div>
 
     </div>

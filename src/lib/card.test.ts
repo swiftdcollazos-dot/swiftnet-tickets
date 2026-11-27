@@ -1,5 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { byCategory, categorize, learnFrom, merchantKey, merchantPattern, pickCategory, monthForStatementDate, possibleDuplicates, type CardLine } from "./card";
+import { byCategory, categorize, learnFrom, merchantKey, merchantPattern, pickCategory, monthForStatementDate, possibleDuplicates, statementWarnings, type CardLine, type CardStatement } from "./card";
+
+describe("statementWarnings", () => {
+  const st = (over: Partial<CardStatement> = {}): CardStatement => ({
+    id: "s", card_name: "", statement_month: "2026-10", statement_date: "2026-11-05", due_date: null, credit_limit_cents: 1_000_000,
+    previous_balance_cents: 10000, charges_cents: 5000, credits_cents: 10000, new_balance_cents: 5000, minimum_due_cents: 0, notes: "", miles_earned: null, ...over,
+  });
+  const at = (merchant: string, cents: number, day = "2026-10-10", notes = "") => ({ ...line(merchant, cents), id: merchant + cents + day, posted_on: day, notes });
+  it("is quiet when everything adds up", () => {
+    expect(statementWarnings(st(), [at("NINJAONE LLC", 5000), at("THANK YOU FOR YOUR PAYMENT", -10000)])).toEqual([]);
+  });
+  it("flags totals, double charges, fees, foreign currency and uncategorized lines", () => {
+    const w = statementWarnings(st({ new_balance_cents: 6000 }), [
+      at("KOOYMAN ST MAARTEN", 1500, "2026-10-10"),
+      at("KOOYMAN ST MAARTEN", 1500, "2026-10-11"),
+      at("LATE PAYMENT FEE", 1000),
+      at("DLO*Starlink Colombia", 500, "2026-10-12", "Billed as COP 266,000.00"),
+      at("MYSTERY SHOP", 500),
+      at("THANK YOU FOR YOUR PAYMENT", -10000),
+    ]).map((x) => x.text);
+    expect(w.some((t) => t.startsWith("Balance doesn't add up"))).toBe(true);
+    expect(w.some((t) => t.startsWith("Possible double charge: KOOYMAN"))).toBe(true);
+    expect(w.some((t) => t.startsWith("Bank fee or interest"))).toBe(true);
+    expect(w.some((t) => t.startsWith("Foreign currency: DLO*Starlink"))).toBe(true);
+    expect(w.some((t) => t.includes("no category yet"))).toBe(true);
+  });
+  it("flags a month well above average", () => {
+    expect(statementWarnings(st({ charges_cents: 30000, new_balance_cents: 30000, credits_cents: 10000, previous_balance_cents: 10000 }), [], [10000, 10000]).some((x) => x.text.startsWith("Spending is 200% above"))).toBe(true);
+  });
+});
 
 const line = (merchant: string, cents: number, category = categorize(merchant, cents)): CardLine => ({
   id: merchant + cents, statement_id: "s", posted_on: "2026-10-01", reference: "", merchant, category, amount_cents: cents, notes: "",

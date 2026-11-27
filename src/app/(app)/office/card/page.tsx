@@ -165,16 +165,17 @@ function Statement({ s, lines, learned, otherMonths }: { s: CardStatement; lines
         )}
 
         <details className="rounded-lg border border-slate-200 p-3">
-          <summary className="cursor-pointer font-semibold">✏️ Edit this statement</summary>
+          <summary className="cursor-pointer font-semibold">✏️ Edit or delete this statement</summary>
           <p className="mt-1 text-xs text-slate-500">Change the totals, any line or its category, add or remove lines, or upload the PDF again to re-read it.</p>
           <div className="mt-3">
             <StatementForm cardName={s.card_name} edit={{ statement: s, lines }} learned={learned} />
           </div>
+          <div className="mt-4 border-t border-slate-100 pt-3">
+            <ConfirmButton action={deleteCardStatement.bind(null, s.id)} question={`Delete the ${monthLabel(s.statement_month)} statement?`} className="btn-danger w-full">
+              Delete this statement
+            </ConfirmButton>
+          </div>
         </details>
-
-        <ConfirmButton action={deleteCardStatement.bind(null, s.id)} question={`Delete the ${monthLabel(s.statement_month)} statement?`} className="btn-danger w-full">
-          Delete this statement
-        </ConfirmButton>
       </div>
     </details>
   );

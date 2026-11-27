@@ -34,6 +34,7 @@ const cents2 = (c: number) => (c ? (c / 100).toFixed(2) : "");
 export function StatementForm({ cardName, edit, learned = {} }: { cardName: string; edit?: { statement: CardStatement; lines: CardLine[] }; learned?: Learned }) {
   const router = useRouter();
   const file = useRef<HTMLInputElement>(null);
+  const root = useRef<HTMLDivElement>(null);
   const id = edit ? edit.statement.id : "new";
   const [busy, setBusy] = useState<"" | "reading" | "saving">("");
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -114,11 +115,18 @@ export function StatementForm({ cardName, edit, learned = {} }: { cardName: stri
     else if (edit) {
       setMessage({ ok: true, text: "Changes saved." });
       router.refresh();
+      // Fold the edit section back into the month's tile.
+      const editBox = root.current?.closest("details");
+      if (editBox) editBox.open = false;
+      editBox?.parentElement?.closest("details")?.scrollIntoView({ behavior: "smooth", block: "start" });
     } else {
       setLines([]);
       setV((old) => ({ ...old, statement_month: "", statement_date: "", due_date: "", previous_balance: "", charges: "", credits: "", new_balance: "", minimum_due: "", miles_earned: "" }));
       setMessage({ ok: true, text: "Saved." });
       router.refresh();
+      // Close the add form once the month is saved.
+      const addBox = root.current?.closest("details");
+      if (addBox) addBox.open = false;
     }
   }
 
@@ -134,7 +142,7 @@ export function StatementForm({ cardName, edit, learned = {} }: { cardName: stri
   );
 
   return (
-    <div className="space-y-3">
+    <div ref={root} className="space-y-3">
       <input ref={file} type="file" accept="application/pdf,image/jpeg" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
       <button type="button" className="btn w-full" disabled={!!busy} onClick={() => file.current?.click()}>
         📎 {busy === "reading" ? "Reading statement…" : "Upload statement PDF"}

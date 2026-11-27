@@ -7,7 +7,7 @@ import { formatDate } from "@/lib/time";
 import { deleteCardStatement } from "@/app/actions";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Loading } from "@/components/loading";
-import { CategorySelect, StatementForm } from "@/components/card-forms";
+import { AddStatementButton, CategorySelect, StatementForm } from "@/components/card-forms";
 import { PAYMENT_CATEGORY, byCategory, estimateMiles, learnFrom, type Learned, monthLabel, possibleDuplicates, type CardLine, type CardStatement } from "@/lib/card";
 
 // Reading an uploaded statement can take a while.
@@ -16,8 +16,13 @@ export const maxDuration = 120;
 export default function CardUsagePage() {
   return (
     <>
-      <h1 className="h1 mb-1">Credit card usage</h1>
-      <p className="mb-4 text-sm text-slate-500">Kept separate from Expenses: nothing here is added to expense totals.</p>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="h1 mb-1">Credit card usage</h1>
+          <p className="text-sm text-slate-500">Kept separate from Expenses: nothing here is added to expense totals.</p>
+        </div>
+        <AddStatementButton />
+      </div>
       <Suspense fallback={<Loading />}>
         <CardUsage />
       </Suspense>
@@ -209,6 +214,15 @@ async function CardUsage() {
 
   return (
     <div className="space-y-6">
+      <details id="add-month" className="card group scroll-mt-4 [&:not([open])]:hidden" open={statements.length === 0}>
+        <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between [&::-webkit-details-marker]:hidden">
+          <h2 className="h2 mb-0">Add a statement</h2>
+          <span className="text-sm text-slate-500" aria-label="Close">✕</span>
+        </summary>
+        <div className="mt-3">
+          <StatementForm cardName={statements[0]?.card_name ?? ""} learned={learned} />
+        </div>
+      </details>
       {statements.length > 1 && (
         <section className="card overflow-x-auto">
           <h2 className="h2 mb-2">Month by month</h2>
@@ -242,15 +256,6 @@ async function CardUsage() {
         {statements.map((s, i) => <Statement key={s.id} s={s} lines={linesFor(s.id)} open={i === 0} learned={learned} />)}
       </div>
 
-      <details className="card group" open={statements.length === 0}>
-        <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between [&::-webkit-details-marker]:hidden">
-          <h2 className="h2 mb-0">+ Add a month</h2>
-          <span className="text-sm text-slate-500 transition-transform group-open:rotate-180">▼</span>
-        </summary>
-        <div className="mt-3">
-          <StatementForm cardName={statements[0]?.card_name ?? ""} learned={learned} />
-        </div>
-      </details>
     </div>
   );
 }

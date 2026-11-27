@@ -78,6 +78,7 @@ async function ReportBody({ searchParams }: { searchParams: PageProps<"/reports"
   const to = typeof params.to === "string" && DATE.test(params.to) ? params.to : monthEnd;
 
   const owner = isOwner(user.email);
+  const canSeeCard = permissions(user).office;
   const jobSelect =
     "*, clients!inner(name, client_type, internal), time_entries(started_at, ended_at, technician_id), ticket_parts(qty, unit_price_cents), expense_items(amount_cents, markup_pct)";
   const [
@@ -262,6 +263,8 @@ async function ReportBody({ searchParams }: { searchParams: PageProps<"/reports"
         />
       )}
 
+      {canSeeCard && <MilesReport from={from} to={to} />}
+
       <Table
         title="By type"
         head={["Type", "Jobs", "Worked", "Billed", "Money"]}
@@ -293,6 +296,39 @@ async function ReportBody({ searchParams }: { searchParams: PageProps<"/reports"
         Service calls are covered by the client&apos;s contract: their money is the contract clients&apos; monthly fees for each month in the range, up to this month. The last By client column is what each client&apos;s jobs would cost billed by the hour at {money(hourlyRate)}/h, so you can compare a contract&apos;s monthly fee with the time spent. Every time entry is billed, including time added by hand. Running timers count up to now.
       </p>
     </div>
+  );
+}
+
+/** AAdvantage miles from Office > Credit card usage. Hidden until the miles column exists or any are entered. */
+async function MilesReport({ from, to }: { from: string; to: string }) {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase
+    .from("card_statements")
+    .select("statement_month, statement_date, card_name, charges_cents, miles_earned")
+    .not("miles_earned", "is", null)
+    .order("statement_date", { ascending: false });
+  if (error || !data?.length) return null;
+  const rows = data as { statement_month: string; statement_date: string; card_name: string; charges_cents: number; miles_earned: number }[];
+  const total = rows.reduce((s, r) => s + r.miles_earned, 0);
+  const inRange = rows.filter((r) => r.statement_date >= from && r.statement_date <= to);
+  const rangeTotal = inRange.reduce((s, r) => s + r.miles_earned, 0);
+  const miles = (n: number) => n.toLocaleString("en-US");
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-2">
+        <Stat label="✈️ AA miles, this period" value={miles(rangeTotal)} note={`${inRange.length} ${inRange.length === 1 ? "statement" : "statements"} dated in these dates`} />
+        <Stat label="✈️ AA miles, all recorded" value={miles(total)} note={`from ${rows.length} ${rows.length === 1 ? "statement" : "statements"}`} />
+      </div>
+      <Table
+        title="AAdvantage miles by statement"
+        head={["Statement", "Card", "Miles"]}
+        rows={rows.slice(0, 12).map((r) => [formatDate(r.statement_date), r.card_name || "Card", miles(r.miles_earned)])}
+        foot={["Total", "", miles(total)]}
+      />
+      <p className="-mt-4 text-xs text-slate-500">
+        Miles as printed on each statement from Office &gt; Credit card usage. The bank prints the miles earned on the statement before, so they trail the spending by a month. Check your AAdvantage account for the live balance.
+      </p>
+    </>
   );
 }
 

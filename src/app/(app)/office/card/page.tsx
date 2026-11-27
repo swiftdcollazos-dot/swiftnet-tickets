@@ -86,6 +86,12 @@ function Statement({ s, lines, open, learned }: { s: CardStatement; lines: CardL
           <Stat label="New balance" value={formatMoney(s.new_balance_cents)} />
           <Stat label={s.due_date ? `Minimum due ${formatDate(s.due_date)}` : "Minimum due"} value={formatMoney(s.minimum_due_cents)} tone="text-red-700" />
         </div>
+        {s.miles_earned != null && (
+          <p className="text-sm">
+            ✈️ <span className="font-semibold">{s.miles_earned.toLocaleString("en-US")} AAdvantage miles</span>{" "}
+            <span className="text-slate-500">printed on this statement (earned on the previous one)</span>
+          </p>
+        )}
         {s.credit_limit_cents > 0 && (
           <div>
             <div className="h-2 overflow-hidden rounded-full bg-slate-100">
@@ -208,6 +214,7 @@ async function CardUsage() {
                 <th className="py-1 text-right font-normal">Charged</th>
                 <th className="py-1 text-right font-normal">Paid</th>
                 <th className="py-1 text-right font-normal">Balance</th>
+                <th className="py-1 text-right font-normal">Miles</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -217,6 +224,7 @@ async function CardUsage() {
                   <td className="py-1.5 text-right tabular-nums">{formatMoney(s.charges_cents)}</td>
                   <td className="py-1.5 text-right tabular-nums text-green-700">{formatMoney(s.credits_cents)}</td>
                   <td className="py-1.5 text-right tabular-nums">{formatMoney(s.new_balance_cents)}</td>
+                  <td className="py-1.5 text-right tabular-nums">{s.miles_earned != null ? s.miles_earned.toLocaleString("en-US") : "—"}</td>
                 </tr>
               ))}
             </tbody>

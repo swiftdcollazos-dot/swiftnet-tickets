@@ -878,6 +878,7 @@ export type CardStatementInput = {
   credits: string;
   new_balance: string;
   minimum_due: string;
+  miles_earned: string;
   lines: { posted_on: string; reference: string; merchant: string; amount: string; category: string; notes: string }[];
 };
 
@@ -914,6 +915,7 @@ export async function saveCardStatement(input: CardStatementInput, editId: strin
     credits_cents: input.credits ? Math.abs(parseMoney(input.credits)) : lineCredits,
     new_balance_cents: parseMoney(input.new_balance),
     minimum_due_cents: parseMoney(input.minimum_due),
+    miles_earned: String(input.miles_earned ?? "").trim() ? Math.max(0, Math.round(Number(String(input.miles_earned).replace(/[,\s]/g, "")) || 0)) : null,
   };
   const { data: same } = await supabase.from("card_statements").select("id").eq("card_name", fields.card_name).eq("statement_month", month).maybeSingle();
   // Editing a saved statement updates it; a new one with the same card and month replaces that month.

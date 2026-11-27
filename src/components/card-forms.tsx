@@ -43,6 +43,7 @@ export function StatementForm({ cardName, edit, learned = {} }: { cardName: stri
     due_date: st?.due_date ?? "", credit_limit: cents2(st?.credit_limit_cents ?? 0), previous_balance: cents2(st?.previous_balance_cents ?? 0),
     charges: cents2(st?.charges_cents ?? 0), credits: cents2(st?.credits_cents ?? 0), new_balance: cents2(st?.new_balance_cents ?? 0),
     minimum_due: cents2(st?.minimum_due_cents ?? 0),
+    miles_earned: st?.miles_earned != null ? String(st.miles_earned) : "",
   });
   const [lines, setLines] = useState<Line[]>(() =>
     (edit?.lines ?? []).map((l) => blankLine({ posted_on: l.posted_on, reference: l.reference, merchant: l.merchant, amount: (l.amount_cents / 100).toFixed(2), category: l.category, notes: l.notes })),
@@ -92,6 +93,7 @@ export function StatementForm({ cardName, edit, learned = {} }: { cardName: stri
         credits: money(r.credits),
         new_balance: money(r.new_balance),
         minimum_due: money(r.minimum_due),
+        miles_earned: r.miles_earned ? String(r.miles_earned) : "",
       });
       setLines(r.lines.map((l) => blankLine({ ...l, amount: l.amount.toFixed(2) })));
       setMessage({ ok: true, text: `Read ${r.lines.length} lines from the statement. Please check them, then Save.` });
@@ -114,7 +116,7 @@ export function StatementForm({ cardName, edit, learned = {} }: { cardName: stri
       router.refresh();
     } else {
       setLines([]);
-      setV((old) => ({ ...old, statement_month: "", statement_date: "", due_date: "", previous_balance: "", charges: "", credits: "", new_balance: "", minimum_due: "" }));
+      setV((old) => ({ ...old, statement_month: "", statement_date: "", due_date: "", previous_balance: "", charges: "", credits: "", new_balance: "", minimum_due: "", miles_earned: "" }));
       setMessage({ ok: true, text: "Saved." });
       router.refresh();
     }
@@ -162,6 +164,7 @@ export function StatementForm({ cardName, edit, learned = {} }: { cardName: stri
           <input className="input" type="date" id={`st-${id}-due_date`} value={v.due_date} onChange={set("due_date")} />
         </div>
         {field("credit_limit", "Credit limit ($)")}
+        {field("miles_earned", "AAdvantage miles", { inputMode: "numeric", placeholder: "as printed" })}
       </div>
 
       <div>

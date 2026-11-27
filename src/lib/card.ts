@@ -33,6 +33,8 @@ export type CardStatement = {
   credits_cents: number;
   new_balance_cents: number;
   minimum_due_cents: number;
+  /** AAdvantage miles as printed on this statement ("Miles earned on previous month statement"); null if not entered. */
+  miles_earned: number | null;
   notes: string;
 };
 

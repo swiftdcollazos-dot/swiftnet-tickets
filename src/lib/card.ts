@@ -13,6 +13,7 @@ export const CARD_CATEGORIES = [
   "Company dinner",
   "Entertainment",
   "Customer incentives",
+  "Customer cybersecurity subscriptions",
   "Research and development",
   "Government taxes",
   "Health insurance",

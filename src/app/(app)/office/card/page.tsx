@@ -34,6 +34,7 @@ const BAR: Record<string, string> = {
   "Company lunch": "bg-orange-500",
   "Company dinner": "bg-rose-600",
   Entertainment: "bg-pink-500",
+  "Customer incentives": "bg-cyan-600",
   "Local purchases": "bg-green-600",
   Other: "bg-slate-400",
 };

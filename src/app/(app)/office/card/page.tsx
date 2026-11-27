@@ -13,6 +13,23 @@ import { type Warning, type WarningKind, PAYMENT_CATEGORY, byCategory, estimateM
 // Reading an uploaded statement can take a while.
 export const maxDuration = 120;
 
+// Each year gets its own color in the month-by-month table, so years are easy to tell apart.
+const YEAR_COLORS = [
+  { edge: "border-indigo-500", head: "bg-indigo-100/70", row: "bg-indigo-50/40" },
+  { edge: "border-amber-500", head: "bg-amber-100/70", row: "bg-amber-50/40" },
+  { edge: "border-emerald-500", head: "bg-emerald-100/70", row: "bg-emerald-50/40" },
+  { edge: "border-rose-500", head: "bg-rose-100/70", row: "bg-rose-50/40" },
+];
+const yearColor = (year: string) => YEAR_COLORS[Number(year) % YEAR_COLORS.length];
+function yearsOf(statements: CardStatement[]): [string, CardStatement[]][] {
+  const byYear = new Map<string, CardStatement[]>();
+  for (const s of statements) {
+    const y = s.statement_month.slice(0, 4);
+    byYear.set(y, [...(byYear.get(y) ?? []), s]);
+  }
+  return [...byYear.entries()];
+}
+
 export default function CardUsagePage() {
   return (
     <>
@@ -294,17 +311,29 @@ async function CardUsage() {
                 <th className="py-1 text-right font-normal">Miles</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {statements.map((s) => (
-                <tr key={s.id}>
-                  <td className="py-1.5">{monthLabel(s.statement_month)}</td>
-                  <td className="py-1.5 text-right tabular-nums">{formatMoney(s.charges_cents)}</td>
-                  <td className="py-1.5 text-right tabular-nums text-green-700">{formatMoney(s.credits_cents)}</td>
-                  <td className="py-1.5 text-right tabular-nums">{formatMoney(s.new_balance_cents)}</td>
-                  <td className="py-1.5 text-right tabular-nums">{s.miles_earned != null ? s.miles_earned.toLocaleString("en-US") : "—"}</td>
-                </tr>
-              ))}
-            </tbody>
+            {yearsOf(statements).map(([year, months]) => {
+              const c = yearColor(year);
+              return (
+                <tbody key={year} className={c.row}>
+                  <tr className={c.head}>
+                    <td className={`border-l-4 ${c.edge} py-1.5 pl-2 font-semibold`}>{year}</td>
+                    <td className="py-1.5 text-right font-semibold tabular-nums">{formatMoney(months.reduce((t, m) => t + m.charges_cents, 0))}</td>
+                    <td className="py-1.5 text-right font-semibold tabular-nums text-green-700">{formatMoney(months.reduce((t, m) => t + m.credits_cents, 0))}</td>
+                    <td className="py-1.5 text-right text-xs text-slate-500">{months.length} {months.length === 1 ? "month" : "months"}</td>
+                    <td className="py-1.5 pr-1 text-right font-semibold tabular-nums">{months.reduce((t, m) => t + (m.miles_earned ?? 0), 0).toLocaleString("en-US")}</td>
+                  </tr>
+                  {months.map((s) => (
+                    <tr key={s.id} className="border-t border-white/70">
+                      <td className={`border-l-4 ${c.edge} py-1.5 pl-2`}>{monthLabel(s.statement_month)}</td>
+                      <td className="py-1.5 text-right tabular-nums">{formatMoney(s.charges_cents)}</td>
+                      <td className="py-1.5 text-right tabular-nums text-green-700">{formatMoney(s.credits_cents)}</td>
+                      <td className="py-1.5 text-right tabular-nums">{formatMoney(s.new_balance_cents)}</td>
+                      <td className="py-1.5 pr-1 text-right tabular-nums">{s.miles_earned != null ? s.miles_earned.toLocaleString("en-US") : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              );
+            })}
           </table>
         </section>
       )}

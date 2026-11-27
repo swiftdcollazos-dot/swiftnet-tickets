@@ -880,7 +880,7 @@ const isDay = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 const cardCategory = (c: string) => (c === PAYMENT_CATEGORY || (CARD_CATEGORIES as readonly string[]).includes(c) ? c : "Other");
 
 /** Saves a month's statement and its lines. Saving the same card and month again replaces it. Returns an error to show. */
-export async function saveCardStatement(input: CardStatementInput): Promise<{ error: string } | { id: string }> {
+export async function saveCardStatement(input: CardStatementInput, editId: string | null = null): Promise<{ error: string } | { id: string }> {
   const { supabase } = await requireOffice();
   const month = String(input.statement_month ?? "").trim();
   if (!/^\d{4}-\d{2}$/.test(month)) return { error: "Pick the month the statement is for." };
@@ -910,7 +910,10 @@ export async function saveCardStatement(input: CardStatementInput): Promise<{ er
     new_balance_cents: parseMoney(input.new_balance),
     minimum_due_cents: parseMoney(input.minimum_due),
   };
-  const { data: existing } = await supabase.from("card_statements").select("id").eq("card_name", fields.card_name).eq("statement_month", month).maybeSingle();
+  const { data: same } = await supabase.from("card_statements").select("id").eq("card_name", fields.card_name).eq("statement_month", month).maybeSingle();
+  // Editing a saved statement updates it; a new one with the same card and month replaces that month.
+  if (editId && same && same.id !== editId) return { error: "There's already a statement for that card and month. Delete one of them first." };
+  const existing = editId ? { id: editId } : same;
   const saved = existing
     ? await supabase.from("card_statements").update(fields).eq("id", existing.id).select("id").single()
     : await supabase.from("card_statements").insert(fields).select("id").single();

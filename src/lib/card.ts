@@ -14,6 +14,7 @@ export const CARD_CATEGORIES = [
   "Entertainment",
   "Customer incentives",
   "Research and development",
+  "Government taxes",
   "Local purchases",
   "Other",
 ] as const;

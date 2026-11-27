@@ -8,7 +8,7 @@ import { deleteCardStatement } from "@/app/actions";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Loading } from "@/components/loading";
 import { CategorySelect, StatementForm } from "@/components/card-forms";
-import { PAYMENT_CATEGORY, byCategory, learnFrom, type Learned, monthLabel, possibleDuplicates, type CardLine, type CardStatement } from "@/lib/card";
+import { PAYMENT_CATEGORY, byCategory, estimateMiles, learnFrom, type Learned, monthLabel, possibleDuplicates, type CardLine, type CardStatement } from "@/lib/card";
 
 // Reading an uploaded statement can take a while.
 export const maxDuration = 120;
@@ -86,12 +86,17 @@ function Statement({ s, lines, open, learned }: { s: CardStatement; lines: CardL
           <Stat label="New balance" value={formatMoney(s.new_balance_cents)} />
           <Stat label={s.due_date ? `Minimum due ${formatDate(s.due_date)}` : "Minimum due"} value={formatMoney(s.minimum_due_cents)} tone="text-red-700" />
         </div>
-        {s.miles_earned != null && (
-          <p className="text-sm">
-            ✈️ <span className="font-semibold">{s.miles_earned.toLocaleString("en-US")} AAdvantage miles</span>{" "}
-            <span className="text-slate-500">printed on this statement (earned on the previous one)</span>
+        <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
+          <p>
+            ✈️ <span className="font-semibold">About {estimateMiles(s.charges_cents).toLocaleString("en-US")} AAdvantage miles</span> from this month&apos;s{" "}
+            {formatMoney(s.charges_cents)} in charges (1 mile per $1). The bank confirms them on next month&apos;s statement.
           </p>
-        )}
+          <p className="mt-1 text-sky-800">
+            {s.miles_earned != null
+              ? `Printed on this statement: ${s.miles_earned.toLocaleString("en-US")} miles, earned on the statement before.`
+              : "Miles printed on this statement: not recorded. Add them with ✏️ Edit this statement."}
+          </p>
+        </div>
         {s.credit_limit_cents > 0 && (
           <div>
             <div className="h-2 overflow-hidden rounded-full bg-slate-100">

@@ -139,6 +139,14 @@ export function byCategory(lines: CardLine[]): CategoryTotal[] {
   return [...totals.values()].sort((a, b) => b.cents - a.cents);
 }
 
+/** AAdvantage miles the card earns per dollar charged (October 2026: 5,149 miles printed for about $5,140). */
+export const MILES_PER_DOLLAR = 1;
+
+/** Miles expected from a month's charges. The bank confirms them on the next statement. */
+export function estimateMiles(chargesCents: number): number {
+  return Math.max(0, Math.floor((chargesCents / 100) * MILES_PER_DOLLAR));
+}
+
 /** "2026-10" → "October 2026". */
 export function monthLabel(month: string): string {
   return new Date(`${month}-01T00:00:00Z`).toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });

@@ -14,6 +14,8 @@ import { nextReminderDate } from "@/lib/schedule";
 import { isOwner, permissions, type Permissions } from "@/lib/owner";
 import { scanReceiptImage, type ScannedReceipt } from "@/lib/receipt-scan";
 import { TOT_CATEGORY, TOT_VENDOR, totFor } from "@/lib/tot";
+import { scanStatementFile, type ScannedStatement } from "@/lib/statement-scan";
+import { CARD_CATEGORIES, PAYMENT_CATEGORY } from "@/lib/card";
 import { BILLING_BLOCK_MINUTES, CLIENT_TYPES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENEWAL_KINDS, REPEATS, alertValue, UTILITIES_CATEGORY, VEHICLE_CATEGORY, VEHICLES, RENEWAL_REPEATS, TOT_RATE_PCT, kindValue, type ClientType, type TicketStatus } from "@/lib/types";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
@@ -843,6 +845,101 @@ export async function deleteRenewal(id: string) {
   const { error } = await supabase.from("renewals").delete().eq("id", id);
   if (error) fail(error.message);
   revalidatePath("/office/renewals");
+}
+
+// ---------- Credit card usage (Office). Kept apart from Expenses: nothing here is added to expense totals. ----------
+
+/** Reads a statement PDF or photo and returns what to fill in. Nothing is saved. */
+export async function scanCardStatement(dataUrl: string): Promise<ScannedStatement | { error: string }> {
+  await requireOffice();
+  if (!isReceipt(dataUrl)) return { error: "That file couldn't be used. Please try another." };
+  try {
+    return await scanStatementFile(dataUrl);
+  } catch (e) {
+    console.error("scanCardStatement", e);
+    return { error: "Reading the statement didn't work this time. Please try again or enter it by hand." };
+  }
+}
+
+export type CardStatementInput = {
+  card_name: string;
+  statement_month: string;
+  statement_date: string;
+  due_date: string;
+  credit_limit: string;
+  previous_balance: string;
+  charges: string;
+  credits: string;
+  new_balance: string;
+  minimum_due: string;
+  lines: { posted_on: string; reference: string; merchant: string; amount: string; category: string; notes: string }[];
+};
+
+const isDay = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
+const cardCategory = (c: string) => (c === PAYMENT_CATEGORY || (CARD_CATEGORIES as readonly string[]).includes(c) ? c : "Other");
+
+/** Saves a month's statement and its lines. Saving the same card and month again replaces it. Returns an error to show. */
+export async function saveCardStatement(input: CardStatementInput): Promise<{ error: string } | { id: string }> {
+  const { supabase } = await requireOffice();
+  const month = String(input.statement_month ?? "").trim();
+  if (!/^\d{4}-\d{2}$/.test(month)) return { error: "Pick the month the statement is for." };
+  if (!isDay(input.statement_date)) return { error: "Enter the statement date." };
+  const lines = (input.lines ?? [])
+    .map((l) => ({
+      posted_on: isDay(l.posted_on) ? l.posted_on : input.statement_date,
+      reference: String(l.reference ?? "").trim(),
+      merchant: String(l.merchant ?? "").trim(),
+      category: cardCategory(String(l.category ?? "")),
+      amount_cents: parseMoney(l.amount),
+      notes: String(l.notes ?? "").trim(),
+    }))
+    .filter((l) => l.merchant && l.amount_cents);
+  const lineCharges = lines.filter((l) => l.amount_cents > 0).reduce((s, l) => s + l.amount_cents, 0);
+  const lineCredits = -lines.filter((l) => l.amount_cents < 0).reduce((s, l) => s + l.amount_cents, 0);
+  const fields = {
+    card_name: String(input.card_name ?? "").trim(),
+    statement_month: month,
+    statement_date: input.statement_date,
+    due_date: isDay(input.due_date) ? input.due_date : null,
+    credit_limit_cents: parseMoney(input.credit_limit),
+    previous_balance_cents: parseMoney(input.previous_balance),
+    // Totals left empty are worked out from the lines.
+    charges_cents: input.charges ? parseMoney(input.charges) : lineCharges,
+    credits_cents: input.credits ? Math.abs(parseMoney(input.credits)) : lineCredits,
+    new_balance_cents: parseMoney(input.new_balance),
+    minimum_due_cents: parseMoney(input.minimum_due),
+  };
+  const { data: existing } = await supabase.from("card_statements").select("id").eq("card_name", fields.card_name).eq("statement_month", month).maybeSingle();
+  const saved = existing
+    ? await supabase.from("card_statements").update(fields).eq("id", existing.id).select("id").single()
+    : await supabase.from("card_statements").insert(fields).select("id").single();
+  if (saved.error) return { error: saved.error.message };
+  const id = saved.data.id as string;
+  const { error: delError } = await supabase.from("card_transactions").delete().eq("statement_id", id);
+  if (delError) return { error: delError.message };
+  if (lines.length) {
+    const { error } = await supabase.from("card_transactions").insert(lines.map((l) => ({ ...l, statement_id: id })));
+    if (error) return { error: error.message };
+  }
+  revalidatePath("/office/card");
+  revalidatePath("/office");
+  return { id };
+}
+
+export async function setCardLineCategory(id: string, category: string) {
+  const { supabase } = await requireOffice();
+  const { error } = await supabase.from("card_transactions").update({ category: cardCategory(category) }).eq("id", id);
+  if (error) fail(error.message);
+  revalidatePath("/office/card");
+  revalidatePath("/office");
+}
+
+export async function deleteCardStatement(id: string) {
+  const { supabase } = await requireOffice();
+  const { error } = await supabase.from("card_statements").delete().eq("id", id);
+  if (error) fail(error.message);
+  revalidatePath("/office/card");
+  revalidatePath("/office");
 }
 
 /** Reports: approves a month's TOT and records it (or updates it) as an expense on the month's last day. Owner only. */

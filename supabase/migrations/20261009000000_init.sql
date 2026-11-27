@@ -330,3 +330,44 @@ alter table public.expenses add column if not exists paid_on date;
 -- sends a notification. Defaults to a month; weekly and monthly ones ignore an alarm as long as the repeat itself.
 alter table public.tickets add column if not exists alert_days integer not null default 30;
 alter table public.reminders add column if not exists alert_days integer not null default 30;
+
+-- Office > Credit card usage: card statements and their lines, kept apart from Expenses.
+create table if not exists public.card_statements (
+  id                     uuid primary key default gen_random_uuid(),
+  card_name              text not null default '',
+  statement_month        text not null,           -- 'YYYY-MM': the month the spending is for
+  statement_date         date not null,
+  due_date               date,
+  credit_limit_cents     integer not null default 0,
+  previous_balance_cents integer not null default 0,
+  charges_cents          integer not null default 0,
+  credits_cents          integer not null default 0,
+  new_balance_cents      integer not null default 0,
+  minimum_due_cents      integer not null default 0,
+  notes                  text not null default '',
+  created_at             timestamptz not null default now(),
+  unique (card_name, statement_month)
+);
+alter table public.card_statements enable row level security;
+drop policy if exists "owner or office" on public.card_statements;
+create policy "owner or office" on public.card_statements for all to authenticated
+  using (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com' or auth.jwt() -> 'app_metadata' ->> 'can_see_office' = 'true')
+  with check (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com' or auth.jwt() -> 'app_metadata' ->> 'can_see_office' = 'true');
+
+-- Each line on a statement. A charge is positive; a payment or refund is negative (category 'Payment').
+create table if not exists public.card_transactions (
+  id           uuid primary key default gen_random_uuid(),
+  statement_id uuid not null references public.card_statements (id) on delete cascade,
+  posted_on    date not null,
+  reference    text not null default '',
+  merchant     text not null default '',
+  category     text not null default 'Other',
+  amount_cents integer not null default 0,
+  notes        text not null default ''
+);
+create index if not exists card_transactions_statement_idx on public.card_transactions (statement_id);
+alter table public.card_transactions enable row level security;
+drop policy if exists "owner or office" on public.card_transactions;
+create policy "owner or office" on public.card_transactions for all to authenticated
+  using (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com' or auth.jwt() -> 'app_metadata' ->> 'can_see_office' = 'true')
+  with check (lower(auth.jwt() ->> 'email') = 'david@swiftnetit.com' or auth.jwt() -> 'app_metadata' ->> 'can_see_office' = 'true');

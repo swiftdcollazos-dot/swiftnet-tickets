@@ -283,3 +283,23 @@ export function AddStatementButton() {
     </button>
   );
 }
+
+/** A month in the month-by-month table: scrolls to that month's tile and flashes it. */
+export function JumpToMonth({ target, children }: { target: string; children: React.ReactNode }) {
+  return (
+    <a
+      href={`#${target}`}
+      className="font-medium text-slate-900 underline decoration-slate-300 underline-offset-2 hover:decoration-slate-500"
+      onClick={(e) => {
+        const tile = document.getElementById(target);
+        if (!tile) return;
+        e.preventDefault();
+        tile.scrollIntoView({ behavior: "smooth", block: "start" });
+        tile.classList.add("ring-2", "ring-slate-400");
+        setTimeout(() => tile.classList.remove("ring-2", "ring-slate-400"), 1600);
+      }}
+    >
+      {children}
+    </a>
+  );
+}

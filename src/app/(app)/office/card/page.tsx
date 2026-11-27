@@ -7,7 +7,7 @@ import { formatDate } from "@/lib/time";
 import { deleteCardStatement } from "@/app/actions";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Loading } from "@/components/loading";
-import { AddStatementButton, CategorySelect, StatementForm } from "@/components/card-forms";
+import { AddStatementButton, CategorySelect, JumpToMonth, StatementForm } from "@/components/card-forms";
 import { type Warning, type WarningKind, PAYMENT_CATEGORY, byCategory, estimateMiles, statementWarnings, learnFrom, type Learned, monthLabel, type CardLine, type CardStatement } from "@/lib/card";
 
 // Reading an uploaded statement can take a while.
@@ -95,7 +95,7 @@ function Statement({ s, lines, learned, otherMonths }: { s: CardStatement; lines
 
   return (
     // Same color as this year's rows in the month-by-month table.
-    <details className={`card group border-l-4 ${yearColor(s.statement_month.slice(0, 4)).edge} ${yearColor(s.statement_month.slice(0, 4)).row}`}>
+    <details id={`month-${s.id}`} className={`card group scroll-mt-4 border-l-4 ${yearColor(s.statement_month.slice(0, 4)).edge} ${yearColor(s.statement_month.slice(0, 4)).row}`}>
       <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
        <span className="flex items-center justify-between gap-3">
         <span className="min-w-0">
@@ -325,7 +325,7 @@ async function CardUsage() {
                   </tr>
                   {months.map((s) => (
                     <tr key={s.id} className="border-t border-white/70">
-                      <td className={`border-l-4 ${c.edge} py-1.5 pl-2`}>{monthLabel(s.statement_month)}</td>
+                      <td className={`border-l-4 ${c.edge} py-1.5 pl-2`}><JumpToMonth target={`month-${s.id}`}>{monthLabel(s.statement_month)}</JumpToMonth></td>
                       <td className="py-1.5 text-right tabular-nums">{formatMoney(s.charges_cents)}</td>
                       <td className="py-1.5 text-right tabular-nums text-green-700">{formatMoney(s.credits_cents)}</td>
                       <td className="py-1.5 text-right tabular-nums">{formatMoney(s.new_balance_cents)}</td>

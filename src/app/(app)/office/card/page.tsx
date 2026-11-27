@@ -8,7 +8,7 @@ import { deleteCardStatement } from "@/app/actions";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Loading } from "@/components/loading";
 import { AddStatementButton, CategorySelect, StatementForm } from "@/components/card-forms";
-import { PAYMENT_CATEGORY, byCategory, estimateMiles, statementWarnings, learnFrom, type Learned, monthLabel, type CardLine, type CardStatement } from "@/lib/card";
+import { type Warning, type WarningKind, PAYMENT_CATEGORY, byCategory, estimateMiles, statementWarnings, learnFrom, type Learned, monthLabel, type CardLine, type CardStatement } from "@/lib/card";
 
 // Reading an uploaded statement can take a while.
 export const maxDuration = 120;
@@ -69,7 +69,6 @@ function Statement({ s, lines, learned, otherMonths }: { s: CardStatement; lines
   const categories = byCategory(lines);
   const payments = lines.filter((l) => l.category === PAYMENT_CATEGORY);
   const warnings = statementWarnings(s, lines, otherMonths);
-  const alerts = warnings.filter((w) => w.level === "alert").length;
   const spent = categories.reduce((sum, c) => sum + c.cents, 0);
   const top = categories[0]?.cents || 1;
   const usedPct = s.credit_limit_cents ? Math.min(100, Math.round((s.new_balance_cents / s.credit_limit_cents) * 100)) : 0;
@@ -89,24 +88,8 @@ function Statement({ s, lines, learned, otherMonths }: { s: CardStatement; lines
           <span className="block text-xs text-slate-500">charged</span>
         </span>
        </span>
-        {/* What to review, shown even while the month is collapsed. */}
-        {warnings.length === 0 ? (
-          <span className="mt-2 block text-sm font-semibold text-green-700">✓ Nothing strange on this statement</span>
-        ) : (
-          <span className={`mt-3 block rounded-lg border p-3 text-sm ${alerts ? "border-red-200 bg-red-50 text-red-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
-            <span className="block font-semibold">
-              ⚠️ {warnings.length} {warnings.length === 1 ? "thing" : "things"} to review
-            </span>
-            <span className="mt-1 block space-y-1">
-              {warnings.map((w, i) => (
-                <span key={i} className="flex gap-2">
-                  <span aria-hidden="true">{w.level === "alert" ? "🔴" : "🟡"}</span>
-                  <span>{w.text}</span>
-                </span>
-              ))}
-            </span>
-          </span>
-        )}
+        {/* What to review, shown even while the month is collapsed: a short badge each, details on hover. */}
+        <WarningBadges warnings={warnings} />
         <span className="mt-2 block text-xs text-slate-500 group-open:hidden">Tap to see the charges ▼</span>
       </summary>
 
@@ -194,6 +177,63 @@ function Statement({ s, lines, learned, otherMonths }: { s: CardStatement; lines
         </ConfirmButton>
       </div>
     </details>
+  );
+}
+
+// Simple line icons (24×24, stroke), one per kind of warning.
+const ICON: Record<WarningKind | "ok", string> = {
+  math: "M4 4h16v16H4z M8 9h8 M8 15h8 M12 7v4",
+  double: "M8 8h11v11H8z M5 16V5h11",
+  subscription: "M4 12a8 8 0 0 1 14-5.3L20 9 M20 4v5h-5 M20 12a8 8 0 0 1-14 5.3L4 15 M4 20v-5h5",
+  fee: "M12 3v18 M17 7.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 2.6 5 3.5 5 1.6 5 3.5-2.2 3-5 3-5-1.1-5-3",
+  foreign: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18 M3 12h18 M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9S9.5 5.5 12 3",
+  large: "M12 3v15 M6 12l6 6 6-6 M5 21h14",
+  uncategorized: "M3 12V4h8l10 10-8 8z M7.5 7.5h.01",
+  spending: "M3 17l6-6 4 4 8-8 M15 7h6v6",
+  limit: "M12 4L2 20h20z M12 10v4 M12 17h.01",
+  empty: "M6 3h9l4 4v14H6z M14 3v5h5",
+  ok: "M5 12l5 5 9-10",
+};
+
+function Icon({ kind, className }: { kind: WarningKind | "ok"; className: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className}>
+      <path d={ICON[kind]} />
+    </svg>
+  );
+}
+
+function WarningBadges({ warnings }: { warnings: Warning[] }) {
+  if (warnings.length === 0) {
+    return (
+      <span className="mt-2 inline-flex items-center gap-1.5 text-sm text-slate-500">
+        <Icon kind="ok" className="h-4 w-4 text-emerald-600" /> Nothing strange
+      </span>
+    );
+  }
+  return (
+    <span className="mt-3 flex flex-wrap gap-1.5">
+      {warnings.map((w, i) => (
+        <span
+          key={i}
+          tabIndex={0}
+          className="group/w relative inline-flex max-w-full items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 hover:border-slate-300 hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+        >
+          <Icon kind={w.kind} className={`h-3.5 w-3.5 shrink-0 ${w.level === "alert" ? "text-red-600" : "text-amber-600"}`} />
+          <span className="truncate">{w.label}</span>
+          {/* The full detail, on hover or keyboard focus. */}
+          <span
+            role="tooltip"
+            className="pointer-events-none absolute left-0 top-full z-20 mt-1.5 hidden w-72 max-w-[80vw] rounded-lg bg-slate-800 px-3 py-2 text-xs font-normal leading-relaxed text-white shadow-lg group-hover/w:block group-focus/w:block"
+          >
+            <span className={`mb-0.5 block font-semibold ${w.level === "alert" ? "text-red-300" : "text-amber-300"}`}>
+              {w.level === "alert" ? "Needs attention" : "Worth a look"}
+            </span>
+            {w.text}
+          </span>
+        </span>
+      ))}
+    </span>
   );
 }
 

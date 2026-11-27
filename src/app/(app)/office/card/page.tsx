@@ -94,7 +94,8 @@ function Statement({ s, lines, learned, otherMonths }: { s: CardStatement; lines
   const usedPct = s.credit_limit_cents ? Math.min(100, Math.round((s.new_balance_cents / s.credit_limit_cents) * 100)) : 0;
 
   return (
-    <details className="card group">
+    // Same color as this year's rows in the month-by-month table.
+    <details className={`card group border-l-4 ${yearColor(s.statement_month.slice(0, 4)).edge} ${yearColor(s.statement_month.slice(0, 4)).row}`}>
       <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
        <span className="flex items-center justify-between gap-3">
         <span className="min-w-0">

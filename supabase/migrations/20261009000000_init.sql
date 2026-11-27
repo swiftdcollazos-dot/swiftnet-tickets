@@ -374,3 +374,7 @@ create policy "owner or office" on public.card_transactions for all to authentic
 
 -- AAdvantage miles as printed on each card statement.
 alter table public.card_statements add column if not exists miles_earned integer;
+
+-- Credit card usage: remember each uploaded statement file, so the same file is caught before it is scanned again.
+alter table public.card_statements add column if not exists file_hash text;
+create index if not exists card_statements_file_hash_idx on public.card_statements (file_hash);

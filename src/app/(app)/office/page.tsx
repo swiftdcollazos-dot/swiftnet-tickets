@@ -11,7 +11,7 @@ import { Loading } from "@/components/loading";
 import { ConfirmButton } from "@/components/confirm-button";
 import { recordTot } from "@/app/actions";
 import { TOT_CATEGORY, TOT_VENDOR, totFor, type Tot } from "@/lib/tot";
-import { estimateMiles, monthLabel, possibleDuplicates, type CardLine } from "@/lib/card";
+import { estimateMiles, monthLabel, possibleDuplicates, REVIEW_CATEGORY, type CardLine } from "@/lib/card";
 
 export default function OfficePage() {
   return (
@@ -111,6 +111,7 @@ async function CardTile() {
     ? await supabase.from("card_transactions").select("merchant, category, amount_cents").eq("statement_id", latest.id)
     : { data: [] };
   const flags = possibleDuplicates((lines ?? []) as CardLine[]).length;
+  const toReview = (lines ?? []).filter((l) => l.category === REVIEW_CATEGORY).length;
   return (
     <Link href="/office/card" className="card block border-l-4 border-l-indigo-500 hover:bg-slate-50">
       <p className="label">💳 Credit card usage</p>
@@ -125,6 +126,7 @@ async function CardTile() {
             charged in {monthLabel(latest.statement_month as string)} · balance {formatMoney(latest.new_balance_cents as number)} · minimum {formatMoney(latest.minimum_due_cents as number)}
           </p>
           <p className="text-sm text-sky-700">✈️ about {estimateMiles(latest.charges_cents as number).toLocaleString("en-US")} AA miles</p>
+          {toReview > 0 && <p className="text-sm font-semibold text-red-700">🚩 {toReview} {toReview === 1 ? "charge" : "charges"} to review</p>}
           {flags > 0 && <p className="text-sm font-semibold text-amber-700">⚠️ {flags} possible duplicate {flags === 1 ? "subscription" : "subscriptions"}</p>}
         </>
       )}

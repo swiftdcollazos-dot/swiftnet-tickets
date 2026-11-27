@@ -40,11 +40,14 @@ const BAR: Record<string, string> = {
   "Company dinner": "bg-rose-600",
   Entertainment: "bg-pink-500",
   "Customer incentives": "bg-cyan-600",
+  "Customer cybersecurity subscriptions": "bg-blue-800",
   "Research and development": "bg-lime-600",
   "Government taxes": "bg-stone-600",
   "Health insurance": "bg-emerald-600",
   "Car insurance": "bg-indigo-400",
   "Automobile parts": "bg-zinc-500",
+  "Insurance": "bg-teal-700",
+  "To review": "bg-red-500",
   "Local purchases": "bg-green-600",
   Other: "bg-slate-400",
 };
@@ -193,6 +196,7 @@ const ICON: Record<WarningKind | "ok", string> = {
   spending: "M3 17l6-6 4 4 8-8 M15 7h6v6",
   limit: "M12 4L2 20h20z M12 10v4 M12 17h.01",
   empty: "M6 3h9l4 4v14H6z M14 3v5h5",
+  review: "M5 21V4 M5 4h11l-2 4 2 4H5",
   ok: "M5 12l5 5 9-10",
 };
 
@@ -274,7 +278,7 @@ async function CardUsage() {
           <span className="text-sm text-slate-500" aria-label="Close">✕</span>
         </summary>
         <div className="mt-3">
-          <StatementForm cardName={statements.at(-1)?.card_name ?? ""} learned={learned} />
+          <StatementForm cardName={statements.at(-1)?.card_name ?? ""} learned={learned} saved={statements} />
         </div>
       </details>
       {statements.length > 1 && (

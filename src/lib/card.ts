@@ -18,6 +18,7 @@ export const CARD_CATEGORIES = [
   "Government taxes",
   "Health insurance",
   "Car insurance",
+  "Insurance",
   "Automobile parts",
   "Local purchases",
   "To review",

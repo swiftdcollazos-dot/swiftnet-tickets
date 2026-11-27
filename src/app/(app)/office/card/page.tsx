@@ -46,6 +46,7 @@ const BAR: Record<string, string> = {
   "Health insurance": "bg-emerald-600",
   "Car insurance": "bg-indigo-400",
   "Automobile parts": "bg-zinc-500",
+  "Insurance": "bg-teal-700",
   "To review": "bg-red-500",
   "Local purchases": "bg-green-600",
   Other: "bg-slate-400",

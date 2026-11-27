@@ -16,6 +16,8 @@ describe("categorize", () => {
     expect(categorize("RISDON'S GAS STATION POINTE BLA SXM")).toBe("Fuel");
     expect(categorize("SAFE AIR CARGO (SXM) PNT BLANCH SXM")).toBe("Shipping");
     expect(categorize("KOOYMAN ST MAARTEN CAYHILL SXM")).toBe("Local purchases");
+    expect(categorize("TOP CARROT RESTAURANT SXM")).toBe("Company lunch");
+    expect(categorize("NETFLIX.COM LOS GATOS CA")).toBe("Entertainment");
     expect(categorize("THANK YOU FOR YOUR PAYMENT", -513957)).toBe("Payment");
   });
 });

@@ -57,7 +57,8 @@ export async function scanStatementFile(dataUrl: string): Promise<ScannedStateme
   if (!process.env.ANTHROPIC_API_KEY) return { error: "Statement reading isn't set up yet: ANTHROPIC_API_KEY is missing in Vercel." };
   const client = new Anthropic();
   const data = dataUrl.slice(dataUrl.indexOf(",") + 1);
-  const response = await client.beta.messages.create({
+  // Streamed, since a long statement can take a while and a quiet connection may be cut before the answer comes back.
+  const response = await client.beta.messages.stream({
     model: "claude-opus-5-5",
     max_tokens: 16000,
     // If the model declines, the API retries on Anthropic's recommended fallback model.
@@ -75,7 +76,7 @@ export async function scanStatementFile(dataUrl: string): Promise<ScannedStateme
         ],
       },
     ],
-  });
+  }).finalMessage();
   if (response.stop_reason === "max_tokens") return { error: "The statement was too long to read in one go. Please enter it by hand." };
   const text = response.content.find((b) => b.type === "text")?.text;
   if (response.stop_reason === "refusal" || !text) return { error: "The statement couldn't be read. Please enter it by hand." };

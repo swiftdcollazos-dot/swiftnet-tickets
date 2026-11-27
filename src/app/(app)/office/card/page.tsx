@@ -10,12 +10,9 @@ import { Loading } from "@/components/loading";
 import { CategorySelect, StatementForm } from "@/components/card-forms";
 import { PAYMENT_CATEGORY, byCategory, monthLabel, possibleDuplicates, type CardLine, type CardStatement } from "@/lib/card";
 
-<<<<<<< HEAD
 // Reading an uploaded statement can take a while.
 export const maxDuration = 120;
 
-=======
->>>>>>> 8df7423e0681477b05bd3fc8ab183a3cdb02dfec
 export default function CardUsagePage() {
   return (
     <>

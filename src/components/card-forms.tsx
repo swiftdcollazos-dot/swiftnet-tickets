@@ -215,3 +215,26 @@ export function CategorySelect({ id, category }: { id: string; category: string 
     </select>
   );
 }
+
+/** The "Add statement" button at the top of Credit card usage: opens the add form and scrolls to it. */
+export function AddStatementButton() {
+  return (
+    <button
+      type="button"
+      className="btn shrink-0 whitespace-nowrap"
+      onClick={() => {
+        const form = document.getElementById("add-month") as HTMLDetailsElement | null;
+        if (!form) return;
+        form.open = true;
+        form.scrollIntoView({ behavior: "smooth", block: "start" });
+      }}
+    >
+      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="5" width="20" height="14" rx="2" />
+        <path d="M2 10h20" />
+        <path d="M17 14v4M15 16h4" />
+      </svg>
+      Add statement
+    </button>
+  );
+}

@@ -309,7 +309,7 @@ async function MilesReport({ from, to }: { from: string; to: string }) {
   const { data, error } = await supabase
     .from("card_statements")
     .select("statement_month, statement_date, card_name, charges_cents, miles_earned")
-    .order("statement_date", { ascending: false });
+    .order("statement_date");
   if (error || !data?.length) return null;
   const rows = (data as { statement_month: string; statement_date: string; card_name: string; charges_cents: number; miles_earned: number | null }[]).map((r) => ({
     ...r,
@@ -328,7 +328,7 @@ async function MilesReport({ from, to }: { from: string; to: string }) {
       <Table
         title="AAdvantage miles by month"
         head={["Spending in", "Charged", "Expected", "Printed on statement"]}
-        rows={rows.slice(0, 12).map((r) => [monthName(r.statement_month), usd(r.charges_cents), miles(r.expected), r.miles_earned != null ? miles(r.miles_earned) : "—"])}
+        rows={rows.slice(-12).map((r) => [monthName(r.statement_month), usd(r.charges_cents), miles(r.expected), r.miles_earned != null ? miles(r.miles_earned) : "—"])}
         foot={["Total", usd(rows.reduce((s, r) => s + r.charges_cents, 0)), miles(sum(rows, "expected")), miles(sum(rows, "miles_earned"))]}
       />
       <p className="-mt-4 text-xs text-slate-500">

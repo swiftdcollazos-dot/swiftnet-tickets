@@ -250,7 +250,7 @@ async function CardUsage() {
   const { supabase, user } = await requireUser();
   if (!permissions(user).office) redirect("/dashboard");
   const [{ data: st, error }, { data: tx, error: txError }] = await Promise.all([
-    supabase.from("card_statements").select("*").order("statement_month", { ascending: false }),
+    supabase.from("card_statements").select("*").order("statement_month") /* January at the top, down to December */,
     supabase.from("card_transactions").select("*").order("posted_on").order("merchant"),
   ]);
   if (error || txError) {
@@ -273,7 +273,7 @@ async function CardUsage() {
           <span className="text-sm text-slate-500" aria-label="Close">✕</span>
         </summary>
         <div className="mt-3">
-          <StatementForm cardName={statements[0]?.card_name ?? ""} learned={learned} />
+          <StatementForm cardName={statements.at(-1)?.card_name ?? ""} learned={learned} />
         </div>
       </details>
       {statements.length > 1 && (
